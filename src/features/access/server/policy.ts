@@ -1,6 +1,16 @@
 import { DomainError } from "@/lib/api/route"
 import { isIntegrationId } from "@/lib/integrations/catalog"
 
+/**
+ * Rotas que não exigem o painel (`admin.access`): a própria conta, sair da simulação, o Pusher
+ * (cada canal confere a sua permissão) e as do prestador (Negócios, entrevista e Agente Opex, que
+ * conferem `businesses.use`/`opex.use` e as permissões de cada ferramenta).
+ */
+export function requiresPanel(path: string): boolean {
+    if (path === "/api/me" || path.startsWith("/api/me/") || path.startsWith("/api/access/view-as") || path === "/api/pusher/auth") return false
+    return !/^\/api\/(?:businesses|interview|opex)(?:\/|$)/.test(path)
+}
+
 /** Lista explícita de capacidades. Rotas desconhecidas nunca recebem autorização por padrão. */
 export function routePermissions(path: string, method: string): string[] {
     if (path === "/api/me" || path === "/api/me/legal" || path === "/api/me/legal/accept" || path.startsWith("/api/access/view-as")) return []
@@ -13,7 +23,17 @@ export function routePermissions(path: string, method: string): string[] {
     if (/^\/api\/roles(?:\/|$)/.test(path)) return [method === "GET" ? "roles.view" : "roles.edit"]
     if (path === "/api/integrations" || path === "/api/pusher/auth") return []
     if (/^\/api\/opex(?:\/|$)/.test(path)) return ["opex.use"]
-    if (path === "/api/ai/features/opex-agent") return [method === "GET" ? "integrations.ai.view" : "integrations.ai.edit"]
+    if (path === "/api/ai/features/opex-agent" || path === "/api/ai/features/business-interviewer" || path === "/api/ai/features/business-interviewer/script") return [method === "GET" ? "integrations.ai.view" : "integrations.ai.edit"]
+    // Negócios (M1): leitura confere dono/suporte no serviço; alterações só do dono (`businesses.use`).
+    if (path === "/api/businesses") return [] // requireAny no handler (use ou view_all)
+    if (path === "/api/businesses/search") return ["businesses.view_all"]
+    const business = /^\/api\/businesses\/[a-f\d]{24}(?:\/(archive|restore|logo|interview))?$/i.exec(path)
+    if (business) {
+        const tail = business[1]
+        if (!tail) return method === "GET" ? [] : ["businesses.use"]
+        return tail === "logo" || tail === "interview" ? [] : ["businesses.use"]
+    }
+    if (/^\/api\/interview(?:\/|$)/.test(path)) return ["businesses.use"]
     if (path === "/api/docs" || path === "/api/openapi.json") return ["integrations.internal_api.view"]
     const provider = /^\/api\/ai\/providers\/([^/]+)\/(?:models|usage)$/.exec(path)
     if (provider && ["opencode", "gemini", "anthropic", "openai", "deepseek", "jev"].includes(provider[1]!)) return [`integrations.ai_${provider[1]}.view`]

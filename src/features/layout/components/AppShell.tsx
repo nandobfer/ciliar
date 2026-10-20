@@ -35,6 +35,8 @@ interface AppShellProps {
     version?: string
     /** Itens extras do menu acima do rodapé (ver `AppSidebar`). */
     sidebarFooterItems?: (collapsed: boolean) => ReactNode
+    /** Itens abaixo da marca (ver `AppSidebar`), ex.: seletor de negócio. */
+    sidebarHeaderItems?: (collapsed: boolean) => ReactNode
     children: ReactNode
 }
 
@@ -45,7 +47,7 @@ interface AppShellProps {
  * "Pular para o conteúdo" como primeiro foco, gaveta abaixo de 1024px que fecha com Esc/fundo/link,
  * devolve o foco ao botão de menu e deixa o resto da tela inerte enquanto aberta.
  */
-export function AppShell({ brand, sections, navLabel, badges, immersiveHrefs = [], persistentHrefs = [], ownerName, version, sidebarFooterItems, children }: AppShellProps) {
+export function AppShell({ brand, sections, navLabel, badges, immersiveHrefs = [], persistentHrefs = [], ownerName, version, sidebarFooterItems, sidebarHeaderItems, children }: AppShellProps) {
     const pathname = usePathname()
     const reduceMotion = useReducedMotion()
     const immersive = immersiveHrefs.some((href) => isActiveHref(pathname, href))
@@ -75,6 +77,7 @@ export function AppShell({ brand, sections, navLabel, badges, immersiveHrefs = [
             ownerName={ownerName}
             version={version}
             footerItems={sidebarFooterItems}
+            headerItems={sidebarHeaderItems}
         />
     )
 

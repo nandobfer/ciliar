@@ -35,12 +35,21 @@ interface OpexComposerProps {
     disabledReason?: string | null
     /** Texto inicial (ex.: digitado na "Nova sessão" antes de anexar um arquivo). */
     initialText?: string
+    /** Textos do campo em outro chat que reaproveita o componente (ex.: a entrevista do Agente Entrevistador). */
+    placeholder?: string
+    ariaLabel?: string
+    hint?: string
+    /** Anexo indisponível (ex.: só na pergunta da logo); `accept` filtra o seletor de arquivos. */
+    attachDisabled?: boolean
+    accept?: string
+    multiple?: boolean
+    maxLength?: number
 }
 
 const MAX_HEIGHT = 180
 
 /** Campo do chat: Enter envia, Shift+Enter quebra linha; cresce até ~7 linhas. */
-export const OpexComposer = forwardRef<OpexComposerHandle, OpexComposerProps>(function OpexComposer({ onSend, attachments, onStop, running, sending, stopping, disabledReason, initialText }, ref) {
+export const OpexComposer = forwardRef<OpexComposerHandle, OpexComposerProps>(function OpexComposer({ onSend, attachments, onStop, running, sending, stopping, disabledReason, initialText, placeholder, ariaLabel, hint, attachDisabled, accept, multiple = true, maxLength = OPEX_MESSAGE_MAX }, ref) {
     const [text, setText] = useState(initialText ?? "")
     const textRef = useRef(text)
     useEffect(() => {
@@ -72,7 +81,7 @@ export const OpexComposer = forwardRef<OpexComposerHandle, OpexComposerProps>(fu
 
     const onPaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
         const files = Array.from(event.clipboardData?.files ?? [])
-        if (!files.length || blocked) return
+        if (!files.length || blocked || attachDisabled) return
         event.preventDefault()
         attachments.onFiles(files)
     }
@@ -97,7 +106,8 @@ export const OpexComposer = forwardRef<OpexComposerHandle, OpexComposerProps>(fu
                 <input
                     ref={inputRef}
                     type="file"
-                    multiple
+                    multiple={multiple}
+                    accept={accept}
                     hidden
                     tabIndex={-1}
                     aria-hidden
@@ -113,7 +123,7 @@ export const OpexComposer = forwardRef<OpexComposerHandle, OpexComposerProps>(fu
                     variant="ghost"
                     className="h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
                     onClick={() => inputRef.current?.click()}
-                    disabled={blocked}
+                    disabled={blocked || attachDisabled}
                     aria-label="Anexar arquivos"
                     title="Anexar arquivos (ou cole/arraste no chat)"
                 >
@@ -124,13 +134,13 @@ export const OpexComposer = forwardRef<OpexComposerHandle, OpexComposerProps>(fu
                     vim={false}
                     rows={1}
                     value={text}
-                    maxLength={OPEX_MESSAGE_MAX}
+                    maxLength={maxLength}
                     disabled={blocked}
                     onChange={(event) => setText(event.target.value)}
                     onKeyDown={onKeyDown}
                     onPaste={onPaste}
-                    placeholder={blocked ? (disabledReason ?? "") : "Peça algo ao Agente Opex…"}
-                    aria-label="Mensagem para o Agente Opex"
+                    placeholder={blocked ? (disabledReason ?? "") : (placeholder ?? "Peça algo ao Agente Opex…")}
+                    aria-label={ariaLabel ?? "Mensagem para o Agente Opex"}
                     data-ctrl-enter-ignore
                     className="max-h-[180px] min-h-[24px] flex-1 resize-none border-0 bg-transparent p-0 text-sm shadow-none focus-visible:ring-0"
                 />
@@ -150,7 +160,7 @@ export const OpexComposer = forwardRef<OpexComposerHandle, OpexComposerProps>(fu
                     )}
                 </AnimatePresence>
             </div>
-            <p className="mt-1.5 px-1 text-[10px] text-muted-foreground/70">Enter envia · Shift+Enter quebra linha · cole ou arraste arquivos · ações destrutivas pedem sua confirmação</p>
+            <p className="mt-1.5 px-1 text-[10px] text-muted-foreground/70">{hint ?? "Enter envia · Shift+Enter quebra linha · cole ou arraste arquivos · ações destrutivas pedem sua confirmação"}</p>
         </div>
     )
 })

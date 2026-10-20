@@ -12,6 +12,8 @@ import { LegalAcceptance } from "@/features/platform/components/LegalAcceptance"
 import type { SessionDto } from "../types"
 import { AccessLoadingScreen } from "./AccessLoadingScreen"
 import { ViewAsControls } from "./ViewAsControls"
+import { HOME_HREF } from "@/features/layout/navigation"
+import { InterviewScreen } from "@/features/businesses/components/InterviewScreen"
 
 const SessionContext = createContext<{ session: SessionDto | null; logout: () => void }>({ session: null, logout: () => {} })
 const subscribeHydration = () => () => {}
@@ -72,18 +74,38 @@ function SessionBoundary({ children }: { children: ReactNode }) {
     if (session.user.legalAcceptanceRequired) return <LegalAcceptance onDone={() => void query.refetch()} onLogout={() => void leave()} />
     const can = (key: string) => session.access.permissions.includes("*") || session.access.permissions.includes(key)
     const routeKey = pathname.startsWith("/usuarios") ? "users.view" : pathname.startsWith("/perfis") ? "roles.view" : null
-    const permitted = can("admin.access") && (!routeKey || can(routeKey))
+    // Negócios são do prestador: não exigem o painel (`admin.access`).
+    const businessRoute = pathname === "/negocios" || pathname.startsWith("/negocios/")
+    const permitted = businessRoute ? can("businesses.use") || can("businesses.view_all") : can("admin.access") && (!routeKey || can(routeKey))
+    const home = homeHrefOf(can)
+    // Onboarding obrigatório (M1): sem negócio ativo, só a entrevista em tela cheia (sem sidebar), sair da simulação ou sair.
+    const onboarding = session.onboarding?.required === true
     return <SessionContext.Provider value={{ session, logout: () => void leave() }}>
         <AccessDataScope key={`${session.user.id}:${session.access.permissions.join(",")}:${session.access.roles.map(role => `${role.id}:${role.posicao}:${role.version}`).join(",")}:${header}`}>
         <PermissionsProvider permissions={session.access.permissions} roles={session.access.roles} realIsAdmin={session.access.realIsAdministrator}>
             <div className="flex h-dvh flex-col">
             <div className="min-h-0 flex-1" key={`${session.user.id}:${session.access.permissions.join(",")}:${header}`}>
-                {permitted ? children : <div className="flex h-full flex-col"><ViewAsControls /><main className="space-y-4 p-8"><h1 className="text-xl font-semibold">Sem acesso</h1><p>Seu perfil não permite acessar esta área.</p><button onClick={() => { router.replace("/integracoes") }}>Voltar</button><button onClick={() => void leave()}>Sair</button></main></div>}
+                {onboarding ? <div className="flex h-full flex-col"><ViewAsControls /><div className="min-h-0 flex-1"><InterviewScreen mode="onboarding" /></div></div>
+                    : permitted ? children
+                    : home !== pathname && pathname === HOME_HREF ? <HomeRedirect href={home} />
+                    : <div className="flex h-full flex-col"><ViewAsControls /><main className="space-y-4 p-8"><h1 className="text-xl font-semibold">Sem acesso</h1><p>Seu perfil não permite acessar esta área.</p><button onClick={() => { router.replace(home) }}>Voltar</button><button onClick={() => void leave()}>Sair</button></main></div>}
             </div>
             </div>
         </PermissionsProvider>
         </AccessDataScope>
     </SessionContext.Provider>
+}
+
+/** Início conforme o acesso: o prestador (sem o painel) vai para os Negócios; a administração, para Integrações. */
+export function homeHrefOf(can: (key: string) => boolean): string {
+    if (!can("admin.access") && (can("businesses.use") || can("businesses.view_all"))) return "/negocios"
+    return HOME_HREF
+}
+
+function HomeRedirect({ href }: { href: string }) {
+    const router = useRouter()
+    useEffect(() => { router.replace(href) }, [router, href])
+    return <AccessLoadingScreen />
 }
 
 /** Um cache novo por identidade/permissões/contexto: nenhum frame reutiliza dados privilegiados. */

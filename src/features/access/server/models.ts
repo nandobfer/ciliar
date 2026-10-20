@@ -22,12 +22,15 @@ userSchema.index({ email: 1 }, { unique: true })
 userSchema.index({ googleSub: 1 }, { unique: true, partialFilterExpression: { googleSub: { $type: "string" } } })
 export interface RoleRecord {
     slug: string; nome: string; descricao: string; cor: string; permissoes: string[]; ativo: boolean;
+    /** Negócios ativos permitidos a quem tem o perfil (`null` = ilimitado; vale o maior entre os perfis). */
+    limiteNegocios?: number | null;
     version: number; createdBy?: string; updatedBy?: string; createdAt: Date; updatedAt: Date;
 }
 const roleSchema = new Schema<RoleRecord>({
     slug: { type: String, required: true, immutable: true }, nome: { type: String, required: true },
     descricao: { type: String, default: "" }, cor: { type: String, default: "roxo" },
     permissoes: { type: [String], default: [] }, ativo: { type: Boolean, default: true },
+    limiteNegocios: { type: Number, default: null },
     version: { type: Number, default: 0 }, createdBy: String, updatedBy: String,
 }, { collection: "roles", timestamps: true })
 roleSchema.index({ slug: 1 }, { unique: true })

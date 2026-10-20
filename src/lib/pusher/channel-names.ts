@@ -26,3 +26,11 @@ export const REPO_RECENTS_CHANNEL_PREFIX = "private-repo-recents-"
 export const opexChannel = (userId: string) => `private-opex-${userId}`
 
 export const OPEX_CHANNEL_PREFIX = "private-opex-"
+
+/**
+ * Canal dos **negócios** de um usuário (lista, seletor e entrevista). Só o próprio usuário real
+ * assina, com `businesses.use`; payload `{ id }` — só invalidação.
+ */
+export const businessesChannel = (userId: string) => `private-businesses-${userId}`
+
+export const BUSINESSES_UPDATED_EVENT = "businesses-updated"

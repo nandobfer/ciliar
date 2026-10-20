@@ -11,8 +11,9 @@ nível de raciocínio). Não há GitHub, Clientes, Google Drive nem features de 
 
 As interfaces/serviços originais foram copiados: listagem com status, edição e descarte de mudanças,
 teste em NDJSON, logs xterm com busca/maximização, Swagger e explorador, configuração e segredos.
-IA tem a aba **Provedores** (mesmo card e opções gerais) e a aba **Agente Opex**
-(`?aba=agente-opex`, ver `opex-agent.md`). As páginas dos
+IA tem a aba **Provedores** (mesmo card e opções gerais), a aba **Agente Opex**
+(`?aba=agente-opex`, ver `opex-agent.md`) e a aba **Agente Entrevistador** (`?aba=agente-entrevistador`,
+modelo, instruções e roteiro versionado; ver `businesses.md`). As páginas dos
 provedores preservam Configuração, Modelos e Consumo (Gemini não tem Consumo), sem dados importados.
 
 ## Persistência e segurança
@@ -32,15 +33,17 @@ sem encaminhar cookies ao próprio servidor. Tokens têm hash persistido e valor
 ## Crons e tempo real
 
 Mesmo motor de leases atômicos, reagendamento, execução manual e tick de minuto em
-`instrumentation.ts`. Rotinas nativas: `integrations-health-check` (5 min) e `opex-files-cleanup`
-(60 min, arquivos do chat do agente não enviados em 24 h). Rotinas HTTP podem
+`instrumentation.ts`. Rotinas nativas: `integrations-health-check` (5 min), `opex-files-cleanup`
+(60 min, arquivos do chat do agente não enviados em 24 h) e `businesses-purge` (60 min, negócios
+arquivados após o prazo da Plataforma e imagens pendentes da entrevista; ver `businesses.md`). Rotinas HTTP podem
 ser adicionadas no mesmo editor; agendas por intervalo, diária, semanal ou mensal (Brasília).
 Não são registradas rotinas de tarefas/GitHub/desenvolvimento inexistentes no Ciliar.
 
 Pusher suporta cluster e host próprio (Soketi), com polling quando indisponível. A rota
 `/api/pusher/auth` exige sessão e capacidades efetivas. `private-app` é restrito ao wildcard;
 `private-integration-{id}` exige visualizar a integração; `private-opex-{userId}` só o próprio usuário
-real com `opex.use`. Canais arbitrários são recusados.
+real com `opex.use`; `private-businesses-{userId}` só o próprio usuário real com `businesses.use` (os dois
+últimos não exigem o painel). Canais arbitrários são recusados.
 Status/debug enviam somente invalidações, nunca o conteúdo: clientes relêem pela API reautorizada,
 inclusive quando uma assinatura antiga continua existindo após revogação. Login/logout e troca
 de simulação limpam caches e desconectam/recriam assinaturas.

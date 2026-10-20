@@ -14,6 +14,8 @@ export const COLORS = ["vermelho", "laranja", "ambar", "amarelo", "lima", "verde
 export const roleSchema = z.strictObject({
     nome: z.string().trim().min(1, "Informe o nome").max(60), descricao: z.string().trim().max(500),
     cor: z.enum(COLORS), ativo: z.boolean(),
+    /** Negócios ativos permitidos (`null` = ilimitado). */
+    limiteNegocios: z.number({ error: "Informe um número" }).int("Use um número inteiro").min(1, "Mínimo 1 (deixe vazio para ilimitado)").max(10_000, "Máximo 10.000").nullable().optional(),
     permissoes: z.array(z.string().refine(key => key !== "*" && catalog.isKnownKey(key), "Permissão desconhecida ou reservada")).max(200),
 })
 export const roleUpdateSchema = roleSchema.partial().extend({ version: z.number().int().nonnegative(), membros: ids.optional() }).strict()

@@ -21,7 +21,7 @@ export async function roleRows(session: ClientSession | null = null, connection 
     const order = new Map((state?.ordem ?? []).map((id, index) => [id, index + 1]))
     return rows.map((row, index) => ({
         id: row.id as string, slug: row.slug, nome: row.nome, descricao: row.descricao, cor: row.cor,
-        permissoes: catalog.sanitizePermissions(row.permissoes), ativo: row.ativo, escopos: [],
+        permissoes: catalog.sanitizePermissions(row.permissoes), ativo: row.ativo, escopos: [], limiteNegocios: row.limiteNegocios ?? null,
         posicao: row.slug === "admin" ? 0 : order.get(row.id as string) ?? rows.length + index + 1,
         version: row.version, createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString(),
         createdBy: row.createdBy, updatedBy: row.updatedBy,

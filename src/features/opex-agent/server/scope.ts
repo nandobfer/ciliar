@@ -35,6 +35,7 @@ export function sessionFilterOf(scope: OpexServerScope): Record<string, unknown>
 export async function resolveScopeAccess(scope: OpexServerScope): Promise<AccessContext> {
     const access = await resolveAccess(scope.userId, scope.viewAsHeader, null, scope.sessionVersion)
     if (access.legalAcceptanceRequired) throw new DomainError(403, "Aceite os termos de uso e a política de privacidade para continuar", "TERMS_ACCEPTANCE_REQUIRED")
-    requirePermissions(access, "admin.access", "opex.use")
+    // Sem `admin.access`: o prestador (perfil sem painel) também conversa; cada ferramenta exige as próprias permissões.
+    requirePermissions(access, "opex.use")
     return access
 }

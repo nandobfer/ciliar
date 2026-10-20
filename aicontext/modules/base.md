@@ -21,9 +21,11 @@ Abas: a aba ativa usa sempre a cor principal (`bg-primary text-primary-foregroun
 
 ## Navegação e acesso
 
-`APP_NAV` (`src/features/layout/navigation.ts`) tem **Integrações**, **Usuários** e **Perfis**, filtrados
-pelas permissões efetivas de cada usuário/simulação.
-`HOME_HREF=/integracoes`; a raiz redireciona para essa tela. Rotas inexistentes usam a 404 do shell.
+`APP_NAV` (`src/features/layout/navigation.ts`) tem **Negócios** (`businesses.use` ou `view_all`, sem
+o painel), **Integrações**, **Usuários** e **Perfis**, filtrados pelas permissões efetivas de cada
+usuário/simulação. O seletor de negócio fica no topo da sidebar (`sidebarHeaderItems` do `AppShell`).
+`HOME_HREF=/integracoes`; a raiz redireciona para essa tela e quem não tem o painel mas tem Negócios
+segue para `/negocios` (`homeHrefOf`). Rotas inexistentes usam a 404 do shell.
 O rodapé preserva avatar/versão e tem **Sair**. Login público isolado do shell, copiado do Opex
 com tsParticles; o fundo (`LoginBackdrop`) é compartilhado com o loading do shell
 (`AccessLoadingScreen`). O shell exige Auth.js e AccessProvider; APIs têm proteção própria, sem depender

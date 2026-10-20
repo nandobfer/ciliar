@@ -70,7 +70,10 @@ são `no-store`. Exceções: protocolo Auth.js, `/api/v1/*` com Bearer e `/api/r
 Sem o aceite da versão vigente dos termos, somente sessão, aceite e logout são liberados. O layout
 autenticado isola Pusher do login. Sidebar, páginas, ações e formulários seguem permissões; negar no
 cliente não substitui a validação do servidor. A sessão do cliente é revalidada ao focar e a cada 30
-segundos. Até o M1, quem entra sem `admin.access` (ex.: perfil padrão sem painel) vê "Sem acesso".
+segundos. Desde o M1, quem entra sem `admin.access` mas com Negócios vai para `/negocios`
+(`homeHrefOf`); rotas de negócio, entrevista e Agente Opex não exigem o painel (`requiresPanel`), e o
+onboarding obrigatório responde 403 `ONBOARDING_REQUIRED` (ver `businesses.md`). Perfis têm
+`limiteNegocios` (aba Geral; vazio = ilimitado).
 
 Enquanto o `SessionBoundary` valida a sessão (`!mounted || query.isPending`: logo após o login e em
 todo F5 autenticado) aparece o `AccessLoadingScreen` (CIL-1), com a identidade do login: o mesmo

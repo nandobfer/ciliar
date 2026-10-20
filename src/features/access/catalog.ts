@@ -16,6 +16,11 @@ export const PERMISSION_TREE = [
     { id: "agente_opex", label: "Agente Opex", viewKey: "opex.use", children: [
         { key: "opex.use", label: "Usar o chat do agente" },
     ] },
+    // Sem `viewKey`: o suporte (`view_all`) não ganha `businesses.use` (que força a entrevista a quem não tem negócio).
+    { id: "negocios", label: "Negócios", children: [
+        { key: "businesses.use", label: "Criar (pela entrevista), ver e editar os próprios negócios" },
+        { key: "businesses.view_all", label: "Suporte: ver negócios e entrevistas de outros usuários (somente leitura, auditado)", sensitive: true },
+    ] },
     { id: "integracoes", label: "Integrações", children: INTEGRATION_IDS.map(id => ({
         id: `integration_${id}`, label: getIntegrationDef(id).name, viewKey: `integrations.${id}.view`, children: [
             { key: `integrations.${id}.view`, label: "Visualizar" },

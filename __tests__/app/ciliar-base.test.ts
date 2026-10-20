@@ -9,8 +9,8 @@ import { withBuiltInJobs } from '@/lib/integrations/config'
 import { buildPublicApiSpec } from '@/features/public-api/openapi/spec'
 
 describe('base do Ciliar com controle de acesso', () => {
-    it('inclui Integrações, Usuários e Perfis, preservando a página inicial', () => {
-        expect(APP_NAV_ITEMS.map(({ href, label }) => ({ href, label }))).toEqual([{ href: '/integracoes', label: 'Integrações' }, { href: '/usuarios', label: 'Usuários' }, { href: '/perfis', label: 'Perfis' }])
+    it('inclui Negócios, Integrações, Usuários e Perfis, preservando a página inicial', () => {
+        expect(APP_NAV_ITEMS.map(({ href, label }) => ({ href, label }))).toEqual([{ href: '/negocios', label: 'Negócios' }, { href: '/integracoes', label: 'Integrações' }, { href: '/usuarios', label: 'Usuários' }, { href: '/perfis', label: 'Perfis' }])
         expect(HOME_HREF).toBe('/integracoes')
         expect(activeNavHref('/integracoes/ia/opencode', APP_NAV_ITEMS)).toBe('/integracoes')
         expect(activeNavHref('/tarefas', APP_NAV_ITEMS)).toBeNull()
@@ -22,15 +22,16 @@ describe('base do Ciliar com controle de acesso', () => {
         expect(INTEGRATIONS.map((def) => def.id)).toEqual([...INTEGRATION_IDS])
         expect(IN_DEVELOPMENT_INTEGRATIONS).toEqual([])
         for (const id of ['github', 'orcamentos', 'google_drive', 'desconhecido']) expect(isIntegrationId(id)).toBe(false)
-        expect(AI_TABS).toEqual(['provedores', 'agente-opex'])
+        expect(AI_TABS).toEqual(['provedores', 'agente-opex', 'agente-entrevistador'])
         expect(integrationPath('ai_opencode')).toBe('/integracoes/ia/opencode')
         expect(integrationPath('platform')).toBe('/integracoes/plataforma')
     })
 
-    it('mantém o motor de crons sem cadastrar rotinas de módulos excluídos (só a limpeza dos arquivos do agente)', () => {
+    it('mantém o motor de crons sem cadastrar rotinas de módulos excluídos (limpeza dos arquivos do agente e exclusão dos negócios arquivados)', () => {
         expect(DEFAULT_CRON_JOBS).toEqual([
             { id: 'integrations-health-check', label: 'Verificação de status das integrações', kind: 'internal', enabled: true, schedule: { type: 'interval', minutes: 5 } },
             { id: 'opex-files-cleanup', label: 'Limpar arquivos pendentes do chat do Agente Opex', kind: 'internal', enabled: true, schedule: { type: 'interval', minutes: 60 } },
+            { id: 'businesses-purge', label: 'Excluir definitivamente os negócios arquivados após o prazo', kind: 'internal', enabled: true, schedule: { type: 'interval', minutes: 60 } },
         ])
         expect(withBuiltInJobs([])).toEqual(DEFAULT_CRON_JOBS)
         const schema = buildIntegrationUpdateSchema(getIntegrationDef('crons'))

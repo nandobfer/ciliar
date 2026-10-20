@@ -30,10 +30,12 @@ interface OpexMessageListProps {
     deciding: boolean
     onRetry: (text: string) => void
     busy: boolean
+    /** Nome da conversa para leitor de tela (padrão: o Agente Opex). */
+    label?: string
 }
 
 /** Conversa com rolagem que acompanha o fim enquanto o usuário não sobe; botão "Ir para o fim". */
-export function OpexMessageList({ items, onDecide, deciding, onRetry, busy }: OpexMessageListProps) {
+export function OpexMessageList({ items, onDecide, deciding, onRetry, busy, label = "Conversa com o Agente Opex" }: OpexMessageListProps) {
     const scrollRef = useRef<HTMLDivElement>(null)
     const stickRef = useRef(true)
     const [showJump, setShowJump] = useState(false)
@@ -81,7 +83,7 @@ export function OpexMessageList({ items, onDecide, deciding, onRetry, busy }: Op
 
     return (
         <div className="relative min-h-0 flex-1">
-            <div ref={scrollRef} onScroll={onScroll} className="h-full overflow-y-auto px-4 pb-2 pt-4" role="log" aria-live="polite" aria-label="Conversa com o Agente Opex">
+            <div ref={scrollRef} onScroll={onScroll} className="h-full overflow-y-auto px-4 pb-2 pt-4" role="log" aria-live="polite" aria-label={label}>
                 <VirtualStack count={items.length} scrollRef={scrollRef} estimateSize={140} getKey={(index) => chatItemKey(items[index]!)} renderItem={renderItem} />
             </div>
             <AnimatePresence>

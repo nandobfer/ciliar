@@ -42,9 +42,9 @@ function RoleEditor({ role: incomingRole }: { role?: RoleDetail }) {
     const mutation = useAccessMutation()
     const [tab, setTab] = useState("geral")
     const [search, setSearch] = useState("")
-    const [draft, setDraft] = useState({ nome: role?.nome ?? "", descricao: role?.descricao ?? "", cor: role?.cor ?? "roxo", ativo: role?.ativo ?? true, permissoes: role?.permissoes ?? [] })
+    const [draft, setDraft] = useState({ nome: role?.nome ?? "", descricao: role?.descricao ?? "", cor: role?.cor ?? "roxo", ativo: role?.ativo ?? true, permissoes: role?.permissoes ?? [], limiteNegocios: role?.limiteNegocios ?? null })
     const [members, setMembers] = useState<string[]>(role?.membros ?? [])
-    const initial = { nome: role?.nome ?? "", descricao: role?.descricao ?? "", cor: role?.cor ?? "roxo", ativo: role?.ativo ?? true, permissoes: role?.permissoes ?? [] }
+    const initial = { nome: role?.nome ?? "", descricao: role?.descricao ?? "", cor: role?.cor ?? "roxo", ativo: role?.ativo ?? true, permissoes: role?.permissoes ?? [], limiteNegocios: role?.limiteNegocios ?? null }
     const changedMembers = members.length !== (role?.membros.length ?? 0) || members.some(id => !role?.membros.includes(id))
     const dirty = JSON.stringify(draft) !== JSON.stringify(initial) || changedMembers
     useEffect(() => {
@@ -77,6 +77,7 @@ function RoleEditor({ role: incomingRole }: { role?: RoleDetail }) {
                         <Field id="role-name" label="Nome"><Input id="role-name" value={draft.nome} disabled={readOnly || mutation.isPending} onChange={event => setDraft({ ...draft, nome: event.target.value })} /></Field>
                         <Field id="role-description" label="Descrição"><Textarea id="role-description" value={draft.descricao} disabled={readOnly || mutation.isPending} onChange={event => setDraft({ ...draft, descricao: event.target.value })} /></Field>
                         <div className="space-y-1.5"><Label className="text-xs font-semibold">Cor</Label><RoleColorSelect value={draft.cor} disabled={readOnly || mutation.isPending} onChange={cor => setDraft({ ...draft, cor })} /></div>
+                        {!admin && <Field id="role-business-limit" label="Limite de negócios ativos"><Input id="role-business-limit" type="number" min={1} step={1} placeholder="Ilimitado" value={draft.limiteNegocios ?? ""} disabled={readOnly || mutation.isPending} onChange={event => setDraft({ ...draft, limiteNegocios: event.target.value.trim() === "" ? null : Number(event.target.value) })} /><p className="text-xs text-muted-foreground">Vazio = ilimitado. Com vários perfis, vale o maior limite (ilimitado vence); arquivados não contam.</p></Field>}
                         <label className="flex items-center gap-2 text-sm"><Checkbox checked={draft.ativo} disabled={readOnly || admin || mutation.isPending} onCheckedChange={value => setDraft({ ...draft, ativo: value === true })} />Perfil ativo</label>
                     </TabsContent>
                     <TabsContent value="permissoes" className="space-y-3">{!!removed && <p className="text-sm text-warning">Os membros perderão {removed} permissão(ões) ao salvar.</p>}<PermissionTree selected={new Set(draft.permissoes)} onChange={next => setDraft({ ...draft, permissoes: [...next] })} readOnly={readOnly || admin || mutation.isPending} /></TabsContent>

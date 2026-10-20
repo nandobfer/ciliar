@@ -74,6 +74,66 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         description: "Lê o conteúdo de texto de um arquivo do chat (txt, md, csv, json, código...), em janelas de até 100 mil caracteres. Use para arquivos grandes ou de mensagens antigas.",
     },
 
+    // ── Negócios (M1) ──────────────────────────────────────────────────────
+    {
+        name: "list_businesses",
+        group: "businesses",
+        label: "Listar negócios",
+        risk: "read",
+        access: { any: ["businesses.use", "businesses.view_all"] },
+        description:
+            "Negócios do usuário (ativos e arquivados, com a data da exclusão definitiva automática) e as vagas do limite do perfil. Com businesses.view_all (suporte, somente leitura e auditado): os de outro usuário (ownerId) ou a busca por nome em todos (query).",
+    },
+    {
+        name: "get_business",
+        group: "businesses",
+        label: "Ler negócio",
+        risk: "read",
+        access: { any: ["businesses.use", "businesses.view_all"] },
+        description: "Ficha completa de um negócio (tipo, subtipo, área, links, disponibilidade, moeda, logo e metas). De outro usuário, só com businesses.view_all (auditado).",
+    },
+    {
+        name: "get_business_interview",
+        group: "businesses",
+        label: "Ler entrevista do negócio",
+        risk: "read",
+        access: { any: ["businesses.use", "businesses.view_all"] },
+        description: "Transcrição da entrevista que criou o negócio e as respostas por pergunta do roteiro (versão usada).",
+    },
+    {
+        name: "update_business",
+        group: "businesses",
+        label: "Editar negócio",
+        risk: "write",
+        access: { all: ["businesses.use"] },
+        description:
+            "Altera a ficha de um negócio ativo do próprio usuário: nome (vazio vira \"Negócio N\"), tipo PF/PJ, subtipo, área/segmento, descrição, links, disponibilidade e moeda. Só os campos informados mudam; links e disponibilidade substituem a lista inteira.",
+    },
+    {
+        name: "archive_business",
+        group: "businesses",
+        label: "Arquivar negócio",
+        risk: "destructive",
+        access: { all: ["businesses.use"] },
+        description: "Arquiva um negócio do usuário: some do seletor, deixa de contar no limite e é excluído definitivamente depois do prazo da Plataforma (pode ser restaurado antes).",
+    },
+    {
+        name: "restore_business",
+        group: "businesses",
+        label: "Restaurar negócio",
+        risk: "write",
+        access: { all: ["businesses.use"] },
+        description: "Restaura um negócio arquivado do usuário (exige vaga no limite de negócios ativos do perfil).",
+    },
+    {
+        name: "delete_business",
+        group: "businesses",
+        label: "Excluir negócio definitivamente",
+        risk: "destructive",
+        access: { all: ["businesses.use"] },
+        description: "Exclui definitivamente um negócio ARQUIVADO do usuário, com metas, entrevista e anexos (irreversível).",
+    },
+
     // ── Usuários ──────────────────────────────────────────────────────────────
     {
         name: "list_users",
@@ -156,7 +216,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         label: "Criar perfil",
         risk: "destructive",
         access: { all: ["roles.edit"] },
-        description: "Cria um perfil com nome, descrição, cor (nome da paleta: roxo, azul, verde…), situação e permissões (chaves de list_permission_catalog). Só concede permissões que você mesmo possui.",
+        description: "Cria um perfil com nome, descrição, cor (nome da paleta: roxo, azul, verde…), situação, permissões (chaves de list_permission_catalog) e limite de negócios ativos (null = ilimitado). Só concede permissões que você mesmo possui.",
     },
     {
         name: "update_role",
@@ -165,7 +225,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         risk: "destructive",
         access: { all: ["roles.edit"] },
         description:
-            "Altera nome, descrição, cor, situação, permissões e/ou membros (ids de usuários; exige também users.edit) de um perfil. Só os campos informados mudam; permissões e membros substituem a lista inteira.",
+            "Altera nome, descrição, cor, situação, limite de negócios ativos (null = ilimitado), permissões e/ou membros (ids de usuários; exige também users.edit) de um perfil. Só os campos informados mudam; permissões e membros substituem a lista inteira.",
     },
     {
         name: "reorder_roles",
@@ -330,8 +390,12 @@ export const OPEX_ALWAYS_ON_TOOLS = new Set(OPEX_TOOL_CATALOG.filter((tool) => t
 
 const has = (permissions: ReadonlySet<string>, key: string) => permissions.has("*") || permissions.has(key)
 
+/** Grupos do prestador: não exigem o painel. Os demais (administração) exigem também `admin.access`. */
+export const OPEX_NO_PANEL_GROUPS: ReadonlySet<OpexToolGroup> = new Set<OpexToolGroup>(["context", "files", "businesses"])
+
 /** As permissões efetivas liberam a ferramenta? (Revalidado no servidor antes de cada execução.) */
-export function canUseOpexTool(meta: Pick<OpexToolMeta, "access">, permissions: ReadonlySet<string>): boolean {
+export function canUseOpexTool(meta: Pick<OpexToolMeta, "access" | "group">, permissions: ReadonlySet<string>): boolean {
+    if (!OPEX_NO_PANEL_GROUPS.has(meta.group) && !has(permissions, "admin.access")) return false
     const { all = [], any } = meta.access
     if (!all.every((key) => has(permissions, key))) return false
     return !any?.length || any.some((key) => has(permissions, key))

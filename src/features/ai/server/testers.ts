@@ -98,6 +98,10 @@ export const testAiHub: IntegrationTester = async ({ emit, signal }) => {
         if (result.ok) connected++
         emit(result.ok ? "success" : "error", `${provider.name}: ${result.message}`)
     }
+    // Sem o Entrevistador, ninguém cria negócios (M1): o health-check registra o aviso.
+    const { interviewerAvailability, loadInterviewerSettings } = await import("@/features/businesses/server/interviewer-settings")
+    const interviewer = await interviewerAvailability((await loadInterviewerSettings()).settings).catch(() => null)
+    if (interviewer && !interviewer.available) emit("warn", `Agente Entrevistador indisponível (criação de negócios bloqueada): ${interviewer.reason}`)
     if (configured === 0) fail("Nenhum provedor configurado: configure ao menos um provedor na aba Provedores")
     if (connected === 0) fail("Nenhum provedor de IA conectado")
     if (connected < configured) return warnResult(`${connected} de ${configured} provedor(es) conectado(s)`)

@@ -2,6 +2,7 @@ import type { OpexConfirmationPolicy } from "../../constants"
 import { canUseOpexTool, enabledOpexToolNames } from "../../tool-catalog"
 import type { OpexTool } from "./define"
 import { apiTokenTools } from "./api-tokens"
+import { businessTools } from "./businesses"
 import { contextTools } from "./context"
 import { fileTools } from "./files"
 import { integrationTools } from "./integrations"
@@ -13,6 +14,7 @@ import { userTools } from "./users"
 export const OPEX_TOOLS: readonly OpexTool[] = [
     ...contextTools,
     ...fileTools,
+    ...businessTools,
     ...userTools,
     ...roleTools,
     ...integrationTools,

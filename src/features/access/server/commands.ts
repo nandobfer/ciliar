@@ -130,7 +130,7 @@ export async function updateRole(context: AccessContext, id: string, raw: unknow
             if (!current.effective.has("*") || Object.keys(data).some(key => !["nome", "descricao", "cor"].includes(key))) throw denied("Administrador permite alterar somente nome, descrição e cor")
         } else if (!canManageRole(current.roles, role) || data.permissoes?.includes("*") || getUngrantableKeys(current.effective, data.permissoes ?? []).length) throw denied()
         if (data.ativo === false && role.ativo) await assertNotDefaultRole(id, session, "inativar")
-        const before = { nome: role.nome, descricao: role.descricao, cor: role.cor, permissoes: [...role.permissoes], ativo: role.ativo }
+        const before = { nome: role.nome, descricao: role.descricao, cor: role.cor, permissoes: [...role.permissoes], ativo: role.ativo, limiteNegocios: role.limiteNegocios ?? null }
         Object.assign(role, data, { updatedBy: current.userId, version: version + 1 })
         if (data.permissoes) role.permissoes = catalog.normalizePermissionDependencies(data.permissoes)
         await role.save({ session })

@@ -5,7 +5,8 @@ import { logger } from "@/lib/logger"
 import { assertMutationOrigin } from "@/features/auth/server/origin"
 import { resolveAccess, requirePermissions } from "./access"
 import { requestAccess } from "./context"
-import { routePermissions } from "./policy"
+import { requiresPanel, routePermissions } from "./policy"
+import { isOnboardingRoute, mayRequireOnboarding, onboardingState } from "@/features/businesses/server/onboarding"
 
 export function accessErrorResponse(error: unknown) {
     if (error instanceof DomainError) return NextResponse.json({ success: false, error: error.message, code: error.code }, { status: error.status, headers: { "Cache-Control": "no-store" } })
@@ -26,7 +27,11 @@ export function protectRoute<P>(handler: (request: NextRequest, context: P) => P
             const ownAccount = path === "/api/me" || path === "/api/me/legal" || path === "/api/me/legal/accept"
             if (context.legalAcceptanceRequired && !ownAccount) throw new DomainError(403, "Aceite os termos de uso e a política de privacidade para continuar", "TERMS_ACCEPTANCE_REQUIRED")
             const keys = routePermissions(path, request.method)
-            if (!ownAccount && !path.startsWith("/api/access/view-as")) requirePermissions(context, "admin.access")
+            // Onboarding obrigatório (M1): sem negócio ativo, só a entrevista (e a própria conta) até concluir.
+            if (mayRequireOnboarding(context) && !isOnboardingRoute(path, request.method) && (await onboardingState(context)).required) {
+                throw new DomainError(403, "Conclua a entrevista do seu primeiro negócio para continuar", "ONBOARDING_REQUIRED")
+            }
+            if (requiresPanel(path)) requirePermissions(context, "admin.access")
             requirePermissions(context, ...keys)
             const response = await requestAccess.run(context, () => handler(request, routeContext))
             response.headers.set("Cache-Control", "no-store")

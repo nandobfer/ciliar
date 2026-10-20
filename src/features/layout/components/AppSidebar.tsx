@@ -38,6 +38,8 @@ interface AppSidebarProps {
      * recolhida; cada item renderiza o próprio `<li>`.
      */
     footerItems?: (collapsed: boolean) => ReactNode
+    /** Itens logo abaixo da marca (ex.: seletor de negócio). Cada item renderiza o próprio `<li>`. */
+    headerItems?: (collapsed: boolean) => ReactNode
 }
 
 /**
@@ -48,7 +50,7 @@ interface AppSidebarProps {
  * linha inferior e o avatar abre o popover de acesso público (`SidebarFooter`). A gaveta do
  * mobile usa o mesmo componente expandido.
  */
-export function AppSidebar({ brand, sections, navLabel, collapsed, onNavigate, onClose, badges, ownerName, version, footerItems }: AppSidebarProps) {
+export function AppSidebar({ brand, sections, navLabel, collapsed, onNavigate, onClose, badges, ownerName, version, footerItems, headerItems }: AppSidebarProps) {
     const pathname = usePathname()
     const reduceMotion = useReducedMotion() ?? false
     const activeHref = activeNavHref(pathname, flattenNav(sections))
@@ -94,6 +96,8 @@ export function AppSidebar({ brand, sections, navLabel, collapsed, onNavigate, o
                     </button>
                 )}
             </div>
+
+            {headerItems && <ul className="shrink-0 space-y-1 border-b border-sidebar-border px-2 py-2">{headerItems(collapsed)}</ul>}
 
             <nav aria-label={navLabel} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-2 py-3">
                 {sections.map((section) => (

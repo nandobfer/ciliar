@@ -1,8 +1,13 @@
-import { Plug, Users, Shield } from "lucide-react"
+import { Briefcase, Plug, Users, Shield } from "lucide-react"
 import type { NavBadgeKey, NavItemDef, NavSectionDef } from "./types"
 
 /** Navegação do app, em seções. */
 export const APP_NAV: readonly NavSectionDef[] = [
+    {
+        id: "negocios",
+        label: "Negócios",
+        items: [{ href: "/negocios", label: "Negócios", title: "Negócios", icon: Briefcase }],
+    },
     {
         id: "sistema",
         label: "Sistema",

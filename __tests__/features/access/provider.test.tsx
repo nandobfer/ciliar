@@ -15,6 +15,7 @@ vi.mock("@tsparticles/react", () => ({ default: () => <div data-testid="particle
 vi.mock("@tsparticles/slim", () => ({ loadSlim: vi.fn() }))
 vi.mock("@/features/access/components/ViewAsControls", () => ({ ViewAsControls: () => null }))
 vi.mock("@/features/platform/components/LegalAcceptance", () => ({ LegalAcceptance: () => <p>Aceite obrigatório</p> }))
+vi.mock("@/features/businesses/components/InterviewScreen", () => ({ InterviewScreen: ({ mode }: { mode: string }) => <p>Entrevista {mode}</p> }))
 import { AccessProvider } from "@/features/access/components/AccessProvider"
 let dataClient: QueryClient
 function Probe() { const client = useQueryClient(); useEffect(() => { dataClient = client }, [client]); return <p>Conteúdo protegido</p> }
@@ -61,5 +62,20 @@ describe("fronteira de sessão e dados", () => {
         mount(new QueryClient())
         await screen.findByRole("heading", { name: "Sem acesso" })
         expect(screen.queryByText("Conteúdo protegido")).toBeNull()
+    })
+    it("onboarding obrigatório: só a entrevista em tela cheia, sem o conteúdo", async () => {
+        state.pathname = "/negocios"
+        state.session!.access.permissions = ["businesses.use"]
+        state.session!.onboarding = { required: true, interviewId: null, archived: 0 }
+        mount(new QueryClient())
+        await screen.findByText("Entrevista onboarding")
+        expect(screen.queryByText("Conteúdo protegido")).toBeNull()
+    })
+    it("prestador sem o painel acessa Negócios", async () => {
+        state.pathname = "/negocios"
+        state.session!.access.permissions = ["businesses.use"]
+        state.session!.onboarding = { required: false, interviewId: null, archived: 0 }
+        mount(new QueryClient())
+        await screen.findByText("Conteúdo protegido")
     })
 })

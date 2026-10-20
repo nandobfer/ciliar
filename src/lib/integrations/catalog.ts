@@ -174,6 +174,8 @@ export interface CronJobConfig {
 export const HEALTH_CHECK_JOB_ID = "integrations-health-check"
 /** Limpeza dos arquivos do chat do Agente Opex enviados e não usados numa mensagem em 24 h (S3 + metadados). */
 export const OPEX_FILES_CLEANUP_JOB_ID = "opex-files-cleanup"
+/** Exclusão definitiva dos negócios arquivados depois do prazo da Plataforma (+ imagens pendentes da entrevista). */
+export const BUSINESSES_PURGE_JOB_ID = "businesses-purge"
 
 /** Rotinas internas que processam tarefas e deixam escolher o escopo (`scope`). */
 const SCOPED_CRON_JOB_IDS = new Set<string>()
@@ -200,6 +202,13 @@ export const DEFAULT_CRON_JOBS: CronJobConfig[] = [
     {
         id: OPEX_FILES_CLEANUP_JOB_ID,
         label: "Limpar arquivos pendentes do chat do Agente Opex",
+        kind: "internal",
+        schedule: { type: "interval", minutes: 60 },
+        enabled: true,
+    },
+    {
+        id: BUSINESSES_PURGE_JOB_ID,
+        label: "Excluir definitivamente os negócios arquivados após o prazo",
         kind: "internal",
         schedule: { type: "interval", minutes: 60 },
         enabled: true,

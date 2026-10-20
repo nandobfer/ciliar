@@ -1,7 +1,7 @@
 import { hostname } from "os"
 import { dbConnect } from "@/lib/db"
 import { CronJobState } from "@/lib/db/models/CronJobState"
-import { HEALTH_CHECK_JOB_ID, OPEX_FILES_CLEANUP_JOB_ID, type CronJobConfig } from "@/lib/integrations/catalog"
+import { BUSINESSES_PURGE_JOB_ID, HEALTH_CHECK_JOB_ID, OPEX_FILES_CLEANUP_JOB_ID, type CronJobConfig } from "@/lib/integrations/catalog"
 import { getIntegrationConfig, getInternalBaseUrl } from "@/lib/integrations/config"
 import { integrationDebug } from "@/lib/integrations/debug"
 import { nextRunAt, scheduleSignature, validateSchedule } from "@/lib/integrations/schedule"
@@ -280,6 +280,13 @@ export function registerBuiltInJobs(): void {
     registerInternalJob(OPEX_FILES_CLEANUP_JOB_ID, async () => {
         const { cleanupPendingOpexFiles } = await import("@/features/opex-agent/server/files")
         return cleanupPendingOpexFiles()
+    })
+    registerInternalJob(BUSINESSES_PURGE_JOB_ID, async () => {
+        const { purgeArchivedBusinesses } = await import("@/features/businesses/server/businesses")
+        const { cleanupPendingInterviewFiles } = await import("@/features/businesses/server/interview/files")
+        const purged = await purgeArchivedBusinesses()
+        const images = await cleanupPendingInterviewFiles()
+        return images ? `${purged}; ${images} imagem(ns) pendente(s) da entrevista removida(s)` : purged
     })
 }
 

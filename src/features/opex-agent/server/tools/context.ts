@@ -28,6 +28,8 @@ export const contextTools = [
                 simulation: simulation ? { kind: simulation.tipo === "cargo" ? "perfil" : "usuário", target: simulation.alvoNome } : null,
                 roles: access.roles.map((role) => ({ id: role.id, name: role.nome, active: role.ativo })),
                 administrator: access.effective.has("*"),
+                // Na simulação de usuário, as ferramentas de negócio agem sobre os negócios do alvo.
+                businessOwnerId: simulation?.tipo === "usuario" ? simulation.alvoId : access.userId,
                 permissions: access.effective.has("*") ? ["*"] : [...access.effective].sort(),
                 toolsByGroup: Object.fromEntries(OPEX_TOOL_GROUPS.map((group) => [group, available.filter((tool) => tool.group === group).map((tool) => tool.name)])),
             }

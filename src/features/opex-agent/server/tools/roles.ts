@@ -12,6 +12,7 @@ import { defineTool, OpexToolError } from "./define"
 const roleRef = z.string().trim().min(1).max(100).describe("Id do perfil ou nome")
 const permissionKeys = z.array(z.string().trim().min(1).max(120)).max(200).describe("Chaves de permissão (de list_permission_catalog); substitui a lista inteira")
 const color = z.enum(COLORS).describe(`Cor da paleta: ${COLORS.join(", ")}`)
+const businessLimit = z.number().int().min(1).max(10_000).nullable().describe("Limite de negócios ativos de quem tem o perfil; null = ilimitado (com vários perfis vale o maior)")
 
 function slimRole(role: RoleDto, members?: number) {
     return {
@@ -23,6 +24,7 @@ function slimRole(role: RoleDto, members?: number) {
         active: role.ativo,
         position: role.posicao,
         administrator: role.slug === "admin",
+        businessLimit: role.limiteNegocios ?? null,
         permissionCount: role.permissoes.includes("*") ? "todas" : role.permissoes.length,
         ...(members === undefined ? {} : { members }),
     }
@@ -82,11 +84,12 @@ export const roleTools = [
             color: color.default("roxo"),
             active: z.boolean().default(true),
             permissions: permissionKeys.default([]),
+            businessLimit: businessLimit.default(null),
         }),
         summarize: (input) => `Criar o perfil ${input.name} com ${input.permissions.length} permissão(ões)`,
         execute: async (input, { access }) => {
             await dbConnect()
-            const { id } = await createRole(access, { nome: input.name, descricao: input.description, cor: input.color, ativo: input.active, permissoes: input.permissions })
+            const { id } = await createRole(access, { nome: input.name, descricao: input.description, cor: input.color, ativo: input.active, permissoes: input.permissions, limiteNegocios: input.businessLimit })
             return slimRole(await findRole(id))
         },
     }),
@@ -99,6 +102,7 @@ export const roleTools = [
             active: z.boolean().optional(),
             permissions: permissionKeys.optional(),
             memberIds: z.array(objectId).max(500).optional().describe("Ids de TODOS os membros (substitui a lista; exige users.edit)"),
+            businessLimit: businessLimit.optional(),
         }),
         summarize: (input) => {
             const parts = [
@@ -108,6 +112,7 @@ export const roleTools = [
                 input.active === undefined ? null : input.active ? "ativar" : "desativar",
                 input.permissions ? `permissões (${input.permissions.length})` : null,
                 input.memberIds ? `membros (${input.memberIds.length})` : null,
+                input.businessLimit === undefined ? null : `limite de negócios para ${input.businessLimit ?? "ilimitado"}`,
             ].filter(Boolean)
             return `Alterar ${parts.join(", ") || "o perfil"} de ${input.role}`
         },
@@ -120,6 +125,7 @@ export const roleTools = [
                 ...(input.active !== undefined ? { ativo: input.active } : {}),
                 ...(input.permissions !== undefined ? { permissoes: input.permissions } : {}),
                 ...(input.memberIds !== undefined ? { membros: input.memberIds } : {}),
+                ...(input.businessLimit !== undefined ? { limiteNegocios: input.businessLimit } : {}),
             }
             if (!Object.keys(patch).length) throw new OpexToolError("Nada para alterar.")
             await updateRole(access, found.id, { ...patch, version: found.version })

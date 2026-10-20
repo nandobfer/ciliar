@@ -7,8 +7,8 @@ Leia `aicontext/README.md` e o guia do módulo antes de desenvolver.
 - Base copiada do Opex. Preserve os componentes e bibliotecas existentes; não reescreva a UI.
 - Tema escuro fixo, primária `#0B57C4` (azul do crm-marketing-campanhas), cores por tokens. Shadcn/Radix, Tailwind 4, lucide-react,
   sonner, date-fns e Framer Motion (respeitando movimento reduzido).
-- Escopo atual: Integrações, Usuários, Perfis, Visualizar como e o Agente Opex (chat com
-  ferramentas), por solicitação do usuário.
+- Escopo atual: Integrações, Usuários, Perfis, Visualizar como, o Agente Opex (chat com
+  ferramentas), a Plataforma (M0) e Negócios + Agente Entrevistador (M1), por solicitação do usuário.
 - Auth.js nativo no Next, **somente Google** (sem e-mail/senha). Cadastro público com o perfil
   padrão da Plataforma, convite (pré-cadastro do e-mail) e vínculo automático por e-mail verificado.
   Aceite versionado dos termos/política é conferido no servidor. Toda API administrativa exige
@@ -16,7 +16,9 @@ Leia `aicontext/README.md` e o guia do módulo antes de desenvolver.
 - O CLI `pnpm user:create` (pré-autoriza um e-mail Google) é a única entrada de bootstrap do
   primeiro Administrador; não crie contas no startup.
 - Nunca confunda o ator real com o alvo da simulação. Marcador explícito por requisição/aba;
-  auditoria preserva o ator real. Preserve o histórico antigo do ator `local`.
+  auditoria preserva o ator real. Preserve o histórico antigo do ator `local`. **Exceção (M1):** na
+  simulação de usuário, as ações de Negócio agem sobre o alvo como dono (`businessOwnerOf`), com a
+  auditoria no ator real; ver `aicontext/modules/businesses.md`.
 - Alterações de autoridade exigem replica set, transação, fence compartilhado e versionamento.
   Nunca reconfigure o MongoDB compartilhado automaticamente.
 - Banco exclusivo `ciliar`; nunca use o banco do Opex nem copie seu `.env` ou seus dados.

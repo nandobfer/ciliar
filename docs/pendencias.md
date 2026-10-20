@@ -49,4 +49,12 @@ Nenhuma pendência. Todos os módulos (M0–M5) estão definidos.
 | P35 | M0 | Senhas antigas são removidas pelo comando `pnpm auth:migrate-google` (idempotente). |
 | P36 | M0 | Prazo padrão de exclusão definitiva: 30 dias por tipo (1 a 3650). |
 | P37 | M0 | Convite por e-mail marcado por padrão quando há SMTP; "Reenviar convite" para convites pendentes. |
-| P38 | M0 | Até o M1, quem entra sem `admin.access` vê "Sem acesso" depois do aceite. |
+| P38 | M0 | Até o M1, quem entra sem `admin.access` vê "Sem acesso" depois do aceite. (Superada no M1: o prestador vai para `/negocios`.) |
+| P39 | M1 | O espaço do negócio (`/negocios/[id]`) é um aviso "Em desenvolvimento" até o M2; a transcrição na tela entra com ele. |
+| P40 | M1 | Prestador sem `admin.access` usa Negócios e o Agente Opex (só `opex.use`); ferramentas administrativas seguem exigindo o painel. |
+| P41 | M1 | Onboarding obrigatório também no servidor: 403 `ONBOARDING_REQUIRED`. |
+| P42 | M1 | IA indisponível: e-mail (SMTP, no máximo 1/h) a quem tem `integrations.ai.edit` + aviso na aba do Entrevistador. |
+| P43 | M1 | Fora do onboarding obrigatório, `/negocios/novo` abre dentro do shell com sidebar. |
+| P44 | M1 | Na simulação de usuário, as ações de negócio agem sobre o alvo como dono (auditoria com o ator real); na de perfil, o dono é o admin real; o onboarding segue as permissões simuladas. |
+| P45 | M1 | Sem negócio ativo e com arquivados: entrevista obrigatória, com a opção de restaurar um arquivado. |
+| P46 | M1 | Metas da entrevista: o usuário decide recorrência/período específico e a janela da meta por hora (estrutura do M2). |

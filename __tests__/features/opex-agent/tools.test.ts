@@ -60,8 +60,9 @@ describe('catálogo e registro de ferramentas', () => {
     for (const group of OPEX_TOOL_GROUPS) expect(OPEX_TOOLS.some((tool) => tool.group === group)).toBe(true)
   })
 
-  it('só existem ferramentas de usuários, perfis, integrações (tokens e rotinas), plataforma, arquivos e contexto', () => {
-    expect(OPEX_TOOL_GROUPS).toEqual(['context', 'files', 'users', 'roles', 'integrations', 'api-tokens', 'routines', 'platform'])
+  it('só existem ferramentas de negócios, usuários, perfis, integrações (tokens e rotinas), plataforma, arquivos e contexto', () => {
+    expect(OPEX_TOOL_GROUPS).toEqual(['context', 'files', 'businesses', 'users', 'roles', 'integrations', 'api-tokens', 'routines', 'platform'])
+    expect(OPEX_TOOLS.some((tool) => tool.name === 'create_business')).toBe(false)
     expect(OPEX_TOOLS.some((tool) => /task|preview|workbench|central|client|service|finance/.test(tool.name))).toBe(false)
   })
 
@@ -72,10 +73,14 @@ describe('catálogo e registro de ferramentas', () => {
   })
 
   it('exclusão, credencial, senha, token e mudança de autoridade (perfis, usuários, integrações) são destructive e têm o resumo do card', () => {
+    // Editar a ficha do próprio negócio não é autoridade nem credencial: `write` (M1).
     const sensitive = OPEX_TOOLS.filter(
       (tool) =>
-        /^(delete|revoke|create|update|reorder)_/.test(tool.name) || (/token|password/.test(tool.name) && !/^list_/.test(tool.name)),
+        (/^(delete|revoke|create|update|reorder)_/.test(tool.name) && tool.name !== 'update_business') || (/token|password/.test(tool.name) && !/^list_/.test(tool.name)),
     )
+    const risk = (name: string) => findOpexTool(name)!.risk
+    expect(['list_businesses', 'get_business', 'get_business_interview'].map(risk)).toEqual(['read', 'read', 'read'])
+    expect(['update_business', 'restore_business', 'archive_business', 'delete_business'].map(risk)).toEqual(['write', 'write', 'destructive', 'destructive'])
     expect(sensitive.map((tool) => tool.name)).toEqual(
       expect.arrayContaining(['create_user', 'update_user', 'delete_user', 'create_role', 'update_role', 'reorder_roles', 'delete_role', 'update_integration', 'create_api_token', 'revoke_api_token', 'update_platform_settings', 'update_legal_terms']),
     )
@@ -119,6 +124,15 @@ describe('ferramentas ligadas e permissões', () => {
     expect(enabledOpexTools([], new Set(['*'])).length).toBe(OPEX_TOOLS.length)
   })
 
+  it('prestador sem o painel: só contexto, arquivos e negócios; a administração segue exigindo admin.access', () => {
+    const provider = new Set(['opex.use', 'businesses.use', 'users.view'])
+    const names = enabledOpexTools([], provider).map((tool) => tool.name)
+    expect(names).toEqual(expect.arrayContaining(['get_app_overview', 'list_chat_files', 'list_businesses', 'update_business', 'delete_business']))
+    expect(names).not.toContain('list_users')
+    expect(canUseOpexTool(findOpexTool('get_business')!, new Set(['businesses.view_all']))).toBe(true)
+    expect(canUseOpexTool(findOpexTool('update_business')!, new Set(['businesses.view_all']))).toBe(false)
+  })
+
   it('integrações: basta ver alguma para listar; editar exige a permissão da integração alvo', () => {
     const smtp = new Set(['admin.access', 'integrations.smtp.view'])
     expect(canUseOpexTool(findOpexTool('list_integrations')!, smtp)).toBe(true)
@@ -136,7 +150,7 @@ describe('ferramentas ligadas e permissões', () => {
   })
 
   it('árvore da configuração: um módulo por grupo, folhas por ferramenta e destrutivas como sensíveis', () => {
-    expect(OPEX_TOOL_TREE.map((branch) => branch.label)).toEqual(['Contexto', 'Arquivos do chat', 'Usuários', 'Perfis', 'Integrações', 'Tokens da API interna', 'Rotinas', 'Plataforma'])
+    expect(OPEX_TOOL_TREE.map((branch) => branch.label)).toEqual(['Contexto', 'Arquivos do chat', 'Negócios', 'Usuários', 'Perfis', 'Integrações', 'Tokens da API interna', 'Rotinas', 'Plataforma'])
     expect(opexToolTreeCatalog.keys).toEqual(OPEX_TOOL_CATALOG.map((tool) => tool.name))
     const users = OPEX_TOOL_TREE.find((branch) => branch.id === 'tools_users')!
     expect(users.children).toEqual(expect.arrayContaining([expect.objectContaining({ key: 'delete_user', sensitive: true })]))
