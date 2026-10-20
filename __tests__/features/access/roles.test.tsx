@@ -12,6 +12,7 @@ vi.mock("@/features/access/hooks/useAccessAdmin", () => ({
 }))
 vi.mock("@/features/access/components/AccessProvider", () => ({ useAppSession: () => ({ session: { user: { id: "a".repeat(24) } } }) }))
 import { RolePage } from "@/features/access/components/RoleEditor"
+import { COLOR_TOKENS, getColor } from "@/lib/constants/color-palette"
 const id = "b".repeat(24)
 const page = () => <PermissionsProvider permissions={["*"]} roles={[{ id: "a".repeat(24), slug: "admin", nome: "Administrador", ativo: true, permissoes: ["*"], escopos: [], posicao: 0 }]} realIsAdmin><RolePage id={id} /></PermissionsProvider>
 beforeEach(() => {
@@ -30,6 +31,18 @@ describe("editor de perfis e concorrência", () => {
         await waitFor(() => expect(state.mutateAsync).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ version: 0, nome: "Meu rascunho" }) })))
         expect((screen.getByLabelText("Nome") as HTMLInputElement).value).toBe("Meu rascunho")
         expect(state.push).not.toHaveBeenCalled()
+    })
+    it("seleciona a cor pelas bolinhas da paleta (token, não hex), como no crm-marketing-campanhas", async () => {
+        render(page())
+        const group = screen.getByRole("radiogroup", { name: "Cor do perfil" })
+        expect(screen.queryByRole("combobox")).toBeNull()
+        expect(group.querySelectorAll("[role=radio]").length).toBe(COLOR_TOKENS.length)
+        expect(screen.getByRole("radio", { name: getColor("roxo").label }).getAttribute("aria-checked")).toBe("true")
+        fireEvent.click(screen.getByRole("radio", { name: getColor("verde").label }))
+        expect(screen.getByRole("radio", { name: getColor("verde").label }).getAttribute("aria-checked")).toBe("true")
+        expect(screen.getByRole("radio", { name: getColor("roxo").label }).getAttribute("aria-checked")).toBe("false")
+        fireEvent.click(screen.getByRole("button", { name: "Salvar" }))
+        await waitFor(() => expect(state.mutateAsync).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ cor: "verde" }) })))
     })
     it("erro de refetch não desmonta um formulário já preenchido", () => {
         const view = render(page())

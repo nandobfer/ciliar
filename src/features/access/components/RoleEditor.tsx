@@ -14,12 +14,12 @@ import { Textarea } from "@/components/ui/textarea"
 import { Field } from "@/components/ui/field"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { COLORS, roleSchema } from "../schemas"
+import { Label } from "@/components/ui/label"
+import { roleSchema } from "../schemas"
 import { useAccessMutation, useRole, useUsers, type RoleDetail } from "../hooks/useAccessAdmin"
 import { useAppSession } from "./AccessProvider"
 import { PermissionTree } from "./permissions/PermissionTree"
-import { getColor } from "@/lib/constants/color-palette"
+import { RoleColorSelect } from "./RoleColorSelect"
 
 export function RolePage({ id }: { id?: string }) {
     const query = useRole(id)
@@ -76,7 +76,7 @@ function RoleEditor({ role: incomingRole }: { role?: RoleDetail }) {
                     <TabsContent value="geral" className="space-y-4">
                         <Field id="role-name" label="Nome"><Input id="role-name" value={draft.nome} disabled={readOnly || mutation.isPending} onChange={event => setDraft({ ...draft, nome: event.target.value })} /></Field>
                         <Field id="role-description" label="Descrição"><Textarea id="role-description" value={draft.descricao} disabled={readOnly || mutation.isPending} onChange={event => setDraft({ ...draft, descricao: event.target.value })} /></Field>
-                        <Field id="role-color" label="Cor"><Select value={draft.cor} disabled={readOnly || mutation.isPending} onValueChange={cor => setDraft({ ...draft, cor })}><SelectTrigger id="role-color"><SelectValue /></SelectTrigger><SelectContent>{COLORS.map(color => <SelectItem key={color} value={color}>{getColor(color).label}</SelectItem>)}</SelectContent></Select></Field>
+                        <div className="space-y-1.5"><Label className="text-xs font-semibold">Cor</Label><RoleColorSelect value={draft.cor} disabled={readOnly || mutation.isPending} onChange={cor => setDraft({ ...draft, cor })} /></div>
                         <label className="flex items-center gap-2 text-sm"><Checkbox checked={draft.ativo} disabled={readOnly || admin || mutation.isPending} onCheckedChange={value => setDraft({ ...draft, ativo: value === true })} />Perfil ativo</label>
                     </TabsContent>
                     <TabsContent value="permissoes" className="space-y-3">{!!removed && <p className="text-sm text-warning">Os membros perderão {removed} permissão(ões) ao salvar.</p>}<PermissionTree selected={new Set(draft.permissoes)} onChange={next => setDraft({ ...draft, permissoes: [...next] })} readOnly={readOnly || admin || mutation.isPending} /></TabsContent>
