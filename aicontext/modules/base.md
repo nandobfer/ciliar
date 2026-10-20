@@ -7,7 +7,7 @@ Cópia real do código de `~/code/opex`, não uma recriação visual. Inclui tod
 campos, `globals.css`, configuração Shadcn, Tailwind/PostCSS e o shell/sidebar originais.
 Dependências e versões resolvidas foram mantidas, inclusive bibliotecas do catálogo de UI.
 
-O layout raiz usa Inter, pt-BR, tema escuro fixo, primária `#8000FF`, TanStack Query, sonner,
+O layout raiz usa Inter, pt-BR, tema escuro fixo, primária `#0B57C4` (azul do crm-marketing-campanhas), TanStack Query, sonner,
 Framer Motion. A configuração pública do Pusher fica somente no layout autenticado. Sidebar: 68px no desktop, gaveta expandida no
 mobile, mesmo foco/teclado e animações. O símbolo original continua em `public/opex-mark.png`.
 Marca textual e metadados: Ciliar. Preferências/eventos locais usam namespace `ciliar`.

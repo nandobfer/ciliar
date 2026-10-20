@@ -5,7 +5,7 @@ Leia `aicontext/README.md` e o guia do módulo antes de desenvolver.
 - App Next.js único com pnpm; TypeScript estrito; rotas em `src/app`, regras em `src/features`,
   infraestrutura em `src/lib`, UI compartilhada em `src/components`.
 - Base copiada do Opex. Preserve os componentes e bibliotecas existentes; não reescreva a UI.
-- Tema escuro fixo, primária `#8000FF`, cores por tokens. Shadcn/Radix, Tailwind 4, lucide-react,
+- Tema escuro fixo, primária `#0B57C4` (azul do crm-marketing-campanhas), cores por tokens. Shadcn/Radix, Tailwind 4, lucide-react,
   sonner, date-fns e Framer Motion (respeitando movimento reduzido).
 - Escopo atual: Integrações, Usuários, Perfis, Visualizar como e o Agente Opex (chat com
   ferramentas), por solicitação do usuário.

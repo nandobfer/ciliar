@@ -12,7 +12,7 @@ vi.mock("@tsparticles/slim", () => ({ loadSlim: vi.fn() }))
 import { LoginPage } from "@/features/auth/components/LoginPage"
 
 afterEach(cleanup)
-beforeEach(() => { vi.clearAllMocks(); state.reduced = false; document.documentElement.style.setProperty("--primary", "270 100% 50%") })
+beforeEach(() => { vi.clearAllMocks(); state.reduced = false; document.documentElement.style.setProperty("--primary", "215 89% 41%") })
 describe("login original do Opex no Ciliar", () => {
     it("mantém formulário acessível, identidade e partículas conectadas usando o tema", async () => {
         render(<LoginPage />)
@@ -21,7 +21,7 @@ describe("login original do Opex no Ciliar", () => {
         expect(screen.getByLabelText("Senha").getAttribute("type")).toBe("password")
         await waitFor(() => expect(screen.getByTestId("particles")).toBeTruthy())
         expect(state.options.particles?.links?.enable).toBe(true)
-        expect(state.options.particles?.color?.value).toBe("hsl(270 100% 50%)")
+        expect(state.options.particles?.color?.value).toBe("hsl(215 89% 41%)")
         expect(state.options.particles?.move?.enable).toBe(true)
     })
     it("desliga movimento e interatividade com movimento reduzido", () => {

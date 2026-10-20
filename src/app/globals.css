@@ -94,7 +94,7 @@
 
 @layer base {
   /*
-   * Tema ESCURO fixo do app, com cor primária #8000FF (270 100% 50%). O app não tem tema claro:
+   * Tema ESCURO fixo do app, com cor primária #0B57C4 (215 89% 41%, a mesma do crm-marketing-campanhas). O app não tem tema claro:
    * `:root` e `.dark` usam os mesmos valores (a classe `dark` fica no <html> para as variantes
    * `dark:` dos componentes copiados).
    */
@@ -106,30 +106,30 @@
     --card-foreground: 260 20% 96%;
     --popover: 260 20% 10%;
     --popover-foreground: 260 20% 96%;
-    --primary: 270 100% 50%;
+    --primary: 215 89% 41%;
     --primary-foreground: 0 0% 100%;
     --secondary: 260 16% 15%;
     --secondary-foreground: 260 20% 96%;
     --muted: 260 16% 14%;
     --muted-foreground: 260 10% 66%;
-    --accent: 270 40% 18%;
+    --accent: 215 40% 18%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
     --border: 260 16% 18%;
     --input: 260 16% 20%;
-    --ring: 270 100% 64%;
+    --ring: 215 89% 55%;
     --sidebar: 260 24% 5%;
     --sidebar-foreground: 260 14% 90%;
-    --sidebar-primary: 270 100% 50%;
+    --sidebar-primary: 215 89% 41%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 270 50% 16%;
+    --sidebar-accent: 215 50% 16%;
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 260 18% 13%;
     --radius: 0.5rem;
     /* Paleta dos gráficos, derivada da primária. */
-    --chart-1: #8000ff;
-    --chart-2: #b366ff;
+    --chart-1: #0b57c4;
+    --chart-2: #2f8fd8;
     --chart-3: #22d3ee;
     --chart-4: #f472b6;
     --chart-5: #34d399;

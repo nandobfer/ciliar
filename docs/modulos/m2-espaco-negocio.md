@@ -35,14 +35,14 @@ pedidos/trabalhos; valores já cadastrados (atividades, metas) **não são conve
 
 ## 2.1 Tema do negócio
 
-Cada negócio define sua **cor primária** e o **modo claro/escuro** (padrão: `#8000FF`, escuro).
+Cada negócio define sua **cor primária** e o **modo claro/escuro** (padrão: `#0B57C4`, escuro).
 Referência de implementação: `~/code/sipal/crm-marketing-campanhas/src/lib/companies/theme.ts`.
 
 - Sobrescreve `--primary`, `--primary-foreground`, `--ring` e os tokens derivados da sidebar no
   contêiner do layout do negócio **e** como regra `:root` (para diálogos, popovers, tooltips e toasts
   renderizados no `<body>`).
 - Foreground escolhido por **contraste WCAG ≥ 4,5:1** (branco ou quase-preto); cor inválida ou sem
-  contraste cai na cor padrão do Ciliar.
+  contraste cai na cor padrão do Ciliar (`#0B57C4`).
 - Valores CSS gerados **somente** a partir da cor validada (nunca do texto digitado): sem injeção de CSS.
 - Pré-visualização ao vivo na edição.
 - **Modo claro**: o Ciliar só tem tokens escuros; os tokens claros são copiados do `~/code/opex`
@@ -50,7 +50,7 @@ Referência de implementação: `~/code/sipal/crm-marketing-campanhas/src/lib/co
 - **Onde vale**: todo o **espaço do negócio**, **portfólio público** (M5), **link do orçamento** (M3)
   e **e-mails** do negócio (orçamento).
 - **Telas globais** (`/clientes`, `/negocios`, visão geral de trabalhos, administração, entrevista)
-  usam sempre a **cor padrão do Ciliar** no modo escuro.
+  usam sempre a **cor padrão do Ciliar (`#0B57C4`)** no modo escuro.
 
 ## 3. Atividades
 
