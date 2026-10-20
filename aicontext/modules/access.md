@@ -72,6 +72,14 @@ autenticado isola Pusher do login. Sidebar, páginas, ações e formulários seg
 cliente não substitui a validação do servidor. A sessão do cliente é revalidada ao focar e a cada 30
 segundos. Até o M1, quem entra sem `admin.access` (ex.: perfil padrão sem painel) vê "Sem acesso".
 
+Enquanto o `SessionBoundary` valida a sessão (`!mounted || query.isPending`: logo após o login e em
+todo F5 autenticado) aparece o `AccessLoadingScreen` (CIL-1), com a identidade do login: o mesmo
+`LoginBackdrop` (gradiente radial + partículas), a marca "Ciliar" com brilho pulsando, anel girando
+na primária (tokens) e "Carregando acesso" com reticências animadas. É `role="status"`/`aria-live`,
+decorações `aria-hidden` e a marca não é heading. Com movimento reduzido fica estático (sem giro,
+pulso nem movimento das partículas), só com fade de entrada. Mudança só visual: sem ferramenta do
+Agente Opex correspondente.
+
 ## Persistência e invariantes
 
 Coleções exclusivas no banco `ciliar`: `users`, `roles`, `role_hierarchy`, `access_audit` (e as da

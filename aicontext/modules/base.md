@@ -25,7 +25,8 @@ Abas: a aba ativa usa sempre a cor principal (`bg-primary text-primary-foregroun
 pelas permissões efetivas de cada usuário/simulação.
 `HOME_HREF=/integracoes`; a raiz redireciona para essa tela. Rotas inexistentes usam a 404 do shell.
 O rodapé preserva avatar/versão e tem **Sair**. Login público isolado do shell, copiado do Opex
-com tsParticles. O shell exige Auth.js e AccessProvider; APIs têm proteção própria, sem depender
+com tsParticles; o fundo (`LoginBackdrop`) é compartilhado com o loading do shell
+(`AccessLoadingScreen`). O shell exige Auth.js e AccessProvider; APIs têm proteção própria, sem depender
 de esconder menus nem de middleware. Não há portal ou módulos de tarefas/financeiro/desenvolvimento.
 `getLocalUser()` é uma ponte legada para o ator autenticado via AsyncLocalStorage, nunca um bypass.
 Detalhes: [Autenticação e acessos](access.md).

@@ -10,6 +10,7 @@ import { api, apiErrorCode, apiErrorMessage } from "@/lib/api"
 import { resetPusherClient } from "@/lib/pusher/client"
 import { LegalAcceptance } from "@/features/platform/components/LegalAcceptance"
 import type { SessionDto } from "../types"
+import { AccessLoadingScreen } from "./AccessLoadingScreen"
 import { ViewAsControls } from "./ViewAsControls"
 
 const SessionContext = createContext<{ session: SessionDto | null; logout: () => void }>({ session: null, logout: () => {} })
@@ -64,7 +65,7 @@ function SessionBoundary({ children }: { children: ReactNode }) {
         return () => window.removeEventListener("ciliar:terms-required", listener)
     }, [query])
 
-    if (!mounted || query.isPending) return <p role="status" className="p-8 text-muted-foreground">Carregando acesso...</p>
+    if (!mounted || query.isPending) return <AccessLoadingScreen />
     if (query.isError || !query.data) return <div className="space-y-3 p-8"><p role="alert">{apiErrorMessage(query.error, "Não foi possível validar seu acesso")}</p><button onClick={() => void query.refetch()}>Tentar novamente</button><button onClick={() => void leave()}>Sair</button></div>
     const session = query.data
     // Nova versão dos termos/política: só aceitar ou sair (o servidor bloqueia o resto até o aceite).

@@ -1,13 +1,8 @@
 "use client"
 
-import dynamic from "next/dynamic"
 import { motion, useReducedMotion } from "framer-motion"
+import { LoginBackdrop } from "./LoginBackdrop"
 import { LoginForm } from "./LoginForm"
-
-// Canvas de partículas só no cliente (lê os tokens do tema do DOM): evita divergência de hidratação.
-const LoginParticleBackground = dynamic(() => import("./LoginParticleBackground").then((mod) => mod.LoginParticleBackground), {
-    ssr: false,
-})
 
 /**
  * Tela inicial de login — a primeira (e, por ora, única) tela pública do Opex. Fica **fora do
@@ -22,11 +17,7 @@ export function LoginPage({ nextPath, notice, disabled }: { nextPath?: string; n
     const reducedMotion = useReducedMotion()
     return (
         <main className="relative isolate flex min-h-screen items-center justify-center overflow-hidden bg-background px-4 py-10">
-            <div
-                className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_top,hsl(var(--primary)/0.18),transparent_60%)]"
-                aria-hidden="true"
-            />
-            <LoginParticleBackground />
+            <LoginBackdrop />
 
             <motion.div
                 initial={reducedMotion ? false : { opacity: 0, y: 16, scale: 0.98 }}
