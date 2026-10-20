@@ -1,0 +1,21 @@
+# Ambiente
+.env
+.env*.local
+
+# Dependências e build
+node_modules/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# Sistema
+.DS_Store
+*.log
+
+# Worktrees do desenvolvimento agêntico
+/worktrees/
+
+# Dados locais de ferramentas de agente
+/.cortexkit/

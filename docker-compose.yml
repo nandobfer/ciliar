@@ -1,0 +1,102 @@
+name: "ciliar-${PORT:?defina PORT no .env}"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # Docker rootless: o build sai pela rede do host (mesmo padrão do dndicas).
+      network: host
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-}
+        NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-}
+        NEXT_PUBLIC_PUSHER_KEY: ${NEXT_PUBLIC_PUSHER_KEY:-}
+        NEXT_PUBLIC_PUSHER_CLUSTER: ${NEXT_PUBLIC_PUSHER_CLUSTER:-}
+        NEXT_PUBLIC_PUSHER_URL: ${NEXT_PUBLIC_PUSHER_URL:-}
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "${PORT:?defina PORT no .env}:${PORT:?defina PORT no .env}"
+    environment:
+      # Endereço interno Docker, separado da URI usada pelo pnpm dev no host.
+      MONGODB_URI: ${DOCKER_MONGODB_URI:?defina DOCKER_MONGODB_URI no .env}
+      NODE_ENV: production
+      PORT: ${PORT:?defina PORT no .env}
+    networks:
+      - mongodb-network
+      - soketi-network
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 4G
+
+  app-dev:
+    pull_policy: build
+    profiles:
+      - dev
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+      # Docker rootless: o build sai pela rede do host (mesmo padrão do dndicas).
+      network: host
+    env_file:
+      - .env
+    ports:
+      - "${PORT:?defina PORT no .env}:${PORT:?defina PORT no .env}"
+    environment:
+      MONGODB_URI: ${DOCKER_MONGODB_URI:?defina DOCKER_MONGODB_URI no .env}
+      NODE_ENV: development
+      PORT: ${PORT:?defina PORT no .env}
+    deploy:
+      resources:
+        limits:
+          cpus: "3.0"
+          memory: 6G
+    command:
+      - pnpm
+      - exec
+      - next
+      - dev
+      - --turbo
+      - --hostname
+      - 0.0.0.0
+      - --port
+      - ${PORT:?defina PORT no .env}
+    networks:
+      - mongodb-network
+      - soketi-network
+    develop:
+      watch:
+        - action: sync
+          path: ./src
+          target: /app/src
+        - action: sync
+          path: ./public
+          target: /app/public
+        - action: sync
+          path: ./aicontext
+          target: /app/aicontext
+        - action: sync
+          path: ./next.config.ts
+          target: /app/next.config.ts
+        - action: sync
+          path: ./postcss.config.mjs
+          target: /app/postcss.config.mjs
+        - action: sync
+          path: ./tsconfig.json
+          target: /app/tsconfig.json
+        - action: rebuild
+          path: ./package.json
+        - action: rebuild
+          path: ./pnpm-lock.yaml
+        - action: rebuild
+          path: ./Dockerfile
+
+networks:
+  mongodb-network:
+    external: true
+  soketi-network:
+    external: true

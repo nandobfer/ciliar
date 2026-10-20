@@ -1,0 +1,8 @@
+allowBuilds:
+  '@tsparticles/engine': false
+  core-js: true
+  esbuild: true
+  mongodb-memory-server: set this to true or false
+  msgpackr-extract: false
+  sharp: true
+  unrs-resolver: true

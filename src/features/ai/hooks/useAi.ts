@@ -1,0 +1,71 @@
+"use client"
+
+import { useEffect } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
+import { api, apiErrorMessage, unwrapApi } from "@/lib/api"
+import type { ApiResponse } from "@/lib/types/api"
+import { integrationChannel } from "@/lib/pusher/channel-names"
+import { acquireChannel, isPusherClientAvailable, releaseChannel } from "@/lib/pusher/client"
+import { AI_PROVIDERS, type AiModelDto, type AiProviderId, type AiProviderStatusDto } from "@/lib/ai/providers"
+import type { IntegrationListItemDto } from "@/features/integrations/types"
+import { useIntegrations } from "@/features/integrations/hooks/useIntegrations"
+import { AI_FEATURE_UPDATED_EVENT } from "../constants"
+
+/** Consultas dos provedores e features de IA (copiadas do Opex). */
+
+export const AI_QUERY_KEY = "ai"
+const key = (...parts: unknown[]) => [AI_QUERY_KEY, ...parts] as const
+const get = async <T,>(path: string) => unwrapApi((await api.get<ApiResponse<T>>(path)).data)
+
+/** Situação dos provedores de texto, derivada da lista de integrações (status ao vivo). Com
+ * `includeAll`, inclui também o JEV (decisão estruturada). */
+export function toProviderStatuses(integrations: readonly IntegrationListItemDto[], includeAll = false): AiProviderStatusDto[] {
+    return AI_PROVIDERS.filter((provider) => includeAll || provider.supportsTextGeneration).map((provider) => {
+        const item = integrations.find((integration) => integration.id === provider.integrationId)
+        const configured = item?.configured === true
+        return {
+            id: provider.id,
+            integrationId: provider.integrationId,
+            name: provider.name,
+            configured,
+            connected: configured && (item?.health.status === "ok" || item?.health.status === "warn"),
+        }
+    })
+}
+
+export function useAiProviderStatuses(includeAll = false) {
+    const query = useIntegrations()
+    return { ...query, providers: toProviderStatuses(query.data ?? [], includeAll) }
+}
+
+export const useAiModels = (provider: AiProviderId | null, enabled = true) =>
+    useQuery({ queryKey: key("models", provider), queryFn: () => get<AiModelDto[]>(`/ai/providers/${provider}/models`), enabled: enabled && provider !== null, staleTime: 2 * 60_000, retry: false })
+
+/** Recarrega a lista ignorando o cache do servidor, como no Opex. */
+export function useRefreshAiModels(provider: AiProviderId) {
+    const queryClient = useQueryClient()
+    return () =>
+        queryClient
+            .fetchQuery({ queryKey: key("models", provider), queryFn: () => get<AiModelDto[]>(`/ai/providers/${provider}/models?refresh=1`) })
+            .catch((error: unknown) => toast.error(apiErrorMessage(error, "Não foi possível atualizar os modelos")))
+}
+
+/**
+ * Configuração de feature alterada em outra aba/navegador: relê as features. No Ciliar o aviso vai
+ * no canal da integração "Provedores de IA" (autorizado por `integrations.ai.view`) e só invalida.
+ */
+export function useAiFeatureRealtime(): void {
+    const queryClient = useQueryClient()
+    useEffect(() => {
+        if (!isPusherClientAvailable()) return
+        const name = integrationChannel("ai")
+        const channel = acquireChannel(name)
+        const handler = () => void queryClient.invalidateQueries({ queryKey: key("feature") })
+        channel.bind(AI_FEATURE_UPDATED_EVENT, handler)
+        return () => {
+            channel.unbind(AI_FEATURE_UPDATED_EVENT, handler)
+            releaseChannel(name)
+        }
+    }, [queryClient])
+}

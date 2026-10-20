@@ -1,0 +1,15 @@
+# Contexto do Ciliar
+
+Base independente copiada do Opex em 17/10/2026. Mantém Next.js 16.1.4, React 19.2.3 e
+pnpm 11.8.0. Em 18/10 ganhou autenticação, usuários e Perfix, com referência no Shekinah. Em 20/10
+ganhou o Agente Opex (chat com ferramentas) copiado do Opex.
+
+## Módulos
+
+- [Base, layout e UI](modules/base.md): origem, tema, componentes e navegação protegida.
+- [Autenticação e acessos](modules/access.md): login, usuários, perfis, simulação, transações e CLI.
+- [Integrações](modules/integrations.md): catálogo, persistência, APIs, logs, crons e provedores.
+- [Agente Opex](modules/opex-agent.md): chat com ferramentas, sessões, arquivos, confirmações e catálogo.
+- [Docker e deploy](modules/deployment.md): infraestrutura copiada, Compose dev/produção e ambiente.
+
+Leia também `AGENTS.md`. Alterações devem manter este contexto e testes Vitest atualizados.
