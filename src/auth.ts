@@ -1,12 +1,13 @@
 import NextAuth from "next-auth"
-import Credentials from "next-auth/providers/credentials"
+import Google from "next-auth/providers/google"
 import { dbConnect } from "@/lib/db"
 import { accessModels } from "@/features/access/server/models"
-import { loginSchema } from "@/features/auth/schemas"
-import { getDummyHash, verifyPassword } from "@/features/auth/server/password"
-import { checkRateLimit } from "@/features/auth/server/rate-limit"
+import { resolveGoogleAccount } from "@/features/auth/server/google-account"
+import { loginErrorPath } from "@/features/auth/login-errors"
 import { logger } from "@/lib/logger"
 import { appOrigin } from "@/features/auth/server/origin"
+
+const OBJECT_ID = /^[a-f\d]{24}$/i
 
 export const { handlers, auth, signIn, signOut } = NextAuth(() => {
     // Configuração lazy: o build não depende de ambiente/segredos de produção.
@@ -16,31 +17,52 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => {
     trustHost: true,
     pages: { signIn: "/login", error: "/login" },
     session: { strategy: "jwt", maxAge: 8 * 60 * 60 },
-    providers: [Credentials({
-        credentials: { identifier: {}, password: {} },
-        authorize: async (raw) => {
-            const parsed = loginSchema.safeParse(raw)
-            if (!parsed.success) return null
-            checkRateLimit(`login:${parsed.data.identifier}`)
-            await dbConnect()
-            const user = await accessModels().users.findOne({ email: parsed.data.identifier }).select("+passwordHash")
-            const valid = await verifyPassword(user?.passwordHash ?? await getDummyHash(), parsed.data.password)
-            if (!valid || !user?.active) return null
-            return { id: user.id as string, name: user.name, email: user.email, sessionVersion: user.sessionVersion }
-        },
+    // Somente Google. Credenciais OAuth no ambiente: o login é pré-requisito para abrir /integracoes.
+    providers: [Google({
+        clientId: process.env.AUTH_GOOGLE_ID,
+        clientSecret: process.env.AUTH_GOOGLE_SECRET,
+        authorization: { params: { prompt: "select_account" } },
     })],
     callbacks: {
-        jwt: async ({ token, user }) => {
-            if (user) { token.sub = user.id; token.sessionVersion = "sessionVersion" in user ? user.sessionVersion : undefined }
-            if (!token.sub || typeof token.sessionVersion !== "number" || !/^[a-f\d]{24}$/i.test(token.sub)) return null
+        signIn: async ({ account, profile }) => {
+            if (account?.provider !== "google" || !account.providerAccountId) return loginErrorPath("falha")
+            try {
+                await dbConnect()
+                const result = await resolveGoogleAccount({
+                    sub: account.providerAccountId,
+                    email: typeof profile?.email === "string" ? profile.email : null,
+                    emailVerified: profile?.email_verified === true,
+                    name: typeof profile?.name === "string" ? profile.name : null,
+                })
+                if (result.status === "denied") {
+                    logger.warn({ action: "auth.denied", code: result.code }, "Login Google recusado")
+                    return loginErrorPath(result.code)
+                }
+                return true
+            } catch (error) {
+                logger.error({ err: error, action: "auth.google" }, "Falha ao resolver a conta Google")
+                return loginErrorPath("falha")
+            }
+        },
+        jwt: async ({ token, account }) => {
             await dbConnect()
+            if (account) {
+                // Primeiro token: troca o `sub` do Google pelo ID do usuário vinculado em `signIn`.
+                if (account.provider !== "google" || !account.providerAccountId) return null
+                const linked = await accessModels().users.findOne({ googleSub: account.providerAccountId, active: true })
+                if (!linked) return null
+                token.sub = linked.id as string
+                token.sessionVersion = linked.sessionVersion
+                delete token.picture
+            }
+            if (!token.sub || typeof token.sessionVersion !== "number" || !OBJECT_ID.test(token.sub)) return null
             const current = await accessModels().users.findOne({ _id: token.sub, active: true, sessionVersion: token.sessionVersion })
             if (!current) return null
-            token.name = current.name; token.email = current.email; token.mustChangePassword = current.mustChangePassword
+            token.name = current.name; token.email = current.email
             return token
         },
         session: async ({ session, token }) => {
-            Object.assign(session.user, { id: token.sub, mustChangePassword: token.mustChangePassword === true, sessionVersion: token.sessionVersion })
+            Object.assign(session.user, { id: token.sub, sessionVersion: token.sessionVersion })
             return session
         },
         redirect: ({ url, baseUrl }) => {
@@ -50,7 +72,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => {
         },
     },
     events: {
-        signIn: async ({ user }) => { logger.info({ action: "auth.login", actorId: user.id }, "Usuário autenticado") },
+        signIn: async ({ account }) => { logger.info({ action: "auth.login", provider: account?.provider }, "Usuário autenticado") },
         signOut: async message => {
             if ("token" in message && message.token?.sub && typeof message.token.sessionVersion === "number") {
                 await dbConnect()

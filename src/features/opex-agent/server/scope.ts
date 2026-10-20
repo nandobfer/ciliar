@@ -7,8 +7,8 @@ import type { AccessContext } from "@/features/access/server/context"
  * simulação ("Visualizar como") da requisição e a versão da sessão de login.
  *
  * O escopo nunca carrega permissões prontas: o acesso é revalidado no banco (`resolveAccess`) no início
- * do turno, **antes de cada ferramenta** e na confirmação. Conta inativa, logout/troca de senha
- * (versão da sessão), perfil alterado ou fim da simulação valem na hora, inclusive no meio do turno.
+ * do turno, **antes de cada ferramenta** e na confirmação. Conta inativa, logout (versão da sessão),
+ * nova versão dos termos sem aceite, perfil alterado ou fim da simulação valem na hora, inclusive no meio do turno.
  * A identidade nunca é trocada: a simulação só reduz as permissões; sessões e auditoria são do ator real.
  */
 export interface OpexServerScope {
@@ -34,7 +34,7 @@ export function sessionFilterOf(scope: OpexServerScope): Record<string, unknown>
 /** Relê o acesso do escopo e confere que o chat continua liberado. */
 export async function resolveScopeAccess(scope: OpexServerScope): Promise<AccessContext> {
     const access = await resolveAccess(scope.userId, scope.viewAsHeader, null, scope.sessionVersion)
-    if (access.mustChangePassword) throw new DomainError(403, "Troque sua senha para continuar", "PASSWORD_CHANGE_REQUIRED")
+    if (access.legalAcceptanceRequired) throw new DomainError(403, "Aceite os termos de uso e a política de privacidade para continuar", "TERMS_ACCEPTANCE_REQUIRED")
     requirePermissions(access, "admin.access", "opex.use")
     return access
 }

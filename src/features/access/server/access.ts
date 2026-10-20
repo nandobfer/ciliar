@@ -6,6 +6,7 @@ import { catalog, can } from "../catalog"
 import { accessModels } from "./models"
 import type { AccessContext } from "./context"
 import type { RoleDto } from "../types"
+import { currentLegalVersion } from "@/features/platform/server/state"
 
 export const denied = (message = "Você não tem permissão para esta operação.", code = "FORBIDDEN") => new DomainError(403, message, code)
 export const conflict = () => new DomainError(409, "Os acessos foram alterados. Recarregue e revise antes de salvar.", "VERSION_CONFLICT")
@@ -32,7 +33,7 @@ export async function resolveAccess(userId: string, viewAsHeader = "none", sessi
     if (!mongoose.isObjectIdOrHexString(userId)) throw new DomainError(401, "Sessão inválida", "UNAUTHORIZED")
     const user = await users.findById(userId).session(session)
     if (!user?.active || (expectedVersion !== undefined && user.sessionVersion !== expectedVersion)) throw new DomainError(401, "Sessão expirada", "UNAUTHORIZED")
-    const rows = await roleRows(session)
+    const [rows, legalVersion] = await Promise.all([roleRows(session), currentLegalVersion(session)])
     const realRoles = rows.filter(row => user.roles.includes(row.id))
     const realEffective = expandPermissions(realRoles)
     const parsed = readViewAs({ header: viewAsHeader })
@@ -52,7 +53,9 @@ export async function resolveAccess(userId: string, viewAsHeader = "none", sessi
     const roles = simulatedIds ? rows.filter(row => simulatedIds.has(row.id)) : realRoles
     const effective = result.status === "ok" ? result.effective : realEffective
     return {
-        userId, name: user.name, sessionVersion: user.sessionVersion, mustChangePassword: user.mustChangePassword,
+        userId, name: user.name, sessionVersion: user.sessionVersion,
+        // Sem versão publicada ninguém é bloqueado; publicada, vale a do usuário real (nunca a do alvo simulado).
+        legalVersion, legalAcceptanceRequired: legalVersion > 0 && user.legalAcceptance?.version !== legalVersion,
         roles, realRoles, effective, realEffective, viewAsHeader,
         dto: { permissions: [...effective], roles, realIsAdministrator: realEffective.has("*"), simulation: result.status === "ok" ? result.marker : null },
     }
@@ -74,7 +77,7 @@ export async function authorityTransaction<T>(initial: AccessContext, permission
     return mongoose.connection.transaction(async session => {
         await models.states.updateOne({ _id: "global" }, { $inc: { fence: 1 } }, { session })
         const current = await resolveAccess(initial.userId, initial.viewAsHeader, session, initial.sessionVersion)
-        if (current.mustChangePassword) throw denied("Troque sua senha para continuar.", "PASSWORD_CHANGE_REQUIRED")
+        if (current.legalAcceptanceRequired) throw denied("Aceite os termos de uso e a política de privacidade para continuar.", "TERMS_ACCEPTANCE_REQUIRED")
         requirePermissions(current, "admin.access", ...permissions)
         return action(current, session)
     }, { readPreference: "primary", writeConcern: { w: "majority" }, maxCommitTimeMS: 10000 })
@@ -86,10 +89,12 @@ export async function auditAccess(context: Pick<AccessContext, "userId" | "dto">
 
 export async function userRows(context: AccessContext) {
     const roles = await roleRows()
-    return (await accessModels().users.find().sort({ name: 1, _id: 1 })).map(user => {
+    return (await accessModels().users.find().select("+googleSub").sort({ name: 1, _id: 1 })).map(user => {
         const cargos = roles.filter(role => user.roles.includes(role.id))
         return { id: user.id as string, nome: user.name, email: user.email, ativo: user.active, version: user.accessVersion, cargos,
-            roleIds: [...user.roles], gerenciavel: cargos.length === user.roles.length && canManageUser(context.roles, cargos) }
+            roleIds: [...user.roles], gerenciavel: cargos.length === user.roles.length && canManageUser(context.roles, cargos),
+            convitePendente: !user.googleSub, ultimoAcesso: user.lastLoginAt ? user.lastLoginAt.toISOString() : null,
+            termosAceitos: user.legalAcceptance?.version ?? null }
     })
 }
 

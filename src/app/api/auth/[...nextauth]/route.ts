@@ -9,6 +9,8 @@ async function handle(request: NextRequest) {
         if (request.method === "POST") {
             assertMutationOrigin(request, false)
             if (!request.nextUrl.pathname.endsWith("/signout")) checkRateLimit("auth:global", Date.now(), 200)
+        } else if (request.nextUrl.pathname.includes("/callback/")) {
+            checkRateLimit("auth:callback", Date.now(), 200)
         }
         const target = new URL(request.nextUrl.pathname + request.nextUrl.search, appOrigin())
         const canonical = new NextRequest(target, request)

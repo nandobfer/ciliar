@@ -81,7 +81,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         label: "Listar usuários",
         risk: "read",
         access: { all: ["users.view"] },
-        description: "Usuários do painel (id, nome, e-mail, ativo, perfis e se você pode gerenciá-lo), com busca opcional por nome/e-mail e filtro de situação.",
+        description: "Usuários do painel (id, nome, e-mail, ativo, perfis, se você pode gerenciá-lo, convite pendente, último acesso e versão dos termos aceita), com busca opcional por nome/e-mail e filtro de situação.",
     },
     {
         name: "get_user",
@@ -98,7 +98,15 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         risk: "destructive",
         access: { all: ["users.create"] },
         description:
-            "Cadastra um usuário com nome, e-mail, senha inicial (12 a 128 caracteres; o usuário troca no primeiro acesso), situação e perfis (ids de list_roles). A senha nunca é devolvida nem guardada no histórico.",
+            "Pré-cadastra (convida) um usuário com nome, e-mail da conta Google, situação e perfis (ids de list_roles). Não há senha: a pessoa entra com o Google usando esse e-mail e recebe os perfis do convite. Opcionalmente envia o convite por e-mail (SMTP configurado).",
+    },
+    {
+        name: "resend_user_invite",
+        group: "users",
+        label: "Reenviar convite",
+        risk: "write",
+        access: { all: ["users.create"] },
+        description: "Reenvia por e-mail o convite de um usuário ativo que ainda não entrou com o Google (exige o SMTP configurado).",
     },
     {
         name: "update_user",
@@ -265,6 +273,43 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         risk: "write",
         access: { all: ["integrations.crons.run"] },
         description: "Executa agora uma rotina salva (não muda a próxima execução agendada).",
+    },
+
+    // ── Plataforma ────────────────────────────────────────────────────────────
+    {
+        name: "get_platform_settings",
+        group: "platform",
+        label: "Ler configuração da plataforma",
+        risk: "read",
+        access: { all: ["integrations.platform.view"] },
+        description:
+            "Configuração da plataforma: perfil padrão do cadastro público (e se o cadastro está disponível), perfis elegíveis, dias até a exclusão definitiva por tipo de item arquivado, limites de documentos e a versão vigente dos termos.",
+    },
+    {
+        name: "update_platform_settings",
+        group: "platform",
+        label: "Configurar a plataforma",
+        risk: "destructive",
+        access: { all: ["integrations.platform.edit"] },
+        description:
+            "Altera o perfil padrão do cadastro público (autoridade: nunca o Administrador, só perfis ativos que você pode atribuir; null desativa o cadastro público), os prazos de exclusão definitiva por tipo e/ou os limites de documentos. Só os campos informados mudam.",
+    },
+    {
+        name: "get_legal_terms",
+        group: "platform",
+        label: "Ler termos e privacidade",
+        risk: "read",
+        access: { all: ["integrations.platform.view"] },
+        description: "Termos de uso e política de privacidade: versão vigente (ou uma versão específica) com os textos em markdown e o histórico de publicações.",
+    },
+    {
+        name: "update_legal_terms",
+        group: "platform",
+        label: "Publicar termos e privacidade",
+        risk: "destructive",
+        access: { all: ["integrations.platform.edit"] },
+        description:
+            "Publica uma nova versão (imutável) dos termos de uso e/ou da política de privacidade; o texto omitido é mantido da versão vigente. Todos os usuários, inclusive você, ficam bloqueados até aceitar a nova versão no próximo acesso.",
     },
 ]
 

@@ -1,4 +1,4 @@
-import { CalendarClock, Compass, KeyRound, Paperclip, Plug, ShieldCheck, Users, Wrench, type LucideIcon } from "lucide-react"
+import { CalendarClock, Compass, KeyRound, Paperclip, Plug, ShieldCheck, SlidersHorizontal, Users, Wrench, type LucideIcon } from "lucide-react"
 import type { OpexToolGroup } from "../constants"
 
 export const OPEX_TOOL_GROUP_ICONS: Record<OpexToolGroup, LucideIcon> = {
@@ -9,6 +9,7 @@ export const OPEX_TOOL_GROUP_ICONS: Record<OpexToolGroup, LucideIcon> = {
     integrations: Plug,
     "api-tokens": KeyRound,
     routines: CalendarClock,
+    platform: SlidersHorizontal,
 }
 
 export const toolIcon = (group: OpexToolGroup | null): LucideIcon => {

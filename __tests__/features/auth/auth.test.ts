@@ -1,53 +1,62 @@
-import { beforeAll, beforeEach, afterEach, describe, expect, it, vi } from "vitest"
+import { beforeEach, afterEach, describe, expect, it, vi } from "vitest"
 import type { NextAuthConfig } from "next-auth"
 import type { JWT } from "next-auth/jwt"
-import { hashPassword } from "@/features/auth/server/password"
 
-const state = vi.hoisted(() => ({ factory: null as null | (() => NextAuthConfig), findOne: vi.fn(), updateOne: vi.fn() }))
+const state = vi.hoisted(() => ({ factory: null as null | (() => NextAuthConfig), findOne: vi.fn(), updateOne: vi.fn(), resolve: vi.fn() }))
 vi.mock("next-auth", () => ({ default: (factory: () => NextAuthConfig) => { state.factory = factory; return { handlers: {}, auth: vi.fn(), signIn: vi.fn(), signOut: vi.fn() } } }))
 vi.mock("@/lib/db", () => ({ dbConnect: vi.fn() }))
 vi.mock("@/features/access/server/models", () => ({ accessModels: () => ({ users: { findOne: state.findOne, updateOne: state.updateOne } }) }))
-vi.mock("@/features/auth/server/rate-limit", () => ({ checkRateLimit: vi.fn() }))
+vi.mock("@/features/auth/server/google-account", () => ({ resolveGoogleAccount: state.resolve }))
 import "@/auth"
 
-let passwordHash: string
 let config: NextAuthConfig
 const id = "a".repeat(24)
-const user = () => ({ id, name: "Pessoa", email: "pessoa@example.test", passwordHash, active: true, sessionVersion: 0, mustChangePassword: true })
-beforeAll(async () => { passwordHash = await hashPassword("Senha de teste 123!") })
+const user = () => ({ id, name: "Pessoa", email: "pessoa@example.test", active: true, sessionVersion: 0 })
+const account = { provider: "google", providerAccountId: "google-sub-1", type: "oidc" }
 beforeEach(() => {
     vi.clearAllMocks(); vi.stubEnv("APP_ORIGIN", "https://ciliar.example"); vi.stubEnv("AUTH_URL", "https://ciliar.example"); vi.stubEnv("AUTH_SECRET", "segredo-temporario-exclusivo-dos-testes")
+    vi.stubEnv("AUTH_GOOGLE_ID", "client-id"); vi.stubEnv("AUTH_GOOGLE_SECRET", "client-secret")
     config = state.factory!()
 })
 afterEach(() => vi.unstubAllEnvs())
-const authorize = () => (config.providers[0] as unknown as { options: { authorize: (raw: unknown) => Promise<unknown> } }).options.authorize
-const jwt = (token: JWT, account?: { id: string; sessionVersion: number }) => (config.callbacks!.jwt as unknown as (input: { token: JWT; user?: unknown }) => Promise<JWT | null>)({ token, user: account })
-describe("autenticação por credenciais e ciclo da sessão", () => {
-    it("autentica por e-mail normalizado, nunca retorna senha/hash", async () => {
-        state.findOne.mockReturnValue({ select: vi.fn().mockResolvedValue(user()) })
-        const result = await authorize()({ identifier: " PESSOA@EXAMPLE.TEST ", password: "Senha de teste 123!" })
-        expect(result).toEqual({ id, name: "Pessoa", email: "pessoa@example.test", sessionVersion: 0 })
-        expect(state.findOne).toHaveBeenCalledWith({ email: "pessoa@example.test" })
-        expect(JSON.stringify(result)).not.toContain(passwordHash)
+const signIn = (input: { account?: unknown; profile?: unknown }) => (config.callbacks!.signIn as unknown as (input: unknown) => Promise<boolean | string>)(input)
+const jwt = (token: JWT, linkedAccount?: unknown) => (config.callbacks!.jwt as unknown as (input: { token: JWT; account?: unknown }) => Promise<JWT | null>)({ token, account: linkedAccount })
+
+describe("login somente com Google e ciclo da sessão", () => {
+    it("tem um único provider Google (sem e-mail/senha) com as credenciais do ambiente", () => {
+        expect(config.providers).toHaveLength(1)
+        const provider = config.providers[0] as unknown as { id: string; options: { clientId: string; clientSecret: string } }
+        expect(provider.id).toBe("google")
+        expect(provider.options).toMatchObject({ clientId: "client-id", clientSecret: "client-secret" })
+        expect(config.session).toMatchObject({ strategy: "jwt", maxAge: 28_800 })
     })
-    it("responde igualmente para senha incorreta, conta desconhecida ou inativa", async () => {
-        for (const record of [user(), null, { ...user(), active: false }]) {
-            state.findOne.mockReturnValue({ select: vi.fn().mockResolvedValue(record) })
-            expect(await authorize()({ identifier: "pessoa@example.test", password: "Senha incorreta" })).toBeNull()
-        }
+    it("repassa e-mail verificado para o vínculo e redireciona as recusas com o motivo", async () => {
+        state.resolve.mockResolvedValue({ status: "ok", userId: id, sessionVersion: 0, outcome: "linked" })
+        expect(await signIn({ account, profile: { email: "Pessoa@Example.test", email_verified: true, name: "Pessoa" } })).toBe(true)
+        expect(state.resolve).toHaveBeenCalledWith({ sub: "google-sub-1", email: "Pessoa@Example.test", emailVerified: true, name: "Pessoa" })
+        state.resolve.mockResolvedValue({ status: "denied", code: "inativo" })
+        expect(await signIn({ account, profile: { email: "pessoa@example.test", email_verified: true } })).toBe("/login?erro=inativo")
+        state.resolve.mockRejectedValue(new Error("banco fora"))
+        expect(await signIn({ account, profile: { email: "pessoa@example.test", email_verified: true } })).toBe("/login?erro=falha")
+        expect(await signIn({ account: { provider: "credentials", providerAccountId: "x" }, profile: {} })).toBe("/login?erro=falha")
     })
-    it("revalida conta ativa e versão de sessão mesmo com JWT assinado", async () => {
+    it("e-mail não verificado chega como falso ao resolvedor (que recusa)", async () => {
+        state.resolve.mockResolvedValue({ status: "denied", code: "nao-verificado" })
+        expect(await signIn({ account, profile: { email: "pessoa@example.test", email_verified: "true" } })).toBe("/login?erro=nao-verificado")
+        expect(state.resolve).toHaveBeenCalledWith(expect.objectContaining({ emailVerified: false }))
+    })
+    it("troca o sub do Google pelo usuário vinculado e revalida conta ativa e versão da sessão", async () => {
         state.findOne.mockResolvedValue(user())
-        const token = await jwt({}, { id, sessionVersion: 0 })
-        expect(token).toMatchObject({ sub: id, sessionVersion: 0, mustChangePassword: true })
+        const token = await jwt({ sub: "google-sub-1", picture: "https://foto" }, account)
+        expect(state.findOne).toHaveBeenNthCalledWith(1, { googleSub: "google-sub-1", active: true })
+        expect(token).toMatchObject({ sub: id, sessionVersion: 0, name: "Pessoa" })
+        expect(token).not.toHaveProperty("picture")
         state.findOne.mockResolvedValue(null)
         expect(await jwt(token!)).toBeNull()
         expect(await jwt({ sub: id })).toBeNull()
-        expect(config.session).toMatchObject({ strategy: "jwt", maxAge: 28_800 })
+        expect(await jwt({ sub: "google-sub-1", sessionVersion: 0 })).toBeNull()
     })
-    it("ignora update de claims enviado pelo cliente e revoga somente a versão correta no logout", async () => {
-        state.findOne.mockResolvedValue(user())
-        expect(await jwt({ sub: id, sessionVersion: 0, mustChangePassword: false })).toMatchObject({ mustChangePassword: true })
+    it("revoga somente a versão correta no logout", async () => {
         const logout = config.events!.signOut as unknown as (message: { token: JWT }) => Promise<void>
         await logout({ token: { sub: id, sessionVersion: 0 } })
         expect(state.updateOne).toHaveBeenCalledWith({ _id: id, sessionVersion: 0 }, { $inc: { sessionVersion: 1 } })

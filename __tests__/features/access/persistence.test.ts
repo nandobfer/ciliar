@@ -7,19 +7,20 @@ import { createOperatorUser, OPERATOR_ADMIN } from "@/features/access/server/ope
 import { createUser, updateUser, deleteUser, createRole, updateRole, deleteRole, reorderRoles } from "@/features/access/server/commands"
 import { assertTransactionTopology, resolveAccess, userRows, roleRows } from "@/features/access/server/access"
 import type { AccessContext } from "@/features/access/server/context"
-import { hashPassword, verifyPassword } from "@/features/auth/server/password"
-import { NextRequest } from "next/server"
+import { removeLegacyPasswords } from "@/features/access/server/migrations"
+import { platformModels } from "@/features/platform/server/models"
+import { updatePlatformSettings } from "@/features/platform/server/settings"
+import { DEFAULT_PLATFORM_SETTINGS } from "@/features/platform/schemas"
 
 vi.mock("@/lib/db", () => ({ dbConnect: vi.fn(async () => undefined) }))
-vi.mock("@/auth", () => ({ auth: vi.fn(async () => ({ user: { id: actorId, sessionVersion: 0 } })) }))
-import { POST as changePassword } from "@/app/api/me/password/route"
+const mail = vi.hoisted(() => ({ isMockMode: vi.fn(async () => true), sendEmail: vi.fn(async () => undefined) }))
+vi.mock("@/lib/email/mailer", () => mail)
 let replica: MongoMemoryReplSet
 let context: AccessContext
 let actorId: string
-let passwordHash: string
 const models = accessModels()
-const initialPassword = "Senha temporária 123!"
-const newUser = (email: string, cargos: string[]) => ({ nome: "Pessoa", email, password: initialPassword, ativo: true, cargos })
+const platform = platformModels()
+const newUser = (email: string, cargos: string[], extra: Record<string, unknown> = {}) => ({ nome: "Pessoa", email, ativo: true, cargos, ...extra })
 const roleData = (nome: string, permissoes = ["admin.access", "integrations.smtp.view"]) => ({ nome, descricao: "Teste", cor: "roxo", ativo: true, permissoes })
 const viewAs = (tipo: "cargo" | "usuario", id: string) => encodeViewAs(tipo === "cargo" ? { tipo, roleId: id } : { tipo, userId: id })
 
@@ -27,13 +28,13 @@ beforeAll(async () => {
     // Banco efêmero próprio; nunca usa MONGODB_URI nem Docker/Mongo compartilhado.
     replica = await MongoMemoryReplSet.create({ binary: { version: "8.0.18" }, replSet: { count: 1 }, instanceOpts: [{ ip: "127.0.0.1" }] })
     await mongoose.connect(replica.getUri("ciliar_access_test"))
-    await Promise.all(Object.values(models).map(model => model.init()))
-    passwordHash = await hashPassword(initialPassword)
+    await Promise.all([...Object.values(models), ...Object.values(platform)].map(model => model.init()))
 }, 120_000)
 beforeEach(async () => {
-    await Promise.all(Object.values(models).map(model => model.deleteMany({})))
+    vi.clearAllMocks(); mail.isMockMode.mockResolvedValue(true)
+    await Promise.all([...Object.values(models), ...Object.values(platform)].map(model => model.deleteMany({})))
     const admin = await models.roles.create({ slug: "admin", nome: "Administrador", permissoes: ["*"], ativo: true })
-    const actor = await models.users.create({ name: "Administrador", email: "admin@example.test", passwordHash, active: true, roles: [admin.id], mustChangePassword: false })
+    const actor = await models.users.create({ name: "Administrador", email: "admin@example.test", active: true, roles: [admin.id] })
     actorId = actor.id as string
     context = await resolveAccess(actorId, "none", null, 0)
 })
@@ -48,17 +49,31 @@ describe("persistência transacional de usuários e perfis", () => {
         expect((await models.users.findById(user.id))?.roles).toEqual([role.id])
         await expect(createUser(context, newUser("new-inactive-role@example.test", [role.id]))).rejects.toMatchObject({ status: 400 })
     })
-    it("cadastra usuário com senha cifrada por hash, primeiro acesso e auditoria sem segredos", async () => {
+    it("pré-cadastra (convite) sem senha, com convite pendente e e-mail normalizado", async () => {
         const role = await createRole(context, roleData("Leitor"))
         const result = await createUser(context, newUser("  USUARIO@EXAMPLE.TEST ", [role.id]))
-        const user = await models.users.findById(result.id).select("+passwordHash").orFail()
+        expect(result.convite).toBe("nao-solicitado")
+        const user = await models.users.findById(result.id).select("+googleSub").lean().orFail()
         expect(user.email).toBe("usuario@example.test")
-        expect(user.mustChangePassword).toBe(true)
-        expect(await verifyPassword(user.passwordHash, initialPassword)).toBe(true)
-        const dto = await userRows(context)
-        expect(JSON.stringify(dto)).not.toContain(user.passwordHash)
-        expect(JSON.stringify(await models.audits.find().lean())).not.toContain(initialPassword)
-        expect(JSON.stringify(await models.audits.find().lean())).not.toContain("passwordHash")
+        expect(user).not.toHaveProperty("passwordHash")
+        expect(user.googleSub).toBeUndefined()
+        expect(user.signupSource).toBe("invite")
+        const dto = (await userRows(context)).find(row => row.id === result.id)!
+        expect(dto).toMatchObject({ convitePendente: true, ultimoAcesso: null, termosAceitos: null })
+        expect(JSON.stringify(dto)).not.toMatch(/googleSub|password/)
+        await expect(createUser(context, { ...newUser("senha@example.test", [role.id]), password: "Senha antiga 123!" })).rejects.toMatchObject({ status: 400 })
+    })
+    it("envia o convite por e-mail só com SMTP configurado e nunca desfaz o cadastro por falha no envio", async () => {
+        const role = await createRole(context, roleData("Leitor"))
+        expect((await createUser(context, newUser("sem-smtp@example.test", [role.id], { enviarConvite: true }))).convite).toBe("smtp-indisponivel")
+        expect(mail.sendEmail).not.toHaveBeenCalled()
+        mail.isMockMode.mockResolvedValue(false)
+        expect((await createUser(context, newUser("convite@example.test", [role.id], { enviarConvite: true }))).convite).toBe("enviado")
+        expect(mail.sendEmail).toHaveBeenCalledWith("convite@example.test", "Convite para o Ciliar", expect.stringContaining("Entrar com Google"))
+        mail.sendEmail.mockRejectedValueOnce(new Error("smtp fora"))
+        const failed = await createUser(context, newUser("falha@example.test", [role.id], { enviarConvite: true }))
+        expect(failed.convite).toBe("falhou")
+        expect(await models.users.exists({ email: "falha@example.test" })).toBeTruthy()
     })
     it("índice único mantém somente um cadastro quando o mesmo e-mail é enviado simultaneamente", async () => {
         const role = await createRole(context, roleData("Leitor"))
@@ -75,7 +90,7 @@ describe("persistência transacional de usuários e perfis", () => {
         expect((await models.users.findById(actorId))?.active).toBe(true)
     })
     it("serializa exclusões concorrentes e preserva um administrador ativo", async () => {
-        const other = await models.users.create({ name: "Outro Admin", email: "other@example.test", passwordHash, active: true, roles: [context.roles[0]!.id] })
+        const other = await models.users.create({ name: "Outro Admin", email: "other@example.test", active: true, roles: [context.roles[0]!.id] })
         const otherAccess = await resolveAccess(other.id as string)
         const result = await Promise.allSettled([deleteUser(context, other.id as string, 0), deleteUser(otherAccess, actorId, 0)])
         expect(result.filter(row => row.status === "fulfilled")).toHaveLength(1)
@@ -107,7 +122,7 @@ describe("persistência transacional de usuários e perfis", () => {
         const manager = await createRole(context, roleData("Gestor", ["admin.access", "users.create", "users.view", "users.edit", "roles.edit"]))
         const low = await createRole(context, roleData("Inferior", ["integrations.smtp.test"]))
         expect((await models.roles.findById(low.id))?.permissoes).toContain("integrations.smtp.view")
-        const user = await models.users.create({ name: "Gestor", email: "gestor@example.test", passwordHash, roles: [manager.id], active: true })
+        const user = await models.users.create({ name: "Gestor", email: "gestor@example.test", roles: [manager.id], active: true })
         const restricted = await resolveAccess(user.id as string)
         await expect(createUser(restricted, newUser("escalada@example.test", [context.roles[0]!.id]))).rejects.toMatchObject({ status: 403 })
         await expect(createRole(restricted, roleData("Novo"))).rejects.toMatchObject({ status: 403 })
@@ -120,6 +135,14 @@ describe("persistência transacional de usuários e perfis", () => {
         expect((await models.roles.findById(role.id))?.nome).toBe("Leitor")
         expect((await models.roles.findById(role.id))?.version).toBe(0)
         await expect(deleteRole(context, role.id, 0)).rejects.toMatchObject({ status: 409 })
+    })
+    it("o perfil padrão do cadastro público não pode ser inativado nem excluído", async () => {
+        const role = await createRole(context, roleData("Prestador"))
+        await updatePlatformSettings(context, { ...DEFAULT_PLATFORM_SETTINGS, defaultRoleId: role.id, version: 0 })
+        await expect(updateRole(context, role.id, { version: 0, ativo: false })).rejects.toMatchObject({ status: 409, code: "DEFAULT_ROLE_IN_USE" })
+        await expect(deleteRole(context, role.id, 0)).rejects.toMatchObject({ status: 409, code: "DEFAULT_ROLE_IN_USE" })
+        await updateRole(context, role.id, { version: 0, nome: "Prestadores" })
+        expect((await models.roles.findById(role.id))?.ativo).toBe(true)
     })
     it("ordena hierarquia, mantém Administrador no topo e rejeita versão antiga", async () => {
         const one = await createRole(context, roleData("Um")); const two = await createRole(context, roleData("Dois"))
@@ -156,7 +179,7 @@ describe("Visualizar como", () => {
     })
     it("rejeita alvo desativado, marcador inválido e simulador não administrador", async () => {
         const role = await createRole(context, roleData("Leitor"))
-        const user = await models.users.create({ name: "Leitor", email: "leitor@example.test", passwordHash, roles: [role.id] })
+        const user = await models.users.create({ name: "Leitor", email: "leitor@example.test", roles: [role.id] })
         await expect(resolveAccess(user.id as string, viewAs("cargo", role.id))).rejects.toMatchObject({ code: "VIEW_AS_FORBIDDEN" })
         await expect(resolveAccess(actorId, "{inválido")).rejects.toMatchObject({ code: "VIEW_AS_INVALID" })
         await models.users.updateOne({ _id: user._id }, { $set: { active: false } })
@@ -173,36 +196,30 @@ describe("Visualizar como", () => {
         await expect(resolveAccess(actorId, "none", null, 0)).rejects.toMatchObject({ status: 401 })
     })
 })
-describe("primeiro acesso e troca de senha", () => {
-    it("troca somente com a senha atual, revoga sessões e exige novo login", async () => {
-        const role = await createRole(context, roleData("Leitor"))
-        const user = await createUser(context, newUser("first@example.test", [role.id]))
-        actorId = user.id
-        const request = (currentPassword: string) => new NextRequest("http://localhost:3101/api/me/password", { method: "POST", headers: { origin: "http://localhost:3101", "x-ciliar-request": "1", "content-type": "application/json" }, body: JSON.stringify({ currentPassword, newPassword: "Minha nova senha 123!" }) })
-        vi.stubEnv("APP_ORIGIN", "http://localhost:3101")
-        try {
-            expect((await changePassword(request("incorreta"))).status).toBe(400)
-            expect((await changePassword(request(initialPassword))).status).toBe(200)
-            const stored = await models.users.findById(user.id).select("+passwordHash").orFail()
-            expect(stored.mustChangePassword).toBe(false)
-            expect(stored.sessionVersion).toBe(1)
-            expect(await verifyPassword(stored.passwordHash, "Minha nova senha 123!")).toBe(true)
-            expect(await verifyPassword(stored.passwordHash, initialPassword)).toBe(false)
-            expect((await changePassword(request(initialPassword))).status).toBe(401)
-        } finally { vi.unstubAllEnvs() }
+describe("migração para o login Google", () => {
+    it("remove senhas e troca obrigatória antigas de forma idempotente, preservando perfis e auditoria", async () => {
+        await models.users.collection.updateOne({ _id: new mongoose.Types.ObjectId(actorId) }, { $set: { passwordHash: "$argon2id$antigo", mustChangePassword: true } })
+        const auditsBefore = await models.audits.countDocuments()
+        expect(await removeLegacyPasswords(mongoose.connection)).toEqual({ updated: 1 })
+        const raw = await models.users.collection.findOne({ _id: new mongoose.Types.ObjectId(actorId) })
+        expect(raw).not.toHaveProperty("passwordHash")
+        expect(raw).not.toHaveProperty("mustChangePassword")
+        expect(raw?.roles).toEqual([context.roles[0]!.id])
+        expect(await models.audits.countDocuments()).toBe(auditsBefore + 1)
+        expect(await removeLegacyPasswords(mongoose.connection)).toEqual({ updated: 0 })
     })
 })
 describe("cadastro operacional", () => {
-    it("cria Administrador explicitamente pelo CLI sem exigir troca inicial e sem registrar senha", async () => {
+    it("pré-autoriza um e-mail Google como Administrador pelo CLI, sem senha", async () => {
         await Promise.all(Object.values(models).map(model => model.deleteMany({})))
-        const result = await createOperatorUser(mongoose.connection, { nome: "Operador", email: "operador@example.test", password: initialPassword }, [OPERATOR_ADMIN])
-        const user = await models.users.findById(result.id).orFail()
-        expect(user.mustChangePassword).toBe(false)
+        const result = await createOperatorUser(mongoose.connection, { nome: "Operador", email: "operador@example.test" }, [OPERATOR_ADMIN])
+        const user = await models.users.findById(result.id).lean().orFail()
+        expect(user.signupSource).toBe("cli")
+        expect(user).not.toHaveProperty("passwordHash")
         expect((await resolveAccess(result.id)).effective.has("*")).toBe(true)
         const audit = await models.audits.findOne({ action: "user.create" }).lean()
         expect(audit?.actorId).toBe("operator-cli")
-        expect(JSON.stringify(audit)).not.toContain(initialPassword)
-        await expect(createOperatorUser(mongoose.connection, { nome: "Duplicado", email: "OPERADOR@example.test", password: initialPassword }, [OPERATOR_ADMIN])).rejects.toMatchObject({ status: 409 })
+        await expect(createOperatorUser(mongoose.connection, { nome: "Duplicado", email: "OPERADOR@example.test" }, [OPERATOR_ADMIN])).rejects.toMatchObject({ status: 409 })
         expect((await models.users.findById(result.id))?.name).toBe("Operador")
     })
 })

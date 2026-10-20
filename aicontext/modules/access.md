@@ -3,7 +3,10 @@
 ## Origens e arquitetura
 
 - Login: `LoginPage`, `LoginForm`, `LoginParticleBackground` copiados do Opex, mantendo composição,
-  animação e partículas conectadas do tsParticles. Nome Ciliar, e-mail/senha, movimento reduzido.
+  animação e partículas conectadas do tsParticles. Nome Ciliar, movimento reduzido. Desde o M0 o
+  cartão tem só **"Entrar com Google"** (limpa simulação/cache/Pusher da aba antes) e links para
+  `/termos` e `/privacidade`. `?erro=` (motivos em `features/auth/login-errors.ts`) e `?error=` do
+  Auth.js viram aviso; sem `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` o botão fica desabilitado com aviso.
   Cor vem do token `--primary`; hidratação lê o tema com snapshot de servidor neutro.
 - Regras/UX de usuários e perfis: referência somente leitura no Shekinah. Árvore de permissões
   e resumo, RoleChip e paleta de tokens foram copiados de lá. Nenhum NestJS, bridge ou domínio de clube.
@@ -11,33 +14,70 @@
   sem link local. Catálogo em `src/features/access/catalog.ts`, sem escopos de dados artificiais.
   Ramo **Agente Opex** com `opex.use` (usar o chat); a configuração do agente usa
   `integrations.ai.view`/`integrations.ai.edit`.
-- Auth.js `next-auth@5.0.0-beta.32`, Credentials/JWT; `src/auth.ts`. Senhas Argon2id via
-  `@node-rs/argon2` (19 MiB, 2 iterações, paralelismo 1). Cookie HttpOnly, Secure em HTTPS,
-  SameSite padrão do Auth.js, expiração de 8h. Sem cadastro público, recuperação por e-mail ou MFA.
+- Auth.js `next-auth@5.0.0-beta.32`, provider **Google** (único) e JWT, sem adapter; `src/auth.ts`.
+  Credenciais OAuth no ambiente (`AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET`): o login é pré-requisito
+  para abrir `/integracoes`, então não ficam na tela. `prompt=select_account`. Cookie HttpOnly,
+  Secure em HTTPS, SameSite padrão do Auth.js, expiração de 8h. Não há e-mail/senha, Argon2,
+  recuperação de senha, MFA nem outros provedores.
+
+## Login Google, vínculo e cadastro público (M0)
+
+`features/auth/server/google-account.ts` (`resolveGoogleAccount`), chamado no callback `signIn`:
+
+1. `email_verified !== true` ou sem e-mail → `nao-verificado`.
+2. Conta já vinculada pelo `sub` (`googleSub`, índice único parcial, `select: false`) entra;
+   inativa → `inativo`. Atualiza `lastLoginAt`.
+3. Mesmo e-mail sem vínculo (convite, CLI ou usuário migrado) → **vínculo automático**
+   (update condicionado a `googleSub: null`), mantém perfis/histórico; auditoria `user.google_link`.
+4. E-mail já vinculado a outro `sub` → `conta-vinculada` (nunca troca o vínculo).
+5. E-mail novo → **cadastro público** numa transação com o fence compartilhado: confere de novo a
+   disponibilidade (perfil padrão válido + termos publicados) e cria a conta com o perfil padrão,
+   `signupSource: "public"`; auditoria `user.signup` com ator `google-signup`. Indisponível →
+   `cadastro-indisponivel` (falha fechado). Duplicidade simultânea resolve na segunda tentativa.
+
+Recusas redirecionam para `/login?erro=<código>`; exceções viram `falha` (logadas, sem detalhes).
+O callback `jwt` troca o `sub` do Google pelo ObjectId do usuário vinculado e segue revalidando
+conta ativa e `sessionVersion` em todo token.
+
+## Termos de uso e política de privacidade
+
+Versão vigente em `platform_settings.legalVersion` (ver `platform.md`). `resolveAccess` devolve
+`legalAcceptanceRequired`/`legalVersion` do **usuário real** (nunca do alvo simulado): sem versão
+publicada ninguém é bloqueado; publicada, quem não aceitou exatamente essa versão fica bloqueado.
+`protectRoute` responde 403 `TERMS_ACCEPTANCE_REQUIRED` para tudo, exceto `/api/me`,
+`/api/me/legal` e `/api/me/legal/accept` (que não exigem `admin.access`, para o cadastro público).
+`authorityTransaction` e o Agente Opex também recusam. O `AccessProvider` mostra `LegalAcceptance`
+(abas Termos/Política, "Li e aceito", Aceitar e continuar ou Sair); o Axios dispara
+`ciliar:terms-required` para reler a sessão. O aceite grava `legalAcceptance { version, acceptedAt }`
+só para a versão vigente (409 `LEGAL_VERSION_OUTDATED`) e audita `legal.accept`.
 
 ## Sessões e proteção
 
-`APP_ORIGIN` é a origem pública canônica; `AUTH_SECRET` deve ser novo e privado. URLs de autenticação
+`APP_ORIGIN` é a única variável de URL do app: a origem pública canônica (nunca o nome do
+container), com fallback apenas em `AUTH_URL`; `APP_URL`/`NEXT_PUBLIC_APP_URL` foram removidas.
+`AUTH_SECRET` deve ser novo e privado. URLs de autenticação
 não derivam de Host arbitrário. Login tem limitação por e-mail/processo e comparação dummy para
 conta inexistente. Para múltiplas réplicas, mova o rate limit para um mecanismo compartilhado.
 
-JWT e cada API revalidam conta ativa e `sessionVersion`. Logout revoga as sessões daquela versão;
-trocar senha revoga todas, remove a exigência de primeiro acesso e exige novo login. Inativação
-incrementa a versão. Mudanças de perfis são relidas no servidor em toda requisição.
+JWT e cada API revalidam conta ativa e `sessionVersion`. Logout revoga as sessões daquela versão.
+Inativação incrementa a versão. Mudanças de perfis são relidas no servidor em toda requisição.
 
 `protectRoute`/`withProtectedRoute` protegem APIs independentemente do layout. A política é explícita
 e falha fechado para rotas não conhecidas. Mutações exigem origem canônica + `x-ciliar-request: 1`;
 o protocolo Auth.js usa seu próprio CSRF, com verificação adicional de origem. Respostas protegidas
 são `no-store`. Exceções: protocolo Auth.js, `/api/v1/*` com Bearer e `/api/routines/*` com cron secret.
 
-No primeiro acesso, somente sessão, troca de senha e logout são liberados. O layout autenticado
-isola Pusher do login. Sidebar, páginas, ações e formulários seguem permissões; negar no cliente
-não substitui a validação do servidor. A sessão do cliente é revalidada ao focar e a cada 30 segundos.
+Sem o aceite da versão vigente dos termos, somente sessão, aceite e logout são liberados. O layout
+autenticado isola Pusher do login. Sidebar, páginas, ações e formulários seguem permissões; negar no
+cliente não substitui a validação do servidor. A sessão do cliente é revalidada ao focar e a cada 30
+segundos. Até o M1, quem entra sem `admin.access` (ex.: perfil padrão sem painel) vê "Sem acesso".
 
 ## Persistência e invariantes
 
-Coleções exclusivas no banco `ciliar`: `users`, `roles`, `role_hierarchy`, `access_audit`.
-E-mail normalizado/único, hash não selecionado por padrão. Auditoria não contém senhas/hashes.
+Coleções exclusivas no banco `ciliar`: `users`, `roles`, `role_hierarchy`, `access_audit` (e as da
+plataforma, `platform_settings` e `legal_versions`). E-mail normalizado/único; `googleSub` único
+parcial e não selecionado por padrão (nunca sai do servidor, nem pela API nem pelo agente).
+`signupSource` (`invite`/`public`/`cli`), `lastLoginAt` e `legalAcceptance`. Não há senha.
 Histórico antigo de integrações com ator `local` é preservado; ações humanas usam o ator real.
 
 Alterações de autoridade exigem replica set (ou mongos), transação, majority write concern,
@@ -54,6 +94,7 @@ automaticamente. O fence também serializa mudanças concorrentes envolvendo o �
 - Membros e metadados/permissões do perfil salvam atomicamente. Perfis inativos não recebem
   novos membros; perfis com membros não podem ser excluídos. Perfil inativo existente é preservado
   nas atribuições até uma mudança explicitamente autorizada.
+- O perfil padrão do cadastro público não pode ser inativado nem excluído (409 `DEFAULT_ROLE_IN_USE`).
 
 ## Interfaces
 
@@ -66,14 +107,21 @@ Busca tem o debounce original de 500 ms e status permite selecionar ativos/inati
 
 `/usuarios`: busca, status, paginação de 20 itens, cadastro em etapas Geral/Perfis, edição,
 exclusão confirmada e resumo de permissões. E-mail somente leitura depois de cadastrado.
-Senha inicial criada pela interface exige troca no primeiro acesso. Rascunho é preservado em erro.
+Cadastro = **convite** (pré-cadastro sem senha do e-mail Google, com os perfis escolhidos; o
+perfil padrão não se aplica). "Enviar convite por e-mail" vem marcado com SMTP configurado
+(`GET /api/users/invite`), desabilitado sem SMTP; o envio é depois do commit e falha não desfaz a
+conta (aviso). A listagem marca **Convite pendente** (sem `googleSub`); a edição tem "Reenviar
+convite" (`POST /api/users/[id]/invite`, `users.create`, só ativo, pendente e na hierarquia).
+Auditoria `user.invite`. Rascunho é preservado em erro.
 
 Os componentes da árvore (`PermissionTree`, `PermissionModuleCard`, `PermissionTreeNode`) aceitam
 `tree`, `catalog`, `lockedKeys` e `renderLeafMeta` (padrão: catálogo de acesso) e são reaproveitados
 pela seleção de ferramentas do Agente Opex, no mesmo estilo.
 
 `/perfis`: busca, status e ordenação drag/teclado (@dnd-kit). Administrador fica fixo. `/perfis/novo`
-e `/perfis/[id]`: Geral, Permissões, Membros (exige users.view), Auditoria. Opções fora da hierarquia
+e `/perfis/[id]`: Geral, Permissões, Membros (exige users.view), Auditoria. Na aba Geral a cor é
+escolhida pelas bolinhas da paleta (`RoleColorSelect`, radiogroup copiado do crm-marketing-campanhas;
+grava o token, nunca o hex). Opções fora da hierarquia
 ficam bloqueadas; membros exigem também users.edit. Reordenação usa versão da hierarquia global.
 
 ## Visualizar como
@@ -112,12 +160,16 @@ Sem efeito no navegador de outro usuário: não é sessão de impersonação.
 pnpm user:create
 ```
 
-`scripts/create-user.ts`: terminal interativo obrigatório; sem argumentos nem pipe. Nome, e-mail,
-senha mascarada, confirmação e seleção de perfis ativos. Seleção explícita de Administrador cria
-o perfil reservado dentro da transação, inclusive no banco vazio. Não sobrescreve duplicados,
-não mostra stack/URI/credenciais em erro, não grava senha em log. Ator `operator-cli`, conexão
-fechada ao terminar. Contas operacionais do CLI não exigem troca inicial (mesmo padrão do Shekinah).
-Não há bootstrap no startup nem conta com senha padrão.
+`scripts/create-user.ts`: terminal interativo obrigatório; sem argumentos nem pipe. Nome, e-mail
+da conta Google e seleção de perfis ativos (sem senha): pré-autoriza o e-mail, vinculado no primeiro
+"Entrar com Google". Seleção explícita de Administrador cria o perfil reservado dentro da transação,
+inclusive no banco vazio. Não sobrescreve duplicados, não mostra stack/URI/credenciais em erro.
+Ator `operator-cli`, `signupSource: "cli"`, conexão fechada ao terminar. Não há bootstrap no startup.
+
+`pnpm auth:migrate-google` (`scripts/migrate-google-auth.ts` → `removeLegacyPasswords`): confirmação
+interativa, remove `passwordHash`/`mustChangePassword` antigos de todos os usuários (idempotente,
+audita `users.legacy_passwords_removed`). Os usuários atuais, inclusive administradores, passam a
+entrar com o Google usando o mesmo e-mail (vínculo automático).
 
 Usa `MONGODB_URI` do `.env`; somente banco `ciliar` fora dos testes. Fora do Docker, mapeia somente
 `SCRIPT_MONGODB_HOST` (default mongodb) para localhost; porta opcional em `SCRIPT_MONGODB_PORT`.
@@ -126,8 +178,9 @@ a URI. Para alterar uma conexão de servidor, corrija o ambiente; não use esse 
 
 ## Validação
 
-Testes selecionados em `__tests__/features/{auth,access}`; persistência usa MongoMemoryReplSet
+Testes selecionados em `__tests__/features/{auth,access,platform}`; persistência usa MongoMemoryReplSet
 8.0.18 efêmero, sem tocar MONGODB_URI/Docker/dados reais. Inclui concorrência, rollback, escalada,
-CSRF, sessão revogada, primeiro acesso, simulação por aba, movimento reduzido e contratos das APIs.
+CSRF, sessão revogada, vínculo/cadastro Google (`auth/google-account.test.ts`), bloqueio por termos,
+convite, simulação por aba, movimento reduzido e contratos das APIs.
 O download inicial do binário Mongo dos testes requer rede; o pacote core não tem postinstall.
 Tipos e lint sem executar build ou suíte completa automaticamente.

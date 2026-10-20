@@ -13,6 +13,7 @@ import { buildIntegrationPatch, draftFrom, type Draft } from "./draft"
 import { AiEditorForm } from "@/features/ai/components/AiEditorForm"
 import { aiProviderOfIntegration } from "@/lib/ai/providers"
 import { AiProviderEditorForm } from "@/features/ai/components/AiProviderEditorForm"
+import { PlatformEditorForm } from "@/features/platform/components/PlatformEditorForm"
 import { CronsEditorForm } from "./CronsEditorForm"
 import { EditorForm } from "./EditorForm"
 import { ExplorerPane } from "./ExplorerPane"
@@ -81,6 +82,8 @@ export function IntegrationEditor({ id, data }: { id: IntegrationId; data: Integ
                         swaggerUrl={data.swaggerUrl}
                         onBack={() => setExploring(false)}
                     />
+                ) : id === "platform" ? (
+                    <PlatformEditorForm key="form" def={def} data={data} />
                 ) : id === "ai" ? (
                     <AiEditorForm
                         key="form"

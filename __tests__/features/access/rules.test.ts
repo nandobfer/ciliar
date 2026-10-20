@@ -1,7 +1,6 @@
 import { describe, expect, it, vi, afterEach } from "vitest"
 import { catalog, can } from "@/features/access/catalog"
-import { createUserSchema, roleSchema, roleUpdateSchema, changePasswordSchema } from "@/features/access/schemas"
-import { hashPassword, verifyPassword } from "@/features/auth/server/password"
+import { createUserSchema, roleSchema, roleUpdateSchema } from "@/features/access/schemas"
 import { checkRateLimit } from "@/features/auth/server/rate-limit"
 import { assertMutationOrigin, appOrigin } from "@/features/auth/server/origin"
 import { resolveScriptMongoUri } from "../../../scripts/helpers/mongodb-uri"
@@ -19,11 +18,12 @@ describe("catálogo e validação de acessos", () => {
         expect(can(new Set(["*"]), "users.edit")).toBe(true)
         expect(can(new Set(["users.view"]), "users.edit")).toBe(false)
     })
-    it("normaliza e-mail e rejeita perfis duplicados e senhas fracas", () => {
-        const good = { nome: "Nome", email: "  PESSOA@EXEMPLO.COM  ", password: "Senha forte 123!", ativo: true, cargos: ["a".repeat(24)] }
+    it("normaliza e-mail, rejeita perfis duplicados e não aceita mais senha no cadastro", () => {
+        const good = { nome: "Nome", email: "  PESSOA@EXEMPLO.COM  ", ativo: true, cargos: ["a".repeat(24)] }
         expect(createUserSchema.parse(good).email).toBe("pessoa@exemplo.com")
+        expect(createUserSchema.safeParse({ ...good, enviarConvite: true }).success).toBe(true)
         expect(createUserSchema.safeParse({ ...good, cargos: [...good.cargos, ...good.cargos] }).success).toBe(false)
-        expect(createUserSchema.safeParse({ ...good, password: "123" }).success).toBe(false)
+        expect(createUserSchema.safeParse({ ...good, password: "Senha forte 123!" }).success).toBe(false)
         expect(createUserSchema.safeParse({ ...good, unknown: true }).success).toBe(false)
     })
     it("não aceita wildcard, concessões desconhecidas, ou edição de slug pelo formulário", () => {
@@ -31,14 +31,6 @@ describe("catálogo e validação de acessos", () => {
         expect(roleSchema.safeParse({ ...role, permissoes: ["*"] }).success).toBe(false)
         expect(roleSchema.safeParse({ ...role, permissoes: ["unknown"] }).success).toBe(false)
         expect(roleUpdateSchema.safeParse({ version: 0, slug: "admin" }).success).toBe(false)
-        expect(changePasswordSchema.safeParse({ currentPassword: "atual", newPassword: "curta" }).success).toBe(false)
-    })
-    it("usa Argon2id e não aceita hashes inválidos", async () => {
-        const hash = await hashPassword("Segredo temporário 123!")
-        expect(hash).toMatch(/^\$argon2id\$/)
-        expect(await verifyPassword(hash, "Segredo temporário 123!")).toBe(true)
-        expect(await verifyPassword(hash, "outra senha")).toBe(false)
-        expect(await verifyPassword("hash inválido", "senha")).toBe(false)
     })
     it("limita tentativas e libera nova janela", () => {
         checkRateLimit("teste:janela", 100, 2); checkRateLimit("teste:janela", 101, 2)
@@ -81,6 +73,11 @@ describe("política das rotas administrativas", () => {
         ["GET", "/api/integrations/smtp/logs", ["integrations.smtp.logs"]],
         ["POST", "/api/integrations/smtp/explore", ["integrations.smtp.explore"]],
         ["POST", "/api/integrations/crons/jobs/rotina/run", ["integrations.crons.run"]],
+        ["GET", "/api/users/invite", ["users.create"]], ["POST", "/api/users/aaaaaaaaaaaaaaaaaaaaaaaa/invite", ["users.create"]],
+        ["GET", "/api/integrations/platform", ["integrations.platform.view"]],
     ])("protege %s %s", (method, path, expected) => expect(routePermissions(path as string, method as string)).toEqual(expected))
-    it("falha fechado para rota administrativa desconhecida", () => expect(() => routePermissions("/api/nova-rota", "GET")).toThrow())
+    it("falha fechado para rota administrativa desconhecida (inclusive a antiga troca de senha)", () => {
+        expect(() => routePermissions("/api/nova-rota", "GET")).toThrow()
+        expect(() => routePermissions("/api/me/password", "POST")).toThrow()
+    })
 })

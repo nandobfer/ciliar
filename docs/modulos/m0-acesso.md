@@ -74,9 +74,10 @@ Ferramentas de usuários passam a refletir o convite (sem senha inicial).
 | Ferramenta | Risco |
 |---|---|
 | `get_legal_terms` (versão atual e histórico) | read |
-| `update_legal_terms` (publica nova versão) | write (com `summarize`) |
+| `update_legal_terms` (publica nova versão; bloqueia todos até o novo aceite) | destructive (com `summarize`) |
 | `get_platform_settings` | read |
 | `update_platform_settings` (perfil padrão = autoridade; prazo de exclusão) | destructive |
+| `resend_user_invite` (reenvia o convite por e-mail) | write |
 
 ## Fora do escopo
 

@@ -2,12 +2,14 @@ import type { ClientSession } from "mongoose"
 import { canManageRole, canManageUser, evaluateRoleAssignment, getUngrantableKeys } from "@nandobfer/perfix"
 import { z } from "zod"
 import { DomainError } from "@/lib/api/route"
-import { hashPassword } from "@/features/auth/server/password"
+import { assertNotDefaultRole } from "@/features/platform/server/state"
 import { catalog } from "../catalog"
+import type { InviteResult } from "../types"
 import { createUserSchema, updateUserSchema, roleSchema, roleUpdateSchema, reorderSchema } from "../schemas"
 import { accessModels } from "./models"
-import { auditAccess, authorityTransaction, conflict, denied, roleRows } from "./access"
+import { auditAccess, authorityTransaction, conflict, denied, requirePermissions, roleRows } from "./access"
 import type { AccessContext } from "./context"
+import { sendInviteEmail } from "./invite"
 
 export function parseInput<T>(schema: z.ZodType<T>, raw: unknown): T {
     const result = schema.safeParse(raw)
@@ -16,18 +18,20 @@ export function parseInput<T>(schema: z.ZodType<T>, raw: unknown): T {
 }
 const missing = () => new DomainError(404, "Registro não encontrado", "NOT_FOUND")
 
-export async function createUser(context: AccessContext, raw: unknown) {
+/**
+ * Pré-cadastro (convite): cria a conta sem senha com os perfis escolhidos. Quando a pessoa entrar com
+ * o Google usando esse e-mail (verificado), a conta é vinculada e mantém os perfis do convite.
+ */
+export async function createUser(context: AccessContext, raw: unknown): Promise<{ id: string; convite: InviteResult }> {
     const data = parseInput(createUserSchema, raw)
-    // Autorizar antes de gastar recursos com Argon2.
-    if (!context.effective.has("*") && !context.effective.has("users.create")) throw denied()
-    const passwordHash = await hashPassword(data.password)
+    let created: { id: string }
     try {
-        return await authorityTransaction(context, ["users.create"], async (current, session) => {
+        created = await authorityTransaction(context, ["users.create"], async (current, session) => {
             const rows = await roleRows(session)
             if (data.cargos.some(id => !rows.some(role => role.id === id && role.ativo))) throw new DomainError(400, "Perfil inexistente ou inativo")
             const assignment = evaluateRoleAssignment({ catalog, callerCargos: current.roles, requested: data.cargos, current: [], loaded: rows })
             if (assignment.status !== "ok") throw denied("Um ou mais perfis não podem ser atribuídos")
-            const [user] = await accessModels().users.create([{ name: data.nome, email: data.email, passwordHash, active: data.ativo, roles: assignment.cargos, mustChangePassword: true }], { session })
+            const [user] = await accessModels().users.create([{ name: data.nome, email: data.email, active: data.ativo, roles: assignment.cargos, signupSource: "invite" }], { session })
             await auditAccess(current, "user.create", user!.id as string, null, { nome: data.nome, email: data.email, ativo: data.ativo, cargos: assignment.cargos }, session)
             return { id: user!.id as string }
         })
@@ -35,6 +39,26 @@ export async function createUser(context: AccessContext, raw: unknown) {
         if (typeof error === "object" && error && "code" in error && error.code === 11000) throw new DomainError(409, "Já existe um usuário com esse e-mail. Nenhuma conta foi alterada.")
         throw error
     }
+    const convite: InviteResult = data.enviarConvite && data.ativo ? await sendInviteEmail(data.email, data.nome) : "nao-solicitado"
+    if (convite === "enviado") await auditAccess(context, "user.invite", created.id, null, { email: data.email })
+    return { ...created, convite }
+}
+
+/** Reenvia o convite de uma conta ativa que ainda não entrou com o Google, dentro da hierarquia do ator. */
+export async function resendInvite(context: AccessContext, id: string): Promise<{ id: string; convite: InviteResult }> {
+    requirePermissions(context, "admin.access", "users.create")
+    const user = await accessModels().users.findById(id).select("+googleSub")
+    if (!user) throw missing()
+    const rows = await roleRows()
+    const roles = rows.filter(row => user.roles.includes(row.id))
+    if (roles.length !== user.roles.length || !canManageUser(context.roles, roles)) throw denied("Usuário fora do alcance da sua hierarquia")
+    if (user.googleSub) throw new DomainError(409, "Este usuário já entrou com o Google; o convite não é necessário.", "INVITE_NOT_PENDING")
+    if (!user.active) throw new DomainError(409, "Ative o usuário antes de reenviar o convite.", "USER_INACTIVE")
+    const convite = await sendInviteEmail(user.email, user.name)
+    if (convite === "smtp-indisponivel") throw new DomainError(409, "Configure o SMTP em Integrações para enviar convites.", "SMTP_UNAVAILABLE")
+    if (convite === "falhou") throw new DomainError(502, "Não foi possível enviar o convite. Verifique a integração SMTP.", "INVITE_FAILED")
+    await auditAccess(context, "user.invite", id, null, { email: user.email })
+    return { id, convite }
 }
 
 async function saveUser(context: AccessContext, id: string, data: z.infer<typeof updateUserSchema>, session: ClientSession) {
@@ -105,6 +129,7 @@ export async function updateRole(context: AccessContext, id: string, raw: unknow
         if (role.slug === "admin") {
             if (!current.effective.has("*") || Object.keys(data).some(key => !["nome", "descricao", "cor"].includes(key))) throw denied("Administrador permite alterar somente nome, descrição e cor")
         } else if (!canManageRole(current.roles, role) || data.permissoes?.includes("*") || getUngrantableKeys(current.effective, data.permissoes ?? []).length) throw denied()
+        if (data.ativo === false && role.ativo) await assertNotDefaultRole(id, session, "inativar")
         const before = { nome: role.nome, descricao: role.descricao, cor: role.cor, permissoes: [...role.permissoes], ativo: role.ativo }
         Object.assign(role, data, { updatedBy: current.userId, version: version + 1 })
         if (data.permissoes) role.permissoes = catalog.normalizePermissionDependencies(data.permissoes)
@@ -130,6 +155,7 @@ export const deleteRole = (context: AccessContext, id: string, version: number) 
     if (role.version !== version) throw conflict()
     if (role.slug === "admin" || !canManageRole(current.roles, role)) throw denied()
     if (await models.users.exists({ roles: id }).session(session)) throw new DomainError(409, "Remova os membros antes de excluir o perfil")
+    await assertNotDefaultRole(id, session, "excluir")
     await models.roles.deleteOne({ _id: id }, { session })
     await models.states.updateOne({ _id: "global" }, { $pull: { ordem: id }, $inc: { version: 1 } }, { session })
     await auditAccess(current, "role.delete", id, { nome: role.nome }, null, session)

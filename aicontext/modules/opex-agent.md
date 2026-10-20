@@ -78,15 +78,19 @@ chamando o serviço real com o `AccessContext` revalidado (nunca HTTP).
 |---|---|---|
 | Contexto (sempre) | `get_app_overview` | — |
 | Arquivos do chat | `list_chat_files`, `read_chat_file` | — |
-| Usuários | `list_users`, `get_user`, `create_user`*, `update_user`*, `delete_user`* | `users.view/create/edit/delete` |
+| Usuários | `list_users`, `get_user`, `create_user`* (convite sem senha, `sendInvite`), `resend_user_invite`, `update_user`*, `delete_user`* | `users.view/create/edit/delete` |
 | Perfis | `list_permission_catalog`, `list_roles`, `get_role`, `create_role`*, `update_role`*, `reorder_roles`*, `delete_role`* | `roles.view/edit` (+ `users.edit` para membros) |
 | Integrações | `list_integrations`, `get_integration`, `update_integration`*, `test_integration`, `list_integration_logs` | `integrations.{id}.view/edit/test/logs` |
 | Tokens da API interna | `list_api_tokens`, `create_api_token`*, `revoke_api_token`* | `integrations.internal_api.tokens` |
 | Rotinas | `list_routines`, `run_routine` | `integrations.crons.view/run` |
+| Plataforma | `get_platform_settings`, `update_platform_settings`* (perfil padrão = autoridade; prazos; documentos), `get_legal_terms`, `update_legal_terms`* (publica nova versão; todos reaceitam) | `integrations.platform.view/edit` |
 
 `*` `destructive` (sempre pede Confirmar/Cancelar). Regra testada: exclusão, credencial, senha,
-token e mudança de autoridade são destrutivas. `create_user` exige senha inicial de 12+ caracteres e
-troca no primeiro acesso; a senha é redigida. A configuração do próprio agente não tem ferramenta.
+token e mudança de autoridade são destrutivas (`update_*` inclusive: `update_legal_terms` é
+destrutiva porque bloqueia todos os usuários até o novo aceite). `create_user` é um convite sem
+senha (login só Google); `resend_user_invite` é `write`. Nenhuma ferramenta devolve `googleSub`.
+Sem o aceite dos termos vigentes o agente recusa (`TERMS_ACCEPTANCE_REQUIRED`). A configuração do
+próprio agente não tem ferramenta.
 
 ## APIs
 

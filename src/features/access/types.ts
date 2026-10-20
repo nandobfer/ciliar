@@ -7,5 +7,11 @@ export interface RoleDto extends RoleLike {
 }
 export interface Simulation { tipo: "cargo" | "usuario"; alvoId: string; alvoNome: string }
 export interface AccessDto { permissions: string[]; roles: RoleDto[]; realIsAdministrator: boolean; simulation: Simulation | null }
-export interface SessionDto { user: { id: string; name: string; email: string; mustChangePassword: boolean }; access: AccessDto }
-export interface UserDto { id: string; nome: string; email: string; ativo: boolean; version: number; cargos: RoleDto[]; roleIds: string[]; gerenciavel: boolean }
+export interface SessionDto { user: { id: string; name: string; email: string; legalAcceptanceRequired: boolean; legalVersion: number }; access: AccessDto }
+export interface UserDto {
+    id: string; nome: string; email: string; ativo: boolean; version: number; cargos: RoleDto[]; roleIds: string[]; gerenciavel: boolean;
+    /** Ainda não entrou com o Google (conta pré-cadastrada). */
+    convitePendente: boolean; ultimoAcesso: string | null; termosAceitos: number | null;
+}
+/** Resultado do envio do convite por e-mail. */
+export type InviteResult = "enviado" | "falhou" | "nao-solicitado" | "smtp-indisponivel"

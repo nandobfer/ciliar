@@ -6,5 +6,5 @@ import { protectRoute } from "@/features/access/server/protect-route"
 export const GET = protectRoute(async () => {
     const context = currentAccess()
     const user = await accessModels().users.findById(context.userId).orFail()
-    return NextResponse.json({ success: true, data: { user: { id: user.id, name: user.name, email: user.email, mustChangePassword: user.mustChangePassword }, access: context.dto } })
+    return NextResponse.json({ success: true, data: { user: { id: user.id, name: user.name, email: user.email, legalAcceptanceRequired: context.legalAcceptanceRequired, legalVersion: context.legalVersion }, access: context.dto } })
 })

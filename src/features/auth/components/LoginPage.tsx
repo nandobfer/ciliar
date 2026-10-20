@@ -12,13 +12,13 @@ const LoginParticleBackground = dynamic(() => import("./LoginParticleBackground"
 /**
  * Tela inicial de login — a primeira (e, por ora, única) tela pública do Opex. Fica **fora do
  * shell** (`src/app/login/page.tsx`), centralizada na viewport, com fundo de partículas e o
- * cartão de entrada. Sem cadastro e sem usuário: só a senha.
+ * cartão de entrada. Somente "Entrar com Google" (cadastro público ou convite).
  *
  * `isolate` cria um stacking context no `main` para que as camadas do fundo (`z-0`) fiquem
  * **acima** do `bg-background` e **abaixo** do conteúdo (`z-10`) — sem z-index negativo, que
  * esconderia as partículas atrás do fundo opaco.
  */
-export function LoginPage({ nextPath, notice }: { nextPath?: string; notice?: string }) {
+export function LoginPage({ nextPath, notice, disabled }: { nextPath?: string; notice?: string; disabled?: boolean }) {
     const reducedMotion = useReducedMotion()
     return (
         <main className="relative isolate flex min-h-screen items-center justify-center overflow-hidden bg-background px-4 py-10">
@@ -42,7 +42,7 @@ export function LoginPage({ nextPath, notice }: { nextPath?: string; notice?: st
                 )}
 
                 <div className="mt-8 w-full rounded-xl border border-border/70 bg-card/80 p-6 shadow-[0_0_50px_-18px_hsl(var(--primary))] backdrop-blur-md">
-                    <LoginForm nextPath={nextPath} />
+                    <LoginForm nextPath={nextPath} disabled={disabled} />
                 </div>
             </motion.div>
         </main>

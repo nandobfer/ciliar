@@ -9,6 +9,7 @@ import { buildPublicApiSpec } from "@/features/public-api/openapi/spec"
 import { testAiHub, testAnthropic, testDeepseek, testGemini, testJev, testOpenai, testOpencode } from "@/features/ai/server/testers"
 import { verifyConnection } from "@/lib/email/mailer"
 import { checkBucket } from "@/lib/storage/s3"
+import { signupAvailability } from "@/features/platform/server/settings"
 import { describeFetchError, fail, type IntegrationTester } from "./types"
 
 // ---------------------------------------------------------------------------
@@ -117,6 +118,20 @@ const testStorage: IntegrationTester = async ({ emit }) => {
     return "Storage S3 acessível"
 }
 
+// ---------------------------------------------------------------------------
+// Plataforma: perfil padrão válido + termos publicados (cadastro público)
+// ---------------------------------------------------------------------------
+
+const testPlatform: IntegrationTester = async ({ emit }) => {
+    await dbConnect()
+    emit("step", "Conferindo o perfil padrão e a versão vigente dos termos")
+    const signup = await signupAvailability()
+    emit(signup.defaultRoleId ? "success" : "warn", signup.defaultRoleId ? "Perfil padrão configurado" : "Nenhum perfil padrão configurado")
+    emit(signup.legalVersion > 0 ? "success" : "warn", signup.legalVersion > 0 ? `Termos e política publicados (versão ${signup.legalVersion})` : "Termos e política ainda não publicados")
+    if (!signup.available) fail(signup.message ?? "Cadastro público indisponível")
+    return "Cadastro público disponível"
+}
+
 export const INTEGRATION_TESTERS: Record<IntegrationId, IntegrationTester> = {
     pusher: testPusher,
     internal_api: testInternalApi,
@@ -130,4 +145,5 @@ export const INTEGRATION_TESTERS: Record<IntegrationId, IntegrationTester> = {
     ai_jev: testJev,
     smtp: testSmtp,
     storage_s3: testStorage,
+    platform: testPlatform,
 }

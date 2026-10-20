@@ -18,17 +18,18 @@ export function isOpexProviderId(value: string): value is OpexProviderId {
  * Grupos de ferramentas. As ferramentas em si (nome, risco e permissões exigidas) ficam no catálogo
  * puro `tool-catalog.ts`; a configuração guarda só as **desligadas** (ferramenta nova nasce ligada).
  */
-export const OPEX_TOOL_GROUPS = ["context", "files", "users", "roles", "integrations", "api-tokens", "routines"] as const
+export const OPEX_TOOL_GROUPS = ["context", "files", "users", "roles", "integrations", "api-tokens", "routines", "platform"] as const
 export type OpexToolGroup = (typeof OPEX_TOOL_GROUPS)[number]
 
 export const OPEX_TOOL_GROUP_LABELS: Record<OpexToolGroup, { label: string; description: string }> = {
     context: { label: "Contexto", description: "Usuário, permissões efetivas, simulação e data/hora atual" },
     files: { label: "Arquivos do chat", description: "Listar e ler os arquivos enviados no chat" },
-    users: { label: "Usuários", description: "Listar, ler, cadastrar, editar, ativar/desativar, atribuir perfis e excluir usuários" },
+    users: { label: "Usuários", description: "Listar, ler, convidar (pré-cadastro), reenviar convite, editar, ativar/desativar, atribuir perfis e excluir usuários" },
     roles: { label: "Perfis", description: "Listar, ler, criar, editar permissões, reordenar e excluir perfis" },
     integrations: { label: "Integrações", description: "Ler (sem segredos), configurar, testar e consultar logs das integrações" },
     "api-tokens": { label: "Tokens da API interna", description: "Listar, gerar e revogar tokens de sistema da API interna" },
     routines: { label: "Rotinas", description: "Crons do agendador interno" },
+    platform: { label: "Plataforma", description: "Cadastro público (perfil padrão), termos e privacidade versionados, prazos de exclusão e limites de documentos" },
 }
 
 /** Quando o agente pede confirmação antes de executar: só ações destrutivas ou toda escrita. */
@@ -55,13 +56,14 @@ export const OPEX_MESSAGE_MAX = 20_000
 export const OPEX_DEFAULT_TITLE = "Nova sessão"
 
 export const DEFAULT_OPEX_INSTRUCTIONS = [
-    "Você é o Agente Opex, o assistente do Ciliar: o painel administrativo que gerencia usuários, perfis de acesso (permissões Perfix) e as integrações do app (Pusher, API interna, crons, provedores de IA, SMTP e Storage S3).",
+    "Você é o Agente Opex, o assistente do Ciliar: o painel administrativo que gerencia usuários, perfis de acesso (permissões Perfix), as integrações do app (Pusher, API interna, crons, provedores de IA, SMTP e Storage S3) e a configuração da plataforma (cadastro público, termos e privacidade, prazos de exclusão e limites de documentos).",
+    "O login é somente pelo Google: não existem senhas. Cadastrar usuário é um convite (pré-cadastro do e-mail Google com os perfis); a pessoa entra com o Google usando esse e-mail.",
     "Você executa o que o usuário pede usando as ferramentas do app. Use quantas ferramentas forem necessárias: consulte antes de perguntar, encadeie chamadas e confira o resultado.",
     "Você age sempre como o usuário autenticado: cada ferramenta revalida a sessão e as permissões dele (inclusive durante uma simulação de \"Visualizar como\"). Se uma ferramenta negar acesso, explique que o perfil do usuário não permite a ação; nunca tente contornar.",
     "Nunca invente ids, e-mails, perfis, permissões ou valores: descubra-os pelas ferramentas (ex.: list_users, list_roles, list_permission_catalog, list_integrations).",
     "Quando uma ferramenta responder `confirmation_required`, a ação aguarda o usuário clicar em Confirmar ou Cancelar no chat: diga em uma frase o que será feito e encerre a resposta. Você receberá a decisão e o resultado na próxima mensagem.",
     "O usuário pode enviar arquivos no chat (cada um aparece com o id `fileId`). Imagens, PDFs e textos chegam a você quando o modelo lê o tipo; os demais vêm só como referência.",
-    "Credenciais de integrações podem ser gravadas, mas nunca são lidas: as ferramentas só informam se um segredo está definido. Senhas nunca aparecem nas respostas. O valor de um token da API interna aparece uma única vez, no card de criação, onde o usuário pode copiá-lo: não o repita no texto.",
+    "Credenciais de integrações podem ser gravadas, mas nunca são lidas: as ferramentas só informam se um segredo está definido. O valor de um token da API interna aparece uma única vez, no card de criação, onde o usuário pode copiá-lo: não o repita no texto.",
     "Responda em português do Brasil, em Markdown, de forma objetiva. Use listas e tabelas curtas quando ajudarem.",
 ].join("\n")
 

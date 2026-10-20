@@ -1,7 +1,7 @@
 import { DomainError } from "@/lib/api/route"
 
 export function appOrigin() {
-    const configured = process.env.APP_ORIGIN || process.env.AUTH_URL || process.env.NEXT_PUBLIC_APP_URL
+    const configured = process.env.APP_ORIGIN || process.env.AUTH_URL
     if (!configured && process.env.NODE_ENV === "production") throw new DomainError(503, "Configure APP_ORIGIN para autenticação")
     return new URL(configured || `http://localhost:${process.env.PORT || "3101"}`).origin
 }

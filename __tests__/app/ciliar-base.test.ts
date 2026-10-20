@@ -16,14 +16,15 @@ describe('base do Ciliar com controle de acesso', () => {
         expect(activeNavHref('/tarefas', APP_NAV_ITEMS)).toBeNull()
     })
 
-    it('expõe exatamente as seis integrações solicitadas e os provedores filhos (Anthropic, OpenAI e DeepSeek como no Opex)', () => {
-        expect(INTEGRATIONS.filter((def) => !def.parent).map((def) => def.id)).toEqual(['pusher', 'internal_api', 'crons', 'ai', 'smtp', 'storage_s3'])
+    it('expõe as seis integrações solicitadas, a Plataforma (M0) e os provedores filhos (Anthropic, OpenAI e DeepSeek como no Opex)', () => {
+        expect(INTEGRATIONS.filter((def) => !def.parent).map((def) => def.id)).toEqual(['pusher', 'internal_api', 'crons', 'ai', 'smtp', 'storage_s3', 'platform'])
         expect(INTEGRATIONS.filter((def) => def.parent === 'ai').map((def) => def.id)).toEqual(['ai_opencode', 'ai_gemini', 'ai_anthropic', 'ai_openai', 'ai_deepseek', 'ai_jev'])
         expect(INTEGRATIONS.map((def) => def.id)).toEqual([...INTEGRATION_IDS])
         expect(IN_DEVELOPMENT_INTEGRATIONS).toEqual([])
         for (const id of ['github', 'orcamentos', 'google_drive', 'desconhecido']) expect(isIntegrationId(id)).toBe(false)
         expect(AI_TABS).toEqual(['provedores', 'agente-opex'])
         expect(integrationPath('ai_opencode')).toBe('/integracoes/ia/opencode')
+        expect(integrationPath('platform')).toBe('/integracoes/plataforma')
     })
 
     it('mantém o motor de crons sem cadastrar rotinas de módulos excluídos (só a limpeza dos arquivos do agente)', () => {

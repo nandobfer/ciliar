@@ -5,6 +5,7 @@ import { apiTokenTools } from "./api-tokens"
 import { contextTools } from "./context"
 import { fileTools } from "./files"
 import { integrationTools } from "./integrations"
+import { platformTools } from "./platform"
 import { roleTools } from "./roles"
 import { userTools } from "./users"
 
@@ -16,6 +17,7 @@ export const OPEX_TOOLS: readonly OpexTool[] = [
     ...roleTools,
     ...integrationTools,
     ...apiTokenTools,
+    ...platformTools,
 ] as readonly OpexTool[]
 
 export function findOpexTool(name: string): OpexTool | undefined {

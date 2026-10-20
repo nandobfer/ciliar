@@ -55,6 +55,7 @@ export interface IntegrationConfigMap {
         accessKey?: string
         secretKey?: string
     }
+    platform: Record<string, never>
 }
 
 export type SecretSource = "db" | "env" | "none"

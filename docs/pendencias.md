@@ -42,3 +42,11 @@ Nenhuma pendência. Todos os módulos (M0–M5) estão definidos.
 | P29 | M5 | Ao restaurar o negócio, o portfólio volta com o estado de publicação anterior. |
 | P30 | M5 | Logo como favicon e imagem Open Graph, com nome e descrição do negócio. |
 | — | M0 | Usuários atuais (inclusive admins) migram para Google com o mesmo e-mail, vínculo automático. |
+| P31 | M0 | Credenciais OAuth do Google no ambiente (`AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET`): o login precede a tela de Integrações. |
+| P32 | M0 | Termos de uso e política de privacidade formam **uma versão conjunta**, com um único aceite. |
+| P33 | M0 | Sem versão publicada, o cadastro público fica indisponível e ninguém é bloqueado; a primeira publicação passa a exigir o aceite de todos. |
+| P34 | M0 | A conta do cadastro público é criada no primeiro login (perfil padrão) e fica bloqueada até o aceite. |
+| P35 | M0 | Senhas antigas são removidas pelo comando `pnpm auth:migrate-google` (idempotente). |
+| P36 | M0 | Prazo padrão de exclusão definitiva: 30 dias por tipo (1 a 3650). |
+| P37 | M0 | Convite por e-mail marcado por padrão quando há SMTP; "Reenviar convite" para convites pendentes. |
+| P38 | M0 | Até o M1, quem entra sem `admin.access` vê "Sem acesso" depois do aceite. |

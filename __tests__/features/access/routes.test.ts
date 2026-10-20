@@ -43,11 +43,21 @@ describe("proteção no servidor", () => {
         await route(request("/api/integrations", "GET", { "x-perfix-view-as": "simulação-da-aba" }))
         expect(mocks.resolveAccess).toHaveBeenCalledWith("a".repeat(24), "simulação-da-aba", null, 0)
     })
-    it("permite somente sessão e troca de senha durante primeiro acesso", async () => {
-        mocks.resolveAccess.mockResolvedValue({ ...accessFixture(), mustChangePassword: true })
-        expect((await route(request("/api/integrations"))).status).toBe(403)
+    it("sem o aceite da versão vigente dos termos, só a própria sessão e o aceite são liberados", async () => {
+        mocks.resolveAccess.mockResolvedValue({ ...accessFixture(), legalAcceptanceRequired: true, legalVersion: 2 })
+        const blocked = await route(request("/api/integrations"))
+        expect(blocked.status).toBe(403)
+        expect((await blocked.json()).code).toBe("TERMS_ACCEPTANCE_REQUIRED")
+        expect((await route(request("/api/users"))).status).toBe(403)
         expect((await route(request("/api/me"))).status).toBe(200)
-        expect((await route(request("/api/me/password", "POST", { origin: "https://ciliar.example", "x-ciliar-request": "1" }))).status).toBe(200)
+        expect((await route(request("/api/me/legal"))).status).toBe(200)
+        expect((await route(request("/api/me/legal/accept", "POST", { origin: "https://ciliar.example", "x-ciliar-request": "1" }))).status).toBe(200)
+        expect(handler).toHaveBeenCalledTimes(3)
+    })
+    it("a própria conta e o aceite não exigem acesso ao painel (cadastro público)", async () => {
+        mocks.resolveAccess.mockResolvedValue(accessFixture([]))
+        expect((await route(request("/api/me/legal"))).status).toBe(200)
+        expect((await route(request("/api/integrations"))).status).toBe(403)
     })
     it("nega mutações sem origem canônica e marcador, inclusive com Host forjado", async () => {
         expect((await route(request("/api/users", "POST", { origin: "https://evil.example", host: "evil.example", "x-ciliar-request": "1" }))).status).toBe(403)

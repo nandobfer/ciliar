@@ -54,14 +54,14 @@ export function UsersPage() {
                         <th className="h-10 min-w-[160px] px-3 text-left align-middle text-xs font-semibold text-muted-foreground">Nome</th>
                         <th className="hidden h-10 px-3 text-left align-middle text-xs font-semibold text-muted-foreground md:table-cell">E-mail</th>
                         <th className="h-10 px-3 text-left align-middle text-xs font-semibold text-muted-foreground">Perfis</th>
-                        <th className="h-10 w-24 px-3 text-left align-middle text-xs font-semibold text-muted-foreground">Status</th>
+                        <th className="h-10 w-32 px-3 text-left align-middle text-xs font-semibold text-muted-foreground">Status</th>
                         <th className="h-10 w-32 px-3 text-right align-middle text-xs font-semibold text-muted-foreground">Ações</th>
                     </tr></thead>
                     <tbody className="max-md:block">{visible.map(user => <motion.tr key={user.id} initial={reducedMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} className="border-b transition-colors last:border-0 hover:bg-muted/50 focus:bg-muted/50 max-md:mb-3 max-md:flex max-md:flex-wrap max-md:items-center max-md:gap-x-2 max-md:gap-y-1 max-md:rounded-lg max-md:border max-md:p-3 max-md:last:mb-0">
                         <td className="px-3 py-2 max-md:order-last max-md:w-full max-md:px-0 max-md:pt-1 max-md:pb-0"><span className="block truncate text-sm font-medium" title={user.nome}>{user.nome}</span><span className="block truncate text-xs text-muted-foreground md:hidden" title={user.email}>{user.email}</span></td>
                         <td className="hidden truncate px-3 py-2 text-xs text-muted-foreground md:table-cell" title={user.email}>{user.email}</td>
                         <td className="px-3 py-2 max-md:px-0 max-md:py-0"><div className="flex flex-wrap gap-1">{user.cargos.map(role => <span key={role.id} className="inline-flex items-center gap-1"><RoleChip cargo={role} />{!role.ativo && <span className="text-xs text-muted-foreground">(inativo)</span>}</span>)}</div></td>
-                        <td className="px-3 py-2 max-md:ml-auto max-md:px-0 max-md:py-0"><StatusPill active={user.ativo} /></td>
+                        <td className="px-3 py-2 max-md:ml-auto max-md:px-0 max-md:py-0"><StatusPill active={user.ativo} />{user.convitePendente && <span className="mt-0.5 block text-xs text-muted-foreground" title="Ainda não entrou com o Google">Convite pendente</span>}</td>
                         <td className="px-3 py-2 max-md:px-0 max-md:py-0"><div className="flex justify-end gap-1" role="group" aria-label={`Ações de ${user.nome}`}>
                             <TableAction type="visualize" onClick={() => setSummary(user)} />
                             <Can permission="users.edit"><TableAction type="edit" disabled={!user.gerenciavel} onClick={() => setEditor(user)} /></Can>

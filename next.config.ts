@@ -6,7 +6,6 @@ const nextConfig: NextConfig = {
     // Subcaminho público (proxy com prefixo). Mesmo valor no acesso direto pelo IP/porta.
     basePath: BASE_PATH || undefined,
     output: "standalone",
-    serverExternalPackages: ["@node-rs/argon2"],
     env: {
         APP_VERSION: pkg.version,
     },

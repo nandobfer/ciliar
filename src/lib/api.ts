@@ -22,7 +22,7 @@ api.interceptors.request.use(config => {
 api.interceptors.response.use(response => response, error => {
     if (typeof window !== "undefined" && axios.isAxiosError(error)) {
         if (error.response?.status === 401) window.dispatchEvent(new Event("ciliar:unauthorized"))
-        if (error.response?.data?.code === "PASSWORD_CHANGE_REQUIRED") window.dispatchEvent(new Event("ciliar:password-required"))
+        if (error.response?.data?.code === "TERMS_ACCEPTANCE_REQUIRED") window.dispatchEvent(new Event("ciliar:terms-required"))
     }
     return Promise.reject(error)
 })

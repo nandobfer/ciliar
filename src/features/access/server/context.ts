@@ -2,7 +2,9 @@ import { AsyncLocalStorage } from "node:async_hooks"
 import type { RoleDto, AccessDto } from "../types"
 
 export interface AccessContext {
-    userId: string; name: string; sessionVersion: number; mustChangePassword: boolean;
+    userId: string; name: string; sessionVersion: number;
+    /** O usuário real ainda não aceitou a versão vigente dos termos/política (bloqueia toda API, exceto a própria conta). */
+    legalAcceptanceRequired: boolean; legalVersion: number;
     roles: RoleDto[]; realRoles: RoleDto[]; effective: ReadonlySet<string>; realEffective: ReadonlySet<string>;
     dto: AccessDto; viewAsHeader: string;
 }

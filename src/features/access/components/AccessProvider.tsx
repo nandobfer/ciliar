@@ -8,7 +8,7 @@ import { signOut } from "next-auth/react"
 import { toast } from "sonner"
 import { api, apiErrorCode, apiErrorMessage } from "@/lib/api"
 import { resetPusherClient } from "@/lib/pusher/client"
-import { PasswordChange } from "@/features/auth/components/PasswordChange"
+import { LegalAcceptance } from "@/features/platform/components/LegalAcceptance"
 import type { SessionDto } from "../types"
 import { ViewAsControls } from "./ViewAsControls"
 
@@ -60,14 +60,15 @@ function SessionBoundary({ children }: { children: ReactNode }) {
     }, [query.error, simulation, leave])
     useEffect(() => {
         const listener = () => { void query.refetch() }
-        window.addEventListener("ciliar:password-required", listener)
-        return () => window.removeEventListener("ciliar:password-required", listener)
+        window.addEventListener("ciliar:terms-required", listener)
+        return () => window.removeEventListener("ciliar:terms-required", listener)
     }, [query])
 
     if (!mounted || query.isPending) return <p role="status" className="p-8 text-muted-foreground">Carregando acesso...</p>
     if (query.isError || !query.data) return <div className="space-y-3 p-8"><p role="alert">{apiErrorMessage(query.error, "Não foi possível validar seu acesso")}</p><button onClick={() => void query.refetch()}>Tentar novamente</button><button onClick={() => void leave()}>Sair</button></div>
     const session = query.data
-    if (session.user.mustChangePassword) return <PasswordChange onDone={() => void leave(false)} onLogout={() => void leave()} />
+    // Nova versão dos termos/política: só aceitar ou sair (o servidor bloqueia o resto até o aceite).
+    if (session.user.legalAcceptanceRequired) return <LegalAcceptance onDone={() => void query.refetch()} onLogout={() => void leave()} />
     const can = (key: string) => session.access.permissions.includes("*") || session.access.permissions.includes(key)
     const routeKey = pathname.startsWith("/usuarios") ? "users.view" : pathname.startsWith("/perfis") ? "roles.view" : null
     const permitted = can("admin.access") && (!routeKey || can(routeKey))

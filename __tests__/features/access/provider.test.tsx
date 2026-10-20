@@ -11,13 +11,13 @@ vi.mock("next-auth/react", () => ({ signOut: vi.fn() }))
 vi.mock("@/lib/api", () => ({ api: { get: async () => ({ data: { data: state.session } }), post: vi.fn() }, apiErrorCode: vi.fn(), apiErrorMessage: () => "Erro de acesso" }))
 vi.mock("@/lib/pusher/client", () => ({ resetPusherClient: state.resetPusher }))
 vi.mock("@/features/access/components/ViewAsControls", () => ({ ViewAsControls: () => null }))
-vi.mock("@/features/auth/components/PasswordChange", () => ({ PasswordChange: () => <p>Troca obrigatória</p> }))
+vi.mock("@/features/platform/components/LegalAcceptance", () => ({ LegalAcceptance: () => <p>Aceite obrigatório</p> }))
 import { AccessProvider } from "@/features/access/components/AccessProvider"
 let dataClient: QueryClient
 function Probe() { const client = useQueryClient(); useEffect(() => { dataClient = client }, [client]); return <p>Conteúdo protegido</p> }
 beforeEach(() => {
     vi.clearAllMocks(); sessionStorage.clear(); state.pathname = "/integracoes"
-    state.session = { user: { id: "a".repeat(24), name: "Pessoa", email: "pessoa@example.test", mustChangePassword: false }, access: { permissions: ["*"], roles: [], realIsAdministrator: true, simulation: null } }
+    state.session = { user: { id: "a".repeat(24), name: "Pessoa", email: "pessoa@example.test", legalAcceptanceRequired: false, legalVersion: 1 }, access: { permissions: ["*"], roles: [], realIsAdministrator: true, simulation: null } }
 })
 afterEach(cleanup)
 const mount = (root: QueryClient) => render(<QueryClientProvider client={root}><AccessProvider><Probe /></AccessProvider></QueryClientProvider>)
@@ -35,10 +35,10 @@ describe("fronteira de sessão e dados", () => {
         expect(old.getQueryData(["sensitive"])).toBeUndefined()
         expect(state.resetPusher).toHaveBeenCalled()
     })
-    it("primeiro acesso não monta conteúdo administrativo", async () => {
-        state.session!.user.mustChangePassword = true
+    it("sem aceite da versão vigente dos termos não monta conteúdo administrativo", async () => {
+        state.session!.user.legalAcceptanceRequired = true
         mount(new QueryClient())
-        await screen.findByText("Troca obrigatória")
+        await screen.findByText("Aceite obrigatório")
         expect(screen.queryByText("Conteúdo protegido")).toBeNull()
     })
     it("acesso direto à página de usuários exige a permissão correspondente", async () => {

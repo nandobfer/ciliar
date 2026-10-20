@@ -22,8 +22,9 @@ export function protectRoute<P>(handler: (request: NextRequest, context: P) => P
             const path = request.nextUrl.pathname
             if (!["GET", "HEAD", "OPTIONS"].includes(request.method)) assertMutationOrigin(request)
             const context = await resolveAccess(session.user.id, request.headers.get("x-perfix-view-as") ?? "none", null, session.user.sessionVersion)
-            const ownAccount = path === "/api/me" || path === "/api/me/password"
-            if (context.mustChangePassword && !ownAccount) throw new DomainError(403, "Troque sua senha para continuar", "PASSWORD_CHANGE_REQUIRED")
+            // Própria conta: sessão e aceite dos termos. Não exige `admin.access` (cadastro público).
+            const ownAccount = path === "/api/me" || path === "/api/me/legal" || path === "/api/me/legal/accept"
+            if (context.legalAcceptanceRequired && !ownAccount) throw new DomainError(403, "Aceite os termos de uso e a política de privacidade para continuar", "TERMS_ACCEPTANCE_REQUIRED")
             const keys = routePermissions(path, request.method)
             if (!ownAccount && !path.startsWith("/api/access/view-as")) requirePermissions(context, "admin.access")
             requirePermissions(context, ...keys)

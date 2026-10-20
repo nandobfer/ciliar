@@ -21,7 +21,7 @@ definidas em entrevista com o produto. Detalhes de implementação ficam em `aic
 
 | # | Módulo | Documento | Status |
 |---|---|---|---|
-| M0 | Acesso público (Google, cadastro, convite, perfil padrão) | [modulos/m0-acesso.md](modulos/m0-acesso.md) | Definido |
+| M0 | Acesso público (Google, cadastro, convite, perfil padrão) | [modulos/m0-acesso.md](modulos/m0-acesso.md) | Implementado |
 | M1 | Agente Entrevistador + criação do Negócio | [modulos/m1-entrevistador-negocio.md](modulos/m1-entrevistador-negocio.md) | Definido |
 | M2 | Espaço do negócio (CRUD, metas, atividades, documentos, sucessos) | [modulos/m2-espaco-negocio.md](modulos/m2-espaco-negocio.md) | Definido |
 | M3 | Clientes + Pedidos | [modulos/m3-clientes-pedidos.md](modulos/m3-clientes-pedidos.md) | Definido |

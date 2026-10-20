@@ -1,16 +1,25 @@
 import mongoose, { Schema, type Connection } from "mongoose"
 
+export type SignupSource = "invite" | "public" | "cli"
+export interface LegalAcceptance { version: number; acceptedAt: Date }
 export interface UserRecord {
-    name: string; email: string; passwordHash: string; active: boolean; roles: string[];
-    sessionVersion: number; accessVersion: number; mustChangePassword: boolean; createdAt: Date; updatedAt: Date;
+    name: string; email: string; active: boolean; roles: string[];
+    sessionVersion: number; accessVersion: number;
+    /** `sub` da conta Google vinculada; ausente enquanto o convite estiver pendente. Nunca sai do servidor. */
+    googleSub?: string | null; signupSource?: SignupSource; lastLoginAt?: Date | null;
+    legalAcceptance?: LegalAcceptance | null; createdAt: Date; updatedAt: Date;
 }
 const userSchema = new Schema<UserRecord>({
     name: { type: String, required: true }, email: { type: String, required: true },
-    passwordHash: { type: String, required: true, select: false }, active: { type: Boolean, default: true },
+    active: { type: Boolean, default: true },
     roles: { type: [String], default: [], index: true }, sessionVersion: { type: Number, default: 0 },
-    accessVersion: { type: Number, default: 0 }, mustChangePassword: { type: Boolean, default: false },
+    accessVersion: { type: Number, default: 0 },
+    googleSub: { type: String, select: false }, signupSource: { type: String, enum: ["invite", "public", "cli"], default: "invite" },
+    lastLoginAt: { type: Date, default: null },
+    legalAcceptance: { type: new Schema<LegalAcceptance>({ version: { type: Number, required: true }, acceptedAt: { type: Date, required: true } }, { _id: false }), default: null },
 }, { collection: "users", timestamps: true })
 userSchema.index({ email: 1 }, { unique: true })
+userSchema.index({ googleSub: 1 }, { unique: true, partialFilterExpression: { googleSub: { $type: "string" } } })
 export interface RoleRecord {
     slug: string; nome: string; descricao: string; cor: string; permissoes: string[]; ativo: boolean;
     version: number; createdBy?: string; updatedBy?: string; createdAt: Date; updatedAt: Date;

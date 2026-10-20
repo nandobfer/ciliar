@@ -8,6 +8,7 @@ ganhou o Agente Opex (chat com ferramentas) copiado do Opex.
 
 - [Base, layout e UI](modules/base.md): origem, tema, componentes e navegação protegida.
 - [Autenticação e acessos](modules/access.md): login, usuários, perfis, simulação, transações e CLI.
+- [Plataforma](modules/platform.md): cadastro público (perfil padrão), termos/privacidade versionados, retenção e documentos.
 - [Integrações](modules/integrations.md): catálogo, persistência, APIs, logs, crons e provedores.
 - [Agente Opex](modules/opex-agent.md): chat com ferramentas, sessões, arquivos, confirmações e catálogo.
 - [Docker e deploy](modules/deployment.md): infraestrutura copiada, Compose dev/produção e ambiente.

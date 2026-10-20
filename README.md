@@ -8,7 +8,8 @@ Tailwind 4, sidebar responsiva, animações e bibliotecas (versões preservadas 
 ```sh
 pnpm install --frozen-lockfile
 cp .env.example .env
-# Preencha AUTH_SECRET, INTEGRATIONS_ENCRYPTION_KEY e CRON_SECRET com segredos novos.
+# Preencha AUTH_SECRET, INTEGRATIONS_ENCRYPTION_KEY e CRON_SECRET com segredos novos, e
+# AUTH_GOOGLE_ID/AUTH_GOOGLE_SECRET com o cliente OAuth do Google (login único).
 # APP_ORIGIN deve ser a origem pública; MongoDB precisa ser replica set.
 pnpm user:create
 pnpm dev --port 3101
@@ -40,17 +41,21 @@ Detalhes de imagens prontas e deploy: [Docker e deploy](aicontext/modules/deploy
 ## Escopo da base
 
 - Sidebar com **Integrações**, **Usuários** e **Perfis**, filtrada pelas permissões.
-- Pusher, API interna (Swagger, explorador e tokens), Crons, Provedores de IA, SMTP e Storage S3.
+- Pusher, API interna (Swagger, explorador e tokens), Crons, Provedores de IA, SMTP, Storage S3 e
+  Plataforma (cadastro público, termos e privacidade, prazos de exclusão e limites de documentos).
 - IA: somente a aba **Provedores**, com OpenCode, Gemini e JEV e suas páginas originais.
 - Crons: mesmo editor e motor, com a rotina de verificação de integrações e rotinas HTTP
   configuráveis. Rotinas de tarefas/GitHub/desenvolvimento do Opex não fazem parte desta base.
-- Login do Opex com tsParticles; Auth.js e Argon2id; sem cadastro público ou portal do cliente.
+- Login do Opex com tsParticles; Auth.js somente com Google (cadastro público com perfil padrão,
+  convite por e-mail pré-cadastrado e aceite versionado dos termos/LGPD). Sem e-mail/senha.
 - Perfix para perfis/hierarquia, usuários e **Visualizar como** por perfil/usuário, isolado por aba.
 - APIs de configuração protegidas por sessão/permissão. Bearer de sistema e cron secret têm
   contratos independentes e não autorizam gerenciamento administrativo.
 
-O primeiro administrador é criado explicitamente por `pnpm user:create` em terminal interativo.
-Não são aceitas senhas em argumentos/pipe, não há conta padrão nem criação automática.
+O primeiro administrador é pré-autorizado explicitamente por `pnpm user:create` em terminal
+interativo (nome, e-mail Google e perfis; sem senha) e entra com o Google usando esse e-mail.
+Não há conta padrão nem criação automática. Ao migrar do login antigo, rode uma vez
+`pnpm auth:migrate-google` para remover as senhas guardadas.
 Se a URI usa hostname Docker no host, ajuste `SCRIPT_MONGODB_HOST`/`SCRIPT_MONGODB_PORT`.
 Veja [Autenticação e acessos](aicontext/modules/access.md) para regras e configuração.
 
@@ -62,7 +67,7 @@ O símbolo original foi mantido para preservar o visual solicitado; o nome do ap
 ```sh
 pnpm exec tsc --noEmit
 pnpm lint
-pnpm test __tests__/app/ciliar-base.test.ts __tests__/app/pusher-auth.test.ts __tests__/features/access/rules.test.ts __tests__/features/access/persistence.test.ts __tests__/features/access/routes.test.ts __tests__/features/access/view-as.test.tsx __tests__/features/auth/auth.test.ts __tests__/features/auth/login.test.tsx
+pnpm test __tests__/app/ciliar-base.test.ts __tests__/app/pusher-auth.test.ts __tests__/features/access __tests__/features/auth __tests__/features/platform
 ```
 
 Contexto de desenvolvimento: [aicontext/README.md](aicontext/README.md).

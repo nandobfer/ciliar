@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   getIntegrationConfig: vi.fn(),
   verifyConnection: vi.fn(),
   checkBucket: vi.fn(),
+  signupAvailability: vi.fn(),
 }))
 
 vi.mock('@/lib/integrations/config', () => ({
@@ -17,7 +18,8 @@ vi.mock('@/lib/db/models/CronJobState', () => ({ CronJobState: { find: () => ({ 
 vi.mock('@/lib/db/models/ApiToken', () => ({ ApiToken: { countDocuments: vi.fn() } }))
 vi.mock('@/lib/db/models/Orcamento', () => ({ OrcamentoClient: { countDocuments: vi.fn() } }))
 vi.mock('@/lib/pusher/server', () => ({ getRawPusherServer: vi.fn() }))
-vi.mock('@/features/ai/server/testers', () => ({ testAiHub: vi.fn(), testGemini: vi.fn(), testJev: vi.fn(), testOpencode: vi.fn() }))
+vi.mock('@/features/ai/server/testers', () => ({ testAiHub: vi.fn(), testGemini: vi.fn(), testJev: vi.fn(), testOpencode: vi.fn(), testAnthropic: vi.fn(), testOpenai: vi.fn(), testDeepseek: vi.fn() }))
+vi.mock('@/features/platform/server/settings', () => ({ signupAvailability: mocks.signupAvailability }))
 
 import type { IntegrationId } from '@/lib/integrations/catalog'
 import { INTEGRATION_TESTERS } from '@/features/integrations/testers/testers'
@@ -77,5 +79,21 @@ describe('teste de conexão do Storage S3', () => {
     mocks.checkBucket.mockRejectedValue(new Error('NoSuchBucket'))
     const { promise } = run('storage_s3', { endpoint: 'http://minio:9000', accessKey: 'ak', secretKey: 'sk', bucket: 'opex' })
     await expect(promise).rejects.toThrow('Bucket inacessível: NoSuchBucket')
+  })
+})
+
+describe('teste da Plataforma (cadastro público)', () => {
+  it('com perfil padrão válido e termos publicados, o cadastro público está disponível', async () => {
+    mocks.signupAvailability.mockResolvedValue({ available: true, reason: null, message: null, defaultRoleId: 'a'.repeat(24), legalVersion: 2 })
+    const { events, promise } = run('platform', {})
+    await expect(promise).resolves.toBe('Cadastro público disponível')
+    expect(events).toContainEqual(['success', 'Termos e política publicados (versão 2)'])
+  })
+
+  it('falha fechado explicando o motivo quando o cadastro público está indisponível', async () => {
+    mocks.signupAvailability.mockResolvedValue({ available: false, reason: 'no-legal-version', message: 'Cadastro público indisponível: publique os termos de uso e a política de privacidade.', defaultRoleId: 'a'.repeat(24), legalVersion: 0 })
+    const { events, promise } = run('platform', {})
+    await expect(promise).rejects.toThrow('publique os termos')
+    expect(events).toContainEqual(['warn', 'Termos e política ainda não publicados'])
   })
 })

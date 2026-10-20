@@ -9,9 +9,12 @@ Leia `aicontext/README.md` e o guia do módulo antes de desenvolver.
   sonner, date-fns e Framer Motion (respeitando movimento reduzido).
 - Escopo atual: Integrações, Usuários, Perfis, Visualizar como e o Agente Opex (chat com
   ferramentas), por solicitação do usuário.
-- Auth.js nativo no Next, e-mail/senha Argon2id; sem cadastro público. Toda API administrativa
-  exige sessão válida e autorização Perfix no servidor, inclusive chamadas diretas.
-- O CLI `pnpm user:create` é a única entrada de bootstrap; não crie contas no startup.
+- Auth.js nativo no Next, **somente Google** (sem e-mail/senha). Cadastro público com o perfil
+  padrão da Plataforma, convite (pré-cadastro do e-mail) e vínculo automático por e-mail verificado.
+  Aceite versionado dos termos/política é conferido no servidor. Toda API administrativa exige
+  sessão válida e autorização Perfix no servidor, inclusive chamadas diretas.
+- O CLI `pnpm user:create` (pré-autoriza um e-mail Google) é a única entrada de bootstrap do
+  primeiro Administrador; não crie contas no startup.
 - Nunca confunda o ator real com o alvo da simulação. Marcador explícito por requisição/aba;
   auditoria preserva o ator real. Preserve o histórico antigo do ator `local`.
 - Alterações de autoridade exigem replica set, transação, fence compartilhado e versionamento.

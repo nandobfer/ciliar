@@ -26,7 +26,10 @@ faz fallback para Opex. No ambiente inicial essa variável já está preparada n
 Endereços de Pusher/S3 e outros serviços também devem ser acessíveis de dentro do container.
 O banco deve ser replica set para administração de acessos. Não reconfigure o Mongo compartilhado.
 Configure `AUTH_SECRET` novo e `APP_ORIGIN` com a origem pública canônica (HTTPS em produção).
-Argon2id usa `@node-rs/argon2`, externalizado no Next para preservar o binário da plataforma Alpine.
+Login somente Google: `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` (cliente OAuth "Aplicativo da Web" no
+Google Cloud) com URI de redirecionamento `${APP_ORIGIN}/api/auth/callback/google`. Na tela de
+consentimento, use `${APP_ORIGIN}/privacidade` e `${APP_ORIGIN}/termos`. Sem elas o login fica
+desabilitado com aviso. Não há mais Argon2/`@node-rs/argon2`.
 
 ```sh
 # Validação sem imprimir as credenciais resolvidas.
@@ -68,6 +71,8 @@ O CLI é executado no checkout ou na imagem de desenvolvimento, não no runner s
 pnpm user:create
 # Alternativa Docker com terminal interativo e .env próprio:
 docker compose --profile dev run --build --rm --no-deps app-dev pnpm user:create
+# Uma vez, ao migrar do login antigo: remove senhas e troca obrigatória (idempotente).
+pnpm auth:migrate-google
 ```
 
 O CLI mantém hostnames da rede dentro de container. No host, `SCRIPT_MONGODB_HOST` permite mapear

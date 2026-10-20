@@ -60,8 +60,8 @@ describe('catálogo e registro de ferramentas', () => {
     for (const group of OPEX_TOOL_GROUPS) expect(OPEX_TOOLS.some((tool) => tool.group === group)).toBe(true)
   })
 
-  it('só existem ferramentas de usuários, perfis, integrações (tokens e rotinas), arquivos e contexto', () => {
-    expect(OPEX_TOOL_GROUPS).toEqual(['context', 'files', 'users', 'roles', 'integrations', 'api-tokens', 'routines'])
+  it('só existem ferramentas de usuários, perfis, integrações (tokens e rotinas), plataforma, arquivos e contexto', () => {
+    expect(OPEX_TOOL_GROUPS).toEqual(['context', 'files', 'users', 'roles', 'integrations', 'api-tokens', 'routines', 'platform'])
     expect(OPEX_TOOLS.some((tool) => /task|preview|workbench|central|client|service|finance/.test(tool.name))).toBe(false)
   })
 
@@ -77,16 +77,17 @@ describe('catálogo e registro de ferramentas', () => {
         /^(delete|revoke|create|update|reorder)_/.test(tool.name) || (/token|password/.test(tool.name) && !/^list_/.test(tool.name)),
     )
     expect(sensitive.map((tool) => tool.name)).toEqual(
-      expect.arrayContaining(['create_user', 'update_user', 'delete_user', 'create_role', 'update_role', 'reorder_roles', 'delete_role', 'update_integration', 'create_api_token', 'revoke_api_token']),
+      expect.arrayContaining(['create_user', 'update_user', 'delete_user', 'create_role', 'update_role', 'reorder_roles', 'delete_role', 'update_integration', 'create_api_token', 'revoke_api_token', 'update_platform_settings', 'update_legal_terms']),
     )
     for (const tool of sensitive) expect({ name: tool.name, risk: tool.risk }).toEqual({ name: tool.name, risk: 'destructive' })
     for (const tool of OPEX_TOOLS.filter((item) => item.risk !== 'read')) expect(typeof tool.summarize).toBe('function')
   })
 
-  it('senha e segredos saem da entrada exibida e do histórico', () => {
+  it('convite não tem senha; segredos saem da entrada exibida e do histórico', () => {
     const createUser = findOpexTool('create_user')!
-    const input = createUser.input.parse({ name: 'Ana', email: 'ana@example.test', password: 'Senha-segura-123', roleIds: ['b'.repeat(24)] })
-    expect(JSON.stringify(createUser.redact!(input))).not.toContain('Senha-segura-123')
+    const input = createUser.input.parse({ name: 'Ana', email: 'ana@example.test', password: 'Senha-segura-123', roleIds: ['b'.repeat(24)] }) as Record<string, unknown>
+    expect(input).not.toHaveProperty('password')
+    expect(input).toMatchObject({ sendInvite: false, active: true })
     const update = findOpexTool('update_integration')!
     const secret = update.input.parse({ id: 'smtp', secrets: [{ key: 'password', value: 'segredo-smtp' }] })
     expect(JSON.stringify(update.redact!(secret))).not.toContain('segredo-smtp')
@@ -135,7 +136,7 @@ describe('ferramentas ligadas e permissões', () => {
   })
 
   it('árvore da configuração: um módulo por grupo, folhas por ferramenta e destrutivas como sensíveis', () => {
-    expect(OPEX_TOOL_TREE.map((branch) => branch.label)).toEqual(['Contexto', 'Arquivos do chat', 'Usuários', 'Perfis', 'Integrações', 'Tokens da API interna', 'Rotinas'])
+    expect(OPEX_TOOL_TREE.map((branch) => branch.label)).toEqual(['Contexto', 'Arquivos do chat', 'Usuários', 'Perfis', 'Integrações', 'Tokens da API interna', 'Rotinas', 'Plataforma'])
     expect(opexToolTreeCatalog.keys).toEqual(OPEX_TOOL_CATALOG.map((tool) => tool.name))
     const users = OPEX_TOOL_TREE.find((branch) => branch.id === 'tools_users')!
     expect(users.children).toEqual(expect.arrayContaining([expect.objectContaining({ key: 'delete_user', sensitive: true })]))
@@ -172,9 +173,9 @@ describe('autorização antes de cada ferramenta', () => {
     await expect(authorizeOpexTool(listUsers(), {}, SCOPE)).rejects.toThrow(/desativado/)
   })
 
-  it('primeiro acesso pendente recusa', async () => {
-    mocks.resolveAccess.mockResolvedValue({ ...accessFixture(['*']), mustChangePassword: true })
-    await expect(authorizeOpexTool(listUsers(), {}, SCOPE)).rejects.toMatchObject({ code: 'PASSWORD_CHANGE_REQUIRED' })
+  it('termos sem aceite da versão vigente recusam', async () => {
+    mocks.resolveAccess.mockResolvedValue({ ...accessFixture(['*']), legalAcceptanceRequired: true, legalVersion: 2 })
+    await expect(authorizeOpexTool(listUsers(), {}, SCOPE)).rejects.toMatchObject({ code: 'TERMS_ACCEPTANCE_REQUIRED' })
   })
 })
 
