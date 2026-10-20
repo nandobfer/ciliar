@@ -23,7 +23,9 @@ export function routePermissions(path: string, method: string): string[] {
     if (/^\/api\/roles(?:\/|$)/.test(path)) return [method === "GET" ? "roles.view" : "roles.edit"]
     if (path === "/api/integrations" || path === "/api/pusher/auth") return []
     if (/^\/api\/opex(?:\/|$)/.test(path)) return ["opex.use"]
-    if (path === "/api/ai/features/opex-agent" || path === "/api/ai/features/business-interviewer" || path === "/api/ai/features/business-interviewer/script") return [method === "GET" ? "integrations.ai.view" : "integrations.ai.edit"]
+    if (path === "/api/ai/features/opex-agent" || path === "/api/ai/features/summary" || path === "/api/ai/features/business-interviewer" || path === "/api/ai/features/business-interviewer/script") return [method === "GET" ? "integrations.ai.view" : "integrations.ai.edit"]
+    // Memórias dos agentes: o agente é conferido no catálogo pelo serviço.
+    if (/^\/api\/ai\/agents\/[a-z][a-z-]{0,40}\/memories(?:\/[a-f\d]{24})?$/i.test(path)) return [method === "GET" ? "ai_memories.view" : "ai_memories.edit"]
     // Negócios (M1): leitura confere dono/suporte no serviço; alterações só do dono (`businesses.use`).
     if (path === "/api/businesses") return [] // requireAny no handler (use ou view_all)
     if (path === "/api/businesses/search") return ["businesses.view_all"]

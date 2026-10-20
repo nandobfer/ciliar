@@ -22,18 +22,19 @@ import { buildToolRuntime, stringifyForDisplay } from "./tool-runtime"
 import { actorIdOf, resolveScopeAccess, type OpexServerScope } from "./scope"
 import { nowContext } from "./tools/context"
 import { enabledOpexTools, findOpexTool } from "./tools/registry"
+import { agentMemoryTexts, memoriesSection } from "@/features/ai/server/agent-memory-service"
 
 const log = loggerFor({ module: "opex-agent" })
 const INTERRUPTED = "Interrompido pelo usuário"
 
 /** Estável entre os turnos: o raciocínio assinado e o cache do provedor dependem do prompt de sistema. */
-function instructionsFor(settings: OpexAgentSettings, access: AccessContext): string {
-    return [settings.instructions, "", `Usuário autenticado: ${access.name}. A data e a hora de cada turno (e a simulação ativa, se houver) vêm ao fim da mensagem do usuário.`].join("\n")
+function instructionsFor(settings: OpexAgentSettings, access: AccessContext, memories: readonly string[]): string {
+    return [settings.instructions, "", `Usuário autenticado: ${access.name}. A data e a hora de cada turno (e a simulação ativa, se houver) vêm ao fim da mensagem do usuário.`, memoriesSection(memories)].join("\n")
 }
 
 /** Ferramentas e política do turno: ligadas na configuração e liberadas pelas permissões efetivas. */
 function toolsForTurn(settings: OpexAgentSettings, access: AccessContext) {
-    return { tools: enabledOpexTools(settings.disabledTools, access.effective), policy: settings.confirmation }
+    return { tools: enabledOpexTools(settings.disabledTools, access.effective), policy: { policy: settings.confirmation, overrides: settings.confirmationOverrides } }
 }
 
 function findTool(name: string) {
@@ -194,7 +195,7 @@ async function executeTurn(args: TurnArgs): Promise<void> {
         prepared = await prepareModel({ provider: main.provider!, model: main.model!, variant: main.variant })
         const result = streamText({
             model: prepared.model,
-            instructions: instructionsFor(settings, access),
+            instructions: instructionsFor(settings, access, await agentMemoryTexts("opex-agent")),
             messages: history,
             tools: runtime.tools,
             stopWhen: isLoopFinished(),

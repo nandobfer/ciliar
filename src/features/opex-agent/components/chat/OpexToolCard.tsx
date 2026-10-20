@@ -9,6 +9,7 @@ import type { OpexConfirmationDto, OpexPart } from "../../types"
 import { toolIcon } from "../tool-icons"
 import { opexToolMeta } from "../../tool-catalog"
 import { maskApiTokenOutput, OpexApiTokenCard, parseApiTokenOutput } from "./OpexApiTokenCard"
+import { useOpexTechnicalDetails } from "../../hooks/useOpexTechnicalDetails"
 
 type ToolPart = Extract<OpexPart, { type: "tool" }>
 
@@ -28,8 +29,10 @@ interface OpexToolCardProps {
 /** Chamada de ferramenta do agente: estado animado, detalhes recolhíveis e, se for o caso, a confirmação. */
 export function OpexToolCard({ part, onDecide, deciding }: OpexToolCardProps) {
     const [open, setOpen] = useState(false)
+    const technical = useOpexTechnicalDetails()
     const awaiting = part.confirmation?.status === "pending"
-    const hasDetails = Boolean(part.input || part.output || part.error)
+    // Sem "Ver informações técnicas": o card mostra só rótulo e estado, sem expandir.
+    const hasDetails = technical && Boolean(part.input || part.output || part.error)
     // Token gerado: card próprio com copiar; nos detalhes o valor aparece mascarado.
     const apiToken = opexToolMeta(part.name)?.display === "api-token" ? parseApiTokenOutput(part.output) : null
     const output = apiToken && part.output ? maskApiTokenOutput(part.output, apiToken.token) : part.output
@@ -42,25 +45,20 @@ export function OpexToolCard({ part, onDecide, deciding }: OpexToolCardProps) {
             transition={{ duration: 0.18 }}
             className={cn("overflow-hidden rounded-md border bg-card/60 text-xs", awaiting && "border-warning/50", part.state === "error" && !part.confirmation && "border-destructive/40")}
         >
-            <button
-                type="button"
-                onClick={() => hasDetails && setOpen((value) => !value)}
-                aria-expanded={hasDetails ? open : undefined}
-                className={cn("flex w-full items-center gap-2 px-2.5 py-1.5 text-left transition-colors", hasDetails && "hover:bg-muted/50")}
-            >
-                {createElement(toolIcon(part.group), { className: "h-3.5 w-3.5 shrink-0 text-primary", "aria-hidden": true })}
-                <span className="min-w-0 flex-1 truncate font-medium text-foreground/90">{part.label}</span>
-                <span className="hidden font-mono text-[10px] text-muted-foreground sm:inline">{part.name}</span>
-                {formatDuration(part.durationMs) && <span className="text-[10px] text-muted-foreground">{formatDuration(part.durationMs)}</span>}
-                <ToolState part={part} />
-                {hasDetails && (
+            {hasDetails ? (
+                <button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open} className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left transition-colors hover:bg-muted/50">
+                    <ToolHeader part={part} technical />
                     <motion.span animate={{ rotate: open ? 90 : 0 }} transition={{ duration: 0.15 }} aria-hidden>
                         <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
                     </motion.span>
-                )}
-            </button>
+                </button>
+            ) : (
+                <div className="flex w-full items-center gap-2 px-2.5 py-1.5">
+                    <ToolHeader part={part} technical={technical} />
+                </div>
+            )}
             <AnimatePresence initial={false}>
-                {open && (
+                {open && hasDetails && (
                     <motion.div key="details" {...expand} className="overflow-hidden border-t">
                         <div className="space-y-2 p-2.5">
                             {part.input && <ToolBlock label="Entrada" text={part.input} />}
@@ -73,6 +71,19 @@ export function OpexToolCard({ part, onDecide, deciding }: OpexToolCardProps) {
             {part.confirmation && <ConfirmationBlock confirmation={part.confirmation} onDecide={onDecide} deciding={deciding} />}
             {apiToken && <OpexApiTokenCard output={apiToken} />}
         </motion.div>
+    )
+}
+
+function ToolHeader({ part, technical }: { part: ToolPart; technical: boolean }) {
+    const duration = technical ? formatDuration(part.durationMs) : null
+    return (
+        <>
+            {createElement(toolIcon(part.group), { className: "h-3.5 w-3.5 shrink-0 text-primary", "aria-hidden": true })}
+            <span className="min-w-0 flex-1 truncate font-medium text-foreground/90">{part.label}</span>
+            {technical && <span className="hidden font-mono text-[10px] text-muted-foreground sm:inline">{part.name}</span>}
+            {duration && <span className="text-[10px] text-muted-foreground">{duration}</span>}
+            <ToolState part={part} />
+        </>
     )
 }
 

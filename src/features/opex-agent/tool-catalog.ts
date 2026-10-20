@@ -1,5 +1,6 @@
 import { defineCatalog, type Catalog, type PermissionBranchDef } from "@nandobfer/perfix"
 import { INTEGRATION_IDS } from "@/lib/integrations/catalog"
+import { AI_AGENT_IDS, AI_AGENTS } from "@/features/ai/agents"
 import { OPEX_TOOL_GROUP_LABELS, OPEX_TOOL_GROUPS, type OpexToolGroup } from "./constants"
 
 /**
@@ -15,7 +16,10 @@ import { OPEX_TOOL_GROUP_LABELS, OPEX_TOOL_GROUPS, type OpexToolGroup } from "./
  * Opex) é montada a partir deste catálogo.
  */
 
-/** `read` nunca pede confirmação; `write` pede na política "Toda alteração"; `destructive`, sempre. */
+/**
+ * Padrão de confirmação pelo risco: `read` não pede; `write` pede na política "Toda alteração";
+ * `destructive` pede. Cada ferramenta pode ter o padrão trocado na configuração (`confirmationOverrides`).
+ */
 export type OpexToolRisk = "read" | "write" | "destructive"
 
 /** Permissões exigidas: todas as de `all` e, se houver, ao menos uma de `any`. */
@@ -42,6 +46,7 @@ export interface OpexToolMeta {
 }
 
 const ANY_INTEGRATION_VIEW = INTEGRATION_IDS.map((id) => `integrations.${id}.view`)
+const AI_AGENT_LIST = AI_AGENT_IDS.map((id) => `${id} = ${AI_AGENTS[id].label}`).join("; ")
 
 export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
     // ── Contexto ──────────────────────────────────────────────────────────────
@@ -132,6 +137,48 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         risk: "destructive",
         access: { all: ["businesses.use"] },
         description: "Exclui definitivamente um negócio ARQUIVADO do usuário, com metas, entrevista e anexos (irreversível).",
+    },
+
+    // ── Memórias dos agentes ──────────────────────────────────────────────────
+    {
+        name: "list_agent_memories",
+        group: "memories",
+        label: "Listar memórias",
+        risk: "read",
+        access: { all: ["ai_memories.view"] },
+        description: `Memórias (instruções permanentes) de um agente de IA (${AI_AGENT_LIST}), com id, resumo, texto, autor e datas. Sem agent, lista as de todos os agentes.`,
+    },
+    {
+        name: "get_agent_memory",
+        group: "memories",
+        label: "Ler memória",
+        risk: "read",
+        access: { all: ["ai_memories.view"] },
+        description: "Uma memória de um agente (texto completo, resumo, autor e datas).",
+    },
+    {
+        name: "create_agent_memory",
+        group: "memories",
+        label: "Criar memória",
+        risk: "write",
+        access: { all: ["ai_memories.edit"] },
+        description: `Cria uma memória (instrução ou fato permanente, de 3 a 2.000 caracteres) para um agente de IA (${AI_AGENT_LIST}), inclusive você mesmo. O texto é revisado e resumido pelo uso "Resumo" (formattedByAi=false quando ele está indisponível). Até 50 por agente.`,
+    },
+    {
+        name: "update_agent_memory",
+        group: "memories",
+        label: "Editar memória",
+        risk: "write",
+        access: { all: ["ai_memories.edit"] },
+        description: "Substitui o texto de uma memória de um agente (revisado e resumido de novo pelo Resumo).",
+    },
+    {
+        name: "delete_agent_memory",
+        group: "memories",
+        label: "Excluir memória",
+        risk: "destructive",
+        access: { all: ["ai_memories.edit"] },
+        description: "Exclui uma memória de um agente: ele deixa de segui-la a partir da próxima resposta.",
     },
 
     // ── Usuários ──────────────────────────────────────────────────────────────
@@ -399,6 +446,17 @@ export function canUseOpexTool(meta: Pick<OpexToolMeta, "access" | "group">, per
     const { all = [], any } = meta.access
     if (!all.every((key) => has(permissions, key))) return false
     return !any?.length || any.some((key) => has(permissions, key))
+}
+
+/** Confirmação padrão de uma ferramenta pelo risco e pela política geral. */
+export function defaultToolConfirms(risk: OpexToolRisk, policy: "destructive" | "writes"): boolean {
+    return risk === "destructive" || (policy === "writes" && risk === "write")
+}
+
+/** A ferramenta pede confirmação? O ajuste da ferramenta vence o padrão do risco. */
+export function toolConfirms(meta: Pick<OpexToolMeta, "name" | "risk">, policy: "destructive" | "writes", overrides: Readonly<Record<string, boolean>> = {}): boolean {
+    const override = overrides[meta.name]
+    return typeof override === "boolean" ? override : defaultToolConfirms(meta.risk, policy)
 }
 
 /** Permissões exigidas, para exibir na configuração. */

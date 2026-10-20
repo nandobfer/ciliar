@@ -11,6 +11,7 @@ ganhou o Agente Opex (chat com ferramentas) copiado do Opex.
 - [Plataforma](modules/platform.md): cadastro público (perfil padrão), termos/privacidade versionados, retenção e documentos.
 - [Integrações](modules/integrations.md): catálogo, persistência, APIs, logs, crons e provedores.
 - [Agente Opex](modules/opex-agent.md): chat com ferramentas, sessões, arquivos, confirmações e catálogo.
+- [Memórias dos agentes e Resumo](modules/ai-memories.md): instruções permanentes por agente, formatadas pelo uso "Resumo".
 - [Negócios e Agente Entrevistador](modules/businesses.md) (M1): entrevista guiada, roteiro versionado, limite por perfil, onboarding e arquivamento.
 - [Docker e deploy](modules/deployment.md): infraestrutura copiada, Compose dev/produção e ambiente.
 

@@ -6,6 +6,7 @@ import type { LucideIcon } from "lucide-react"
 import { Inbox } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { fadeUp } from "@/components/motion/presets"
+import { cn } from "@/lib/utils"
 
 interface EmptyStateProps {
     icon?: LucideIcon
@@ -14,16 +15,17 @@ interface EmptyStateProps {
     actionLabel?: string
     onAction?: () => void
     children?: ReactNode
+    className?: string
 }
 
 /** Estado vazio padrão: ícone + texto pt-BR + ação opcional. */
-export function EmptyState({ icon: Icon = Inbox, title, description, actionLabel, onAction, children }: EmptyStateProps) {
+export function EmptyState({ icon: Icon = Inbox, title, description, actionLabel, onAction, children, className }: EmptyStateProps) {
     return (
         <motion.div
             variants={fadeUp}
             initial="hidden"
             animate="visible"
-            className="flex flex-col items-center justify-center gap-3 px-4 py-14 text-center"
+            className={cn("flex flex-col items-center justify-center gap-3 px-4 py-14 text-center", className)}
         >
             <div className="rounded-full bg-muted p-3">
                 <Icon className="h-6 w-6 text-muted-foreground" aria-hidden />

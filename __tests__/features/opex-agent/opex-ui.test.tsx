@@ -12,6 +12,8 @@ const net = vi.hoisted(() => ({
 }))
 
 vi.mock('framer-motion', () => framerMotionMock())
+const technical = vi.hoisted(() => ({ allowed: true }))
+vi.mock('@/features/opex-agent/hooks/useOpexTechnicalDetails', () => ({ useOpexTechnicalDetails: () => technical.allowed }))
 const toast = vi.hoisted(() => ({ error: vi.fn(), success: vi.fn() }))
 vi.mock('sonner', () => ({ toast }))
 vi.mock('axios', () => ({ default: { put: net.put } }))
@@ -35,7 +37,10 @@ import type { OpexMessageDto, OpexPart, OpexSessionDto } from '@/features/opex-a
 
 type ToolPart = Extract<OpexPart, { type: 'tool' }>
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  technical.allowed = true
+})
 
 const toolPart = (overrides: Partial<ToolPart> = {}): ToolPart => ({
   type: 'tool',
@@ -112,9 +117,56 @@ describe('mensagens', () => {
     expect(screen.getByText('15 tokens')).toBeTruthy()
   })
 
+  it('com a permissão, o raciocínio aparece e expande', () => {
+    render(<AssistantMessage parts={[{ type: 'reasoning', text: 'Pensei nisto' }, { type: 'text', text: 'Feito' }]} />)
+    fireEvent.click(screen.getByRole('button', { name: /Raciocínio/ }))
+    expect(screen.getByText('Pensei nisto')).toBeTruthy()
+  })
+
   it('decisão de confirmação aparece como nota, não como balão', () => {
     render(<UserMessage message={message({ role: 'user', kind: 'confirmation', text: 'Confirmado: Excluir x' })} />)
     expect(screen.getByText('Confirmado: Excluir x')).toBeTruthy()
+  })
+})
+
+describe('sem "Ver informações técnicas" (opex.technical)', () => {
+  it('card da ferramenta mostra rótulo e estado, sem expandir, nome técnico, duração ou erro', () => {
+    technical.allowed = false
+    render(<OpexToolCard part={toolPart({ state: 'error', error: 'Stack interna' })} />)
+    expect(screen.getByText('Excluir usuário')).toBeTruthy()
+    expect(screen.getByLabelText('Falhou')).toBeTruthy()
+    expect(screen.queryByRole('button')).toBeNull()
+    expect(screen.queryByText('delete_user')).toBeNull()
+    expect(screen.queryByText('1,5 s')).toBeNull()
+    expect(screen.queryByText('Stack interna')).toBeNull()
+    expect(screen.queryByText('{"user":"ana@example.test"}')).toBeNull()
+  })
+
+  it('confirmação continua com resumo e botões', () => {
+    technical.allowed = false
+    const onDecide = vi.fn()
+    render(<OpexToolCard part={toolPart({ confirmation: { actionId: 'a1', summary: 'Excluir a Ana', status: 'pending', error: null } })} onDecide={onDecide} />)
+    expect(screen.getByText('Excluir a Ana')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /Confirmar/ }))
+    expect(onDecide).toHaveBeenCalledWith('a1', 'confirm')
+  })
+
+  it('sem o rodapé (modelo, tokens, duração); o erro e "Tentar novamente" continuam', () => {
+    technical.allowed = false
+    render(<AssistantMessage parts={[{ type: 'text', text: 'Parcial' }]} message={message({ status: 'error', error: 'Credencial recusada' })} onRetry={vi.fn()} />)
+    expect(screen.getByRole('alert').textContent).toContain('Credencial recusada')
+    expect(screen.getByRole('button', { name: /Tentar novamente/ })).toBeTruthy()
+    expect(screen.queryByText('anthropic/claude-x')).toBeNull()
+    expect(screen.queryByText('15 tokens')).toBeNull()
+    expect(screen.queryByText('2,3 s')).toBeNull()
+  })
+
+  it('sem o raciocínio: só "Pensando…" enquanto pensa', () => {
+    technical.allowed = false
+    render(<AssistantMessage parts={[{ type: 'text', text: 'Primeiro' }, { type: 'reasoning', text: 'Pensei nisto' }]} streaming thinking />)
+    expect(screen.queryByText(/Raciocínio/)).toBeNull()
+    expect(screen.queryByText('Pensei nisto')).toBeNull()
+    expect(screen.getByRole('status').textContent).toContain('Pensando…')
   })
 })
 
@@ -274,6 +326,13 @@ describe('token gerado pelo agente', () => {
     expect(screen.getAllByText((_, element) => element?.tagName === 'PRE' && element.textContent!.includes('mt_sys_SEGRE…')).length).toBe(1)
   })
 
+  it('sem a permissão técnica, o card do token continua com Copiar', () => {
+    technical.allowed = false
+    render(<OpexToolCard part={toolPart({ name: 'create_api_token', group: 'api-tokens', label: 'Gerar token', output, confirmation: { actionId: 'a1', summary: 'Gerar o token', status: 'confirmed', error: null } })} />)
+    expect(screen.getByRole('button', { name: 'Copiar token' })).toBeTruthy()
+    expect(screen.queryByRole('button', { expanded: false })).toBeNull()
+  })
+
   it('sem execução (pendente) não há card de token', () => {
     render(<OpexToolCard part={toolPart({ name: 'create_api_token', group: 'api-tokens', label: 'Gerar token', confirmation: { actionId: 'a1', summary: 'Gerar o token', status: 'pending', error: null } })} />)
     expect(screen.queryByRole('button', { name: 'Copiar token' })).toBeNull()
@@ -313,7 +372,22 @@ describe('seleção de ferramentas na configuração (árvore igual à de permis
     fireEvent.change(screen.getByPlaceholderText('Buscar ferramenta...'), { target: { value: 'token' } })
     expect(screen.getByText('create_api_token')).toBeTruthy()
     expect(screen.getAllByText('integrations.internal_api.tokens').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Sempre confirma').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Destrutiva').length).toBeGreaterThan(0)
     expect(screen.queryByText('list_users')).toBeNull()
+  })
+
+  it('cada ferramenta tem "Pede confirmação" ajustável, gravando só o que difere do padrão', () => {
+    render(<Harness />)
+    fireEvent.change(screen.getByPlaceholderText('Buscar ferramenta...'), { target: { value: 'token' } })
+    const revoke = screen.getByRole('checkbox', { name: 'Revogar token: pede confirmação' }) as HTMLInputElement
+    expect(revoke.checked).toBe(true)
+    fireEvent.click(revoke)
+    expect(current!.confirmationOverrides).toEqual({ revoke_api_token: false })
+    expect(screen.getByText('Ação destrutiva sem confirmação')).toBeTruthy()
+    expect(screen.getByText('· personalizado')).toBeTruthy()
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Revogar token: pede confirmação' }))
+    expect(current!.confirmationOverrides).toEqual({})
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Listar tokens: pede confirmação' }))
+    expect(current!.confirmationOverrides).toEqual({ list_api_tokens: true })
   })
 })

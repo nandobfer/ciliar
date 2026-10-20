@@ -21,6 +21,14 @@ no Ciliar o agente age sempre como o **usuário real autenticado**, com as permi
   tolerante (fuse.js), arquivadas, renomear/arquivar/excluir (`AlertDialog`), virtualizada acima de 50.
 - Streaming de texto e raciocínio ("Pensando…"), cards de ferramenta animados com duração e
   entrada/saída recolhíveis, rodapé com modelo/tokens/duração, Tentar novamente, Parar, Ir para o fim.
+- **"Ver informações técnicas" (`opex.technical`)**, no ramo "Agente Opex" (depende de `opex.use`), vale
+  para **todo chat de agente** do Ciliar (Agente Opex e a entrevista do Agente Entrevistador, que usam os
+  mesmos componentes) pelo hook `useOpexTechnicalDetails` (permissões efetivas, respeita "Visualizar
+  como"). Sem ela: sem o rodapé (modelo, tokens, duração), sem o modelo no cabeçalho do painel, sem o
+  bloco "Raciocínio" (só "Pensando…"), e o card da ferramenta mostra só ícone, rótulo e estado (sem
+  expandir, sem nome técnico, duração ou texto do erro). Erro/interrupção com "Tentar novamente", a
+  confirmação (resumo e botões) e o card do token gerado continuam. **Só na interface** (decisão do
+  produto): a API segue enviando os dados completos.
 - Título e resumo por subagente próprio (ou o principal); turnos em segundo plano (`server/hub.ts`).
 - **Arquivos no chat** pelo Storage S3 com PUT assinado, progresso real, colar/arrastar, limites
   configuráveis (até 50 por mensagem, até 100 MB). Pendentes somem em 24 h pela rotina
@@ -60,6 +68,9 @@ no Ciliar o agente age sempre como o **usuário real autenticado**, com as permi
 - Aba **"Agente Opex"** em `/integracoes/ia?aba=agente-opex` (`AiEditorForm` + `AI_TABS`), salva em
   `ai_feature_settings` (`feature: "opex-agent"`). Ver exige `integrations.ai.view`; salvar,
   `integrations.ai.edit` (botões ocultos sem a permissão; o servidor confere).
+- A aba tem as seções **Geral**, **Ferramentas** e **Memórias** (`AgentSettingsTabs`, `?secao=`; Memórias
+  só com `ai_memories.view`). Geral e Ferramentas são um formulário só: trocar de seção mantém o
+  rascunho e o Salvar de qualquer uma grava tudo (erro de validação volta para Geral).
 - Agente principal e subagente de título (provedor, modelo, variante; temperatura e máximo de
   tokens nos provedores com amostragem), instruções com "Restaurar padrão", política de confirmação,
   **ferramentas** e "Arquivos no chat".
@@ -69,6 +80,13 @@ no Ciliar o agente age sempre como o **usuário real autenticado**, com as permi
   um módulo por grupo, caixa tri-state, contador, busca, risco e permissão exigida em cada folha;
   destrutivas como sensíveis. Grava `disabledTools` (ferramenta nova nasce ligada); nomes fora do
   catálogo dão 400 `OPEX_TOOL_UNKNOWN`. O contexto (`get_app_overview`) é sempre ligado.
+- **Confirmação por ferramenta**: cada folha tem "Pede confirmação" (valor efetivo + "personalizado").
+  Padrão pelo risco (`defaultToolConfirms`): `destructive` pede; `write` só na política "Toda
+  alteração"; `read` não pede. O ajuste fica em `confirmationOverrides` (só o que difere do padrão;
+  `toolConfirms`/`needsConfirmation`), vale para todas as ferramentas, inclusive leitura e destrutivas
+  (decisão do produto; a folha avisa "Ação destrutiva sem confirmação").
+- **Memórias** (card no fim da aba, `AgentMemoriesCard`): instruções permanentes do agente, nas
+  instruções de sistema de cada turno. Ver `ai-memories.md`.
 
 ## Ferramentas
 
@@ -81,6 +99,7 @@ chamando o serviço real com o `AccessContext` revalidado (nunca HTTP).
 | Contexto (sempre) | `get_app_overview` | — |
 | Arquivos do chat | `list_chat_files`, `read_chat_file` | — |
 | Negócios (M1) | `list_businesses`, `get_business`, `get_business_interview`, `update_business`, `restore_business`, `archive_business`*, `delete_business`* (só arquivado) | `businesses.use` (leitura também `businesses.view_all`); não há `create_business` (só pela entrevista) |
+| Memórias dos agentes | `list_agent_memories`, `get_agent_memory`, `create_agent_memory`, `update_agent_memory`, `delete_agent_memory`* (`agent` = enum de `src/features/ai/agents.ts`, inclusive o próprio Agente Opex) | `ai_memories.view` / `ai_memories.edit` |
 | Usuários | `list_users`, `get_user`, `create_user`* (convite sem senha, `sendInvite`), `resend_user_invite`, `update_user`*, `delete_user`* | `users.view/create/edit/delete` |
 | Perfis | `list_permission_catalog`, `list_roles`, `get_role`, `create_role`*, `update_role`* (com `businessLimit`), `reorder_roles`*, `delete_role`* | `roles.view/edit` (+ `users.edit` para membros) |
 | Integrações | `list_integrations`, `get_integration`, `update_integration`*, `test_integration`, `list_integration_logs` | `integrations.{id}.view/edit/test/logs` |
@@ -88,7 +107,7 @@ chamando o serviço real com o `AccessContext` revalidado (nunca HTTP).
 | Rotinas | `list_routines`, `run_routine` | `integrations.crons.view/run` |
 | Plataforma | `get_platform_settings`, `update_platform_settings`* (perfil padrão = autoridade; prazos; documentos), `get_legal_terms`, `update_legal_terms`* (publica nova versão; todos reaceitam) | `integrations.platform.view/edit` |
 
-`*` `destructive` (sempre pede Confirmar/Cancelar). Regra testada: exclusão, credencial, senha,
+`*` `destructive` (por padrão pede Confirmar/Cancelar; ajustável por ferramenta). Regra testada: exclusão, credencial, senha,
 token e mudança de autoridade são destrutivas (`update_*` inclusive: `update_legal_terms` é
 destrutiva porque bloqueia todos os usuários até o novo aceite). `create_user` é um convite sem
 senha (login só Google); `resend_user_invite` é `write`. Nenhuma ferramenta devolve `googleSub`.

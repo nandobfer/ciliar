@@ -15,6 +15,7 @@ import type { InterviewerSettings } from "../../schemas"
 import { businessModels, type InterviewFileRef } from "../models"
 import { interviewerAvailability, loadInterviewerSettings, notifyInterviewerUnavailable } from "../interviewer-settings"
 import { claimInterviewFiles } from "./files"
+import { agentMemoryTexts, memoriesSection } from "@/features/ai/server/agent-memory-service"
 import { activeQuestions, loadInterview, progressContext, resolveInterviewAccess, toInterviewMessageDto, type InterviewDoc, type InterviewMessageDoc, type InterviewScope } from "./state"
 import { buildInterviewTools, interviewToolLabel } from "./tools"
 
@@ -28,12 +29,13 @@ const log = loggerFor({ module: "businesses", feature: "interviewer" })
 const INTERRUPTED = "Interrompido pelo usuário"
 const OPENING = "(Início da entrevista: cumprimente o usuário, diga que os dados poderão ser alterados depois no espaço do negócio e faça a primeira pergunta.)"
 
-function instructionsFor(settings: InterviewerSettings, userName: string): string {
+function instructionsFor(settings: InterviewerSettings, userName: string, memories: readonly string[]): string {
     return [
         settings.instructions,
         "",
         `Usuário: ${userName}. O roteiro, a situação de cada pergunta e a próxima pergunta vêm ao fim de cada mensagem do usuário.`,
         "Cada campo tem a sua ferramenta de gravação (set_name, set_type, set_segment, set_description, set_links, set_availability, set_goals, set_currency, attach_logo); skip_question pula uma opcional e set_subtype grava o subtipo interpretado. Só existem as ferramentas dos campos deste roteiro.",
+        memoriesSection(memories),
     ].join("\n")
 }
 
@@ -164,7 +166,7 @@ async function executeTurn(args: TurnArgs): Promise<void> {
         prepared = await prepareModel({ provider: main.provider!, model: main.model!, variant: main.variant })
         const result = streamText({
             model: prepared.model,
-            instructions: instructionsFor(settings, access.name),
+            instructions: instructionsFor(settings, access.name, await agentMemoryTexts("business-interviewer")),
             messages: history,
             tools,
             stopWhen: isLoopFinished(),

@@ -3,9 +3,9 @@
 import { useEffect } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { useForm } from "react-hook-form"
-import { Can } from "@nandobfer/perfix/react"
+import { Can, usePermissions } from "@nandobfer/perfix/react"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Info, Loader2, RotateCcw, Save, Undo2 } from "lucide-react"
+import { Brain, Info, Loader2, RotateCcw, Save, Settings2, Undo2, Wrench } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field } from "@/components/ui/field"
@@ -21,14 +21,29 @@ import { useOpexSettings, useSaveOpexSettings } from "../../hooks/useOpexSetting
 import { OpexModelCard } from "./OpexModelCard"
 import { OpexFilesCard } from "./OpexFilesCard"
 import { OpexToolsCard } from "./OpexToolsCard"
+import { AgentMemoriesCard } from "@/features/ai/components/memories/AgentMemoriesCard"
+import { AgentSettingsTabs } from "@/features/ai/components/AgentSettingsTabs"
+import type { IntegrationTabDef } from "@/features/integrations/components/tabs/IntegrationTabs"
+
+type OpexSection = "geral" | "ferramentas" | "memorias"
+const SECTIONS: IntegrationTabDef<OpexSection>[] = [
+    { id: "geral", label: "Geral", icon: Settings2 },
+    { id: "ferramentas", label: "Ferramentas", icon: Wrench },
+    { id: "memorias", label: "Memórias", icon: Brain },
+]
 
 const noticeMotion = { initial: { opacity: 0, height: 0 }, animate: { opacity: 1, height: "auto" }, exit: { opacity: 0, height: 0 }, transition: { duration: 0.2 } }
 
-/** Aba "Agente Opex" de `/integracoes/ia`. Configuração do Agente Opex: agente principal, subagente de título e resumo, instruções e ferramentas. */
+/**
+ * Aba "Agente Opex" de `/integracoes/ia`, em seções: Geral (ativo, agente principal, subagente de título
+ * e resumo, instruções e arquivos), Ferramentas (seleção e confirmação) e Memórias (com
+ * `ai_memories.view`). Um único formulário para Geral e Ferramentas: trocar de seção mantém o rascunho.
+ */
 export function OpexAgentTab({ onDirtyChange }: { onDirtyChange: (dirty: boolean) => void }) {
     const query = useOpexSettings()
     const save = useSaveOpexSettings()
     const { providers } = useAiProviderStatuses()
+    const { can } = usePermissions()
     const form = useForm<OpexAgentSettings>({ resolver: zodResolver(opexAgentSettingsSchema), mode: "onChange", defaultValues: DEFAULT_OPEX_AGENT_SETTINGS })
     const dirty = form.formState.isDirty
 
@@ -43,78 +58,103 @@ export function OpexAgentTab({ onDirtyChange }: { onDirtyChange: (dirty: boolean
     if (query.isLoading) return <Skeleton className="h-96 w-full" />
     if (query.isError || !query.data) return <ErrorState title="Não foi possível carregar a configuração" description={apiErrorMessage(query.error, "Tente novamente.")} onRetry={() => void query.refetch()} />
 
-    const availability = query.data.availability
+    const data = query.data
+    const availability = data.availability
     const errors = form.formState.errors
-    const submit = form.handleSubmit(async (values) => {
-        const saved = await save.mutateAsync(values).catch(() => null)
-        if (saved) form.reset(saved.settings)
-    })
+    const tabs = SECTIONS.filter((section) => section.id !== "memorias" || can("ai_memories.view"))
 
-    return (
-        <>
-            <Card>
-                <CardContent className="space-y-3 pt-6">
-                    <FormToggleCard<OpexAgentSettings>
-                        control={form.control}
-                        name="enabled"
-                        id="opex-enabled"
-                        label="Agente Opex"
-                        description="Assistente por chat (item da barra lateral, Ctrl+Shift+O) que executa as funcionalidades do app com ferramentas: usuários, perfis, integrações, tokens da API interna e rotinas, sempre com as permissões de quem conversa"
-                    />
-                    <AnimatePresence initial={false}>
-                        {!dirty && !availability.available && availability.reason && (
-                            <motion.p key="availability" {...noticeMotion} className="flex items-start gap-2 overflow-hidden text-xs text-muted-foreground">
-                                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden /> {availability.reason}
-                            </motion.p>
-                        )}
-                    </AnimatePresence>
-                </CardContent>
-            </Card>
-
-            <OpexModelCard form={form} target="main" providers={providers} title="Agente principal" description="Modelo que conversa e usa as ferramentas. Prefira modelos fortes em uso de ferramentas." />
-            <OpexModelCard form={form} target="title" providers={providers} title="Título e resumo" description="Subagente que atualiza o título e o resumo da sessão a cada turno. Um modelo rápido e barato basta." />
-
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-base">Instruções</CardTitle>
-                    <CardDescription>Prompt de sistema do agente e do subagente. A data/hora atual, o usuário autenticado e a simulação ativa entram sozinhos a cada turno.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-5">
-                    <Field id="opex-instructions" label="Agente principal" error={errors.instructions?.message}>
-                        <Textarea id="opex-instructions" rows={10} className="font-mono text-xs" {...form.register("instructions")} />
-                        <div className="flex justify-end">
-                            <Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={() => form.setValue("instructions", DEFAULT_OPEX_INSTRUCTIONS, { shouldDirty: true, shouldValidate: true })}>
-                                <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Restaurar padrão
-                            </Button>
-                        </div>
-                    </Field>
-                    <Field id="opex-title-instructions" label="Título e resumo" error={errors.titleInstructions?.message}>
-                        <Textarea id="opex-title-instructions" rows={6} className="font-mono text-xs" {...form.register("titleInstructions")} />
-                        <div className="flex justify-end">
-                            <Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={() => form.setValue("titleInstructions", DEFAULT_OPEX_TITLE_INSTRUCTIONS, { shouldDirty: true, shouldValidate: true })}>
-                                <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Restaurar padrão
-                            </Button>
-                        </div>
-                    </Field>
-                </CardContent>
-            </Card>
-
-            <OpexToolsCard form={form} toolCounts={query.data.toolCounts} />
-
-            <OpexFilesCard form={form} />
-
-            {/* Salvar exige `integrations.ai.edit` (o servidor confere de novo). */}
+    const footer = (go: (section: OpexSection) => void) => {
+        // Os campos com validação na tela ficam em Geral: com erro, volta para lá.
+        const submit = form.handleSubmit(
+            async (values) => {
+                const saved = await save.mutateAsync(values).catch(() => null)
+                if (saved) form.reset(saved.settings)
+            },
+            () => go("geral"),
+        )
+        return (
+            // Salvar exige `integrations.ai.edit` (o servidor confere de novo).
             <Can permission="integrations.ai.edit">
                 <div className="flex flex-wrap justify-end gap-2 border-t pt-6">
-                    <Button type="button" variant="outline" className="gap-1.5" disabled={!dirty || save.isPending} onClick={() => form.reset(query.data.settings)}>
+                    <Button type="button" variant="outline" className="gap-1.5" disabled={!dirty || save.isPending} onClick={() => form.reset(data.settings)}>
                         <Undo2 className="h-4 w-4" aria-hidden /> Desfazer
                     </Button>
-                    <Button type="button" data-ctrl-enter-submit className="gap-1.5" disabled={(!dirty && !query.data.isDefault) || save.isPending} onClick={() => void submit()}>
+                    <Button type="button" data-ctrl-enter-submit className="gap-1.5" disabled={(!dirty && !data.isDefault) || save.isPending} onClick={() => void submit()}>
                         {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Save className="h-4 w-4" aria-hidden />}
                         Salvar
                     </Button>
                 </div>
             </Can>
-        </>
+        )
+    }
+
+    return (
+        <AgentSettingsTabs<OpexSection> tabs={tabs} fallback="geral" label="Seções do Agente Opex">
+            {(section, go) => (
+                <>
+                    {section === "geral" && (
+                        <>
+                            <Card>
+                                <CardContent className="space-y-3 pt-6">
+                                    <FormToggleCard<OpexAgentSettings>
+                                        control={form.control}
+                                        name="enabled"
+                                        id="opex-enabled"
+                                        label="Agente Opex"
+                                        description="Assistente por chat (item da barra lateral, Ctrl+Shift+O) que executa as funcionalidades do app com ferramentas: usuários, perfis, integrações, tokens da API interna e rotinas, sempre com as permissões de quem conversa"
+                                    />
+                                    <AnimatePresence initial={false}>
+                                        {!dirty && !availability.available && availability.reason && (
+                                            <motion.p key="availability" {...noticeMotion} className="flex items-start gap-2 overflow-hidden text-xs text-muted-foreground">
+                                                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden /> {availability.reason}
+                                            </motion.p>
+                                        )}
+                                    </AnimatePresence>
+                                </CardContent>
+                            </Card>
+
+                            <OpexModelCard form={form} target="main" providers={providers} title="Agente principal" description="Modelo que conversa e usa as ferramentas. Prefira modelos fortes em uso de ferramentas." />
+                            <OpexModelCard form={form} target="title" providers={providers} title="Título e resumo" description="Subagente que atualiza o título e o resumo da sessão a cada turno. Um modelo rápido e barato basta." />
+
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="text-base">Instruções</CardTitle>
+                                    <CardDescription>Prompt de sistema do agente e do subagente. A data/hora atual, o usuário autenticado e a simulação ativa entram sozinhos a cada turno.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-5">
+                                    <Field id="opex-instructions" label="Agente principal" error={errors.instructions?.message}>
+                                        <Textarea id="opex-instructions" rows={10} className="font-mono text-xs" {...form.register("instructions")} />
+                                        <div className="flex justify-end">
+                                            <Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={() => form.setValue("instructions", DEFAULT_OPEX_INSTRUCTIONS, { shouldDirty: true, shouldValidate: true })}>
+                                                <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Restaurar padrão
+                                            </Button>
+                                        </div>
+                                    </Field>
+                                    <Field id="opex-title-instructions" label="Título e resumo" error={errors.titleInstructions?.message}>
+                                        <Textarea id="opex-title-instructions" rows={6} className="font-mono text-xs" {...form.register("titleInstructions")} />
+                                        <div className="flex justify-end">
+                                            <Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={() => form.setValue("titleInstructions", DEFAULT_OPEX_TITLE_INSTRUCTIONS, { shouldDirty: true, shouldValidate: true })}>
+                                                <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Restaurar padrão
+                                            </Button>
+                                        </div>
+                                    </Field>
+                                </CardContent>
+                            </Card>
+
+                            <OpexFilesCard form={form} />
+                            {footer(go)}
+                        </>
+                    )}
+                    {section === "ferramentas" && (
+                        <>
+                            <OpexToolsCard form={form} toolCounts={data.toolCounts} />
+                            {footer(go)}
+                        </>
+                    )}
+                    {/* Salva sozinho (cada memória grava na hora). */}
+                    {section === "memorias" && <AgentMemoriesCard agentId="opex-agent" />}
+                </>
+            )}
+        </AgentSettingsTabs>
     )
 }

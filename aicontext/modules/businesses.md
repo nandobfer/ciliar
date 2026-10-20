@@ -40,6 +40,10 @@ deixou de valer: o prestador sem painel vai para `/negocios` (`homeHrefOf`).
 
 ## Roteiro e configuração (`/integracoes/ia?aba=agente-entrevistador`)
 
+Seções **Geral** (ativo, modelo e instruções; "Salvar configuração"), **Roteiro** ("Salvar nova versão do
+roteiro", à parte) e **Memórias** (só com `ai_memories.view`), por `AgentSettingsTabs` (`?secao=`). Os
+rascunhos ficam acima das seções: trocar de seção não os descarta.
+
 - Feature `business-interviewer` em `ai_feature_settings`: ativo, `main` (mesmo schema/cartão
   `OpexModelCard` do Opex; provedores com ferramentas: Gemini, Anthropic, OpenAI, DeepSeek) e instruções
   com "Restaurar padrão". `GET/PUT /api/ai/features/business-interviewer` (`integrations.ai.view/edit`).
@@ -77,7 +81,10 @@ deixou de valer: o prestador sem painel vai para `/negocios` (`homeHrefOf`).
   apaga respostas, transcrição e imagens (`interview.discard`).
 - Telas: `InterviewScreen` (onboarding em tela cheia ou `/negocios/novo` dentro do shell), `InterviewChat`
   (componentes do Opex via `OpexScopeOverride` com `apiBase: /interview`; `OpexComposer` e
-  `OpexMessageList` ganharam props opcionais de texto/anexo) e `InterviewProgressPanel`.
+  `OpexMessageList` ganharam props opcionais de texto/anexo) e `InterviewProgressPanel`. A permissão
+  "Ver informações técnicas" (`opex.technical`) vale também aqui (ver `opex-agent.md`).
+- **Memórias** do Entrevistador (`business-interviewer`): card no fim da aba e nas instruções de cada
+  turno (ver `ai-memories.md`).
 
 ## Negócios
 

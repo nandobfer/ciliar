@@ -105,6 +105,7 @@ vi.mock('@/features/opex-agent/server/scope', () => ({
   resolveScopeAccess: mocks.resolveScopeAccess,
 }))
 vi.mock('@/features/opex-agent/server/authorize', () => ({ authorizeOpexTool: vi.fn() }))
+vi.mock('@/features/ai/server/agent-memory-service', () => ({ agentMemoryTexts: async () => ['Responda em pt-BR.'], memoriesSection: (texts: string[]) => texts.map((text) => `- ${text}`).join('\n') }))
 vi.mock('@/features/opex-agent/server/tools/registry', () => ({
   enabledOpexTools: mocks.enabledOpexTools,
   findOpexTool: (name: string) => (name === fakeTool.name ? fakeTool : undefined),

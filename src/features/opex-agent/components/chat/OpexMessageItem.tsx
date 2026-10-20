@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils"
 import type { OpexMessageDto, OpexPart } from "../../types"
 import { OpexMessageFiles } from "./OpexMessageFiles"
 import { OpexToolCard } from "./OpexToolCard"
+import { useOpexTechnicalDetails } from "../../hooks/useOpexTechnicalDetails"
 
 const bubble = { initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.2, ease: "easeOut" as const } }
 
@@ -43,21 +44,24 @@ interface AssistantMessageProps {
 }
 
 function AssistantMessageView({ parts, streaming, thinking, message, onDecide, deciding, onRetry }: AssistantMessageProps) {
-    const empty = parts.length === 0
+    const technical = useOpexTechnicalDetails()
+    // Sem "Ver informações técnicas": sem o raciocínio (só o "Pensando…" enquanto pensa).
+    const visible = technical ? parts : parts.filter((part) => part.type !== "reasoning")
+    const empty = visible.length === 0
     return (
         <motion.div {...bubble} className="flex gap-2.5 pb-4">
             <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary ring-1 ring-primary/40" aria-hidden>
                 <Bot className="h-4 w-4" />
             </span>
             <div className="min-w-0 flex-1 space-y-2">
-                {parts.map((part, index) => {
-                    const last = index === parts.length - 1
+                {visible.map((part, index) => {
+                    const last = index === visible.length - 1
                     if (part.type === "text") return <StreamingText key={index} text={part.text} cursor={Boolean(streaming && last && !thinking)} />
                     if (part.type === "reasoning") return <Reasoning key={index} text={part.text} active={Boolean(streaming && last && thinking)} />
                     return <OpexToolCard key={part.id} part={part} onDecide={onDecide} deciding={deciding} />
                 })}
-                <AnimatePresence>{streaming && (empty || (thinking && parts.at(-1)?.type !== "reasoning")) && <ThinkingIndicator key="thinking" />}</AnimatePresence>
-                {message && <MessageFooter message={message} onRetry={onRetry} />}
+                <AnimatePresence>{streaming && (empty || (thinking && visible.at(-1)?.type !== "reasoning")) && <ThinkingIndicator key="thinking" />}</AnimatePresence>
+                {message && <MessageFooter message={message} onRetry={onRetry} technical={technical} />}
             </div>
         </motion.div>
     )
@@ -128,7 +132,7 @@ function formatSeconds(ms: number): string {
     return `${(ms / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} s`
 }
 
-function MessageFooter({ message, onRetry }: { message: OpexMessageDto; onRetry?: () => void }) {
+function MessageFooter({ message, onRetry, technical }: { message: OpexMessageDto; onRetry?: () => void; technical: boolean }) {
     const tokens = message.usage?.totalTokens
     return (
         <div className="space-y-1.5">
@@ -143,11 +147,13 @@ function MessageFooter({ message, onRetry }: { message: OpexMessageDto; onRetry?
                     )}
                 </div>
             )}
-            <p className="flex flex-wrap gap-x-3 text-[10px] text-muted-foreground/80">
-                {message.model && <span className="font-mono">{message.model}</span>}
-                {tokens != null && <span>{tokens.toLocaleString("pt-BR")} tokens</span>}
-                {message.durationMs != null && <span>{formatSeconds(message.durationMs)}</span>}
-            </p>
+            {technical && (
+                <p className="flex flex-wrap gap-x-3 text-[10px] text-muted-foreground/80">
+                    {message.model && <span className="font-mono">{message.model}</span>}
+                    {tokens != null && <span>{tokens.toLocaleString("pt-BR")} tokens</span>}
+                    {message.durationMs != null && <span>{formatSeconds(message.durationMs)}</span>}
+                </p>
+            )}
         </div>
     )
 }

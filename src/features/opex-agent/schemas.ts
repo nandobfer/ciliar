@@ -53,6 +53,8 @@ export const opexAgentSettingsSchema = z
         /** Ferramentas **desligadas** (a nova nasce ligada); nomes conferidos no catálogo no servidor. */
         disabledTools: z.array(z.string().trim().min(1).max(64)).max(200),
         confirmation: z.enum(OPEX_CONFIRMATION_POLICIES),
+        /** Ajuste por ferramenta (pede ou não confirmação); ausente = padrão pelo risco e pela política. */
+        confirmationOverrides: z.record(z.string().trim().min(1).max(64), z.boolean()),
         files: opexFilesSettingsSchema,
     })
     .superRefine((value, ctx) => {
@@ -74,6 +76,7 @@ export const DEFAULT_OPEX_AGENT_SETTINGS: OpexAgentSettings = {
     titleInstructions: DEFAULT_OPEX_TITLE_INSTRUCTIONS,
     disabledTools: [],
     confirmation: "destructive",
+    confirmationOverrides: {},
     files: { maxPerMessage: OPEX_FILES_PER_MESSAGE_DEFAULT, maxSizeMb: OPEX_FILE_SIZE_MB_DEFAULT },
 }
 

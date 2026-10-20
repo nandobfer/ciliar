@@ -61,7 +61,7 @@ describe('catálogo e registro de ferramentas', () => {
   })
 
   it('só existem ferramentas de negócios, usuários, perfis, integrações (tokens e rotinas), plataforma, arquivos e contexto', () => {
-    expect(OPEX_TOOL_GROUPS).toEqual(['context', 'files', 'businesses', 'users', 'roles', 'integrations', 'api-tokens', 'routines', 'platform'])
+    expect(OPEX_TOOL_GROUPS).toEqual(['context', 'files', 'businesses', 'memories', 'users', 'roles', 'integrations', 'api-tokens', 'routines', 'platform'])
     expect(OPEX_TOOLS.some((tool) => tool.name === 'create_business')).toBe(false)
     expect(OPEX_TOOLS.some((tool) => /task|preview|workbench|central|client|service|finance/.test(tool.name))).toBe(false)
   })
@@ -76,7 +76,8 @@ describe('catálogo e registro de ferramentas', () => {
     // Editar a ficha do próprio negócio não é autoridade nem credencial: `write` (M1).
     const sensitive = OPEX_TOOLS.filter(
       (tool) =>
-        (/^(delete|revoke|create|update|reorder)_/.test(tool.name) && tool.name !== 'update_business') || (/token|password/.test(tool.name) && !/^list_/.test(tool.name)),
+        // Memórias: criar/editar são `write` (a confirmação é ajustável por ferramenta).
+        (/^(delete|revoke|create|update|reorder)_/.test(tool.name) && !['update_business', 'create_agent_memory', 'update_agent_memory'].includes(tool.name)) || (/token|password/.test(tool.name) && !/^list_/.test(tool.name)),
     )
     const risk = (name: string) => findOpexTool(name)!.risk
     expect(['list_businesses', 'get_business', 'get_business_interview'].map(risk)).toEqual(['read', 'read', 'read'])
@@ -150,7 +151,7 @@ describe('ferramentas ligadas e permissões', () => {
   })
 
   it('árvore da configuração: um módulo por grupo, folhas por ferramenta e destrutivas como sensíveis', () => {
-    expect(OPEX_TOOL_TREE.map((branch) => branch.label)).toEqual(['Contexto', 'Arquivos do chat', 'Negócios', 'Usuários', 'Perfis', 'Integrações', 'Tokens da API interna', 'Rotinas', 'Plataforma'])
+    expect(OPEX_TOOL_TREE.map((branch) => branch.label)).toEqual(['Contexto', 'Arquivos do chat', 'Negócios', 'Memórias dos agentes', 'Usuários', 'Perfis', 'Integrações', 'Tokens da API interna', 'Rotinas', 'Plataforma'])
     expect(opexToolTreeCatalog.keys).toEqual(OPEX_TOOL_CATALOG.map((tool) => tool.name))
     const users = OPEX_TOOL_TREE.find((branch) => branch.id === 'tools_users')!
     expect(users.children).toEqual(expect.arrayContaining([expect.objectContaining({ key: 'delete_user', sensitive: true })]))
@@ -162,6 +163,10 @@ describe('ferramentas ligadas e permissões', () => {
     expect(() => normalizeOpexSettings({ ...DEFAULT_OPEX_AGENT_SETTINGS, disabledTools: ['delete_task'] })).toThrow(expect.objectContaining({ status: 400, code: 'OPEX_TOOL_UNKNOWN' }))
     expect(normalizeOpexSettings({ ...DEFAULT_OPEX_AGENT_SETTINGS, disabledTools: ['delete_user', 'delete_user', 'get_app_overview'] }).disabledTools).toEqual(['delete_user'])
     expect((withDefaults({ disabledTools: ['delete_task', 'delete_user'] }) as { disabledTools: string[] }).disabledTools).toEqual(['delete_user'])
+    // Confirmação por ferramenta: salva antiga ganha `{}`; só o que difere do padrão é guardado.
+    expect((withDefaults({ confirmationOverrides: { delete_task: true, list_users: true } }) as { confirmationOverrides: object }).confirmationOverrides).toEqual({ list_users: true })
+    expect(normalizeOpexSettings({ ...DEFAULT_OPEX_AGENT_SETTINGS, confirmationOverrides: { delete_user: true, update_business: true, list_users: false } }).confirmationOverrides).toEqual({ update_business: true })
+    expect(() => normalizeOpexSettings({ ...DEFAULT_OPEX_AGENT_SETTINGS, confirmationOverrides: { delete_task: true } })).toThrow(expect.objectContaining({ code: 'OPEX_TOOL_UNKNOWN' }))
   })
 })
 
@@ -230,11 +235,23 @@ describe('runtime das ferramentas', () => {
     expect(runtime.confirmations.get('c3')).toMatchObject({ actionId: 'a1' })
   })
 
+  it('destrutiva com a confirmação desligada na configuração executa direto', async () => {
+    const requestConfirmation = vi.fn()
+    const runtime = buildToolRuntime([destructive], context, { policy: 'destructive', overrides: { delete_user: false } }, { authorize: async () => accessFixture(), requestConfirmation })
+    await expect((runtime.tools.delete_user as unknown as Executable).execute({ x: 5 }, { toolCallId: 'c4' })).resolves.toEqual({ value: 5 })
+    expect(requestConfirmation).not.toHaveBeenCalled()
+  })
+
   it('política "Toda alteração" confirma as de escrita; leitura nunca', () => {
     const write = { ...fake, risk: 'write' } as OpexTool
     expect(needsConfirmation(write, 'writes')).toBe(true)
     expect(needsConfirmation(write, 'destructive')).toBe(false)
     expect(needsConfirmation(fake, 'writes')).toBe(false)
+    // Ajuste por ferramenta vence o padrão do risco (inclusive leitura e destrutiva).
+    expect(needsConfirmation(write, 'destructive', { [write.name]: true })).toBe(true)
+    expect(needsConfirmation(fake, 'destructive', { [fake.name]: true })).toBe(true)
+    expect(needsConfirmation(findOpexTool('delete_user')!, 'destructive', { delete_user: false })).toBe(false)
+    expect(needsConfirmation(findOpexTool('delete_user')!, 'destructive', { other_tool: false })).toBe(true)
   })
 
   it('saída grande é cortada com aviso', () => {
@@ -252,6 +269,11 @@ describe('canal e rotas do agente', () => {
     expect(isChannelAuthorized(`private-opex-${userId}`, new Set(['admin.access']), userId)).toBe(false)
     expect(parseOpexUserChannel(`private-opex-${userId}`)).toBe(userId)
     expect(opexTabsStorageKey(userId)).toContain(userId)
+  })
+
+  it('"Ver informações técnicas" fica no ramo Agente Opex e depende de usar o chat', () => {
+    expect(accessCatalog.isKnownKey('opex.technical')).toBe(true)
+    expect(accessCatalog.normalizePermissionDependencies(['opex.technical'])).toEqual(expect.arrayContaining(['opex.technical', 'opex.use']))
   })
 
   it('rotas do chat exigem opex.use; a configuração exige ver/editar a integração de IA', () => {

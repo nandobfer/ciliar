@@ -12,7 +12,9 @@
   e resumo, RoleChip e paleta de tokens foram copiados de lá. Nenhum NestJS, bridge ou domínio de clube.
 - Perfix: dependência Git fixada no commit `2ceef0948fcbc99f6943589048b365665912def8`;
   sem link local. Catálogo em `src/features/access/catalog.ts`, sem escopos de dados artificiais.
-  Ramo **Agente Opex** com `opex.use` (usar o chat); a configuração do agente usa
+  Ramo **Agente Opex** com `opex.use` (usar o chat) e `opex.technical` (ver informações técnicas em
+  todo chat de agente; ver `opex-agent.md`); ramo **Memórias dos agentes** com `ai_memories.view` e
+  `ai_memories.edit` (ver `ai-memories.md`); a configuração do agente usa
   `integrations.ai.view`/`integrations.ai.edit`.
 - Auth.js `next-auth@5.0.0-beta.32`, provider **Google** (único) e JWT, sem adapter; `src/auth.ts`.
   Credenciais OAuth no ambiente (`AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET`): o login é pré-requisito

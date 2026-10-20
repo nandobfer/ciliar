@@ -55,7 +55,11 @@ export interface ToolRuntime {
 }
 
 /** Converte as ferramentas do registro em ferramentas da AI SDK (execução no servidor do app). */
-export function buildToolRuntime(list: readonly OpexTool[], context: Omit<OpexToolContext, "access">, policy: OpexConfirmationPolicy, hooks: ToolRuntimeHooks): ToolRuntime {
+/** Política geral de confirmação e o ajuste de cada ferramenta (`confirmationOverrides`). */
+export type ToolConfirmationSettings = OpexConfirmationPolicy | { policy: OpexConfirmationPolicy; overrides: Readonly<Record<string, boolean>> }
+
+export function buildToolRuntime(list: readonly OpexTool[], context: Omit<OpexToolContext, "access">, confirmation: ToolConfirmationSettings, hooks: ToolRuntimeHooks): ToolRuntime {
+    const { policy, overrides } = typeof confirmation === "string" ? { policy: confirmation, overrides: {} } : confirmation
     const confirmations = new Map<string, OpexConfirmationDto>()
     const durations = new Map<string, number>()
     const tools: ToolSet = {}
@@ -68,7 +72,7 @@ export function buildToolRuntime(list: readonly OpexTool[], context: Omit<OpexTo
                 try {
                     const parsed = def.input.parse(input)
                     const access = await hooks.authorize(def, parsed)
-                    if (needsConfirmation(def, policy)) {
+                    if (needsConfirmation(def, policy, overrides)) {
                         const confirmation = await hooks.requestConfirmation(def, parsed, options.toolCallId)
                         confirmations.set(options.toolCallId, confirmation)
                         return {

@@ -6,6 +6,7 @@ import { Bot, History, Maximize2, MessageSquarePlus, Minimize2, X } from "lucide
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { useOpexView } from "../hooks/useOpexSettings"
+import { useOpexTechnicalDetails } from "../hooks/useOpexTechnicalDetails"
 import { useOpexSessions } from "../hooks/useOpexSessions"
 import { OPEX_DRAFT_TAB, useOpexTabs } from "../hooks/useOpexTabs"
 import { OpexChat } from "./chat/OpexChat"
@@ -28,6 +29,7 @@ export function OpexPanel({ maximized, onToggleMaximize, onClose }: OpexPanelPro
     const [handoff, setHandoff] = useState<{ sessionId: string; text: string } | null>(null)
     const byId = useMemo(() => new Map((sessions.data ?? []).map((session) => [session.id, session])), [sessions.data])
     const modelLabel = view.data?.modelLabel ?? null
+    const technical = useOpexTechnicalDetails()
     const active = tabs.active ?? OPEX_DRAFT_TAB
 
     return (
@@ -41,9 +43,9 @@ export function OpexPanel({ maximized, onToggleMaximize, onClose }: OpexPanelPro
                         Agente Opex
                     </p>
                     <AnimatePresence mode="wait" initial={false}>
-                        <motion.p key={modelLabel ?? "none"} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="truncate text-[11px] text-muted-foreground">
+                        {technical && <motion.p key={modelLabel ?? "none"} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="truncate text-[11px] text-muted-foreground">
                             {modelLabel ?? "Sem modelo configurado"}
-                        </motion.p>
+                        </motion.p>}
                     </AnimatePresence>
                 </div>
                 <HeaderButton label={listOpen ? "Fechar a lista de sessões" : "Todas as sessões"} onClick={() => setListOpen((value) => !value)} active={listOpen}>

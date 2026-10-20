@@ -1,10 +1,11 @@
 import type { OpexConfirmationPolicy } from "../../constants"
-import { canUseOpexTool, enabledOpexToolNames } from "../../tool-catalog"
+import { canUseOpexTool, enabledOpexToolNames, toolConfirms } from "../../tool-catalog"
 import type { OpexTool } from "./define"
 import { apiTokenTools } from "./api-tokens"
 import { businessTools } from "./businesses"
 import { contextTools } from "./context"
 import { fileTools } from "./files"
+import { memoryTools } from "./memories"
 import { integrationTools } from "./integrations"
 import { platformTools } from "./platform"
 import { roleTools } from "./roles"
@@ -15,6 +16,7 @@ export const OPEX_TOOLS: readonly OpexTool[] = [
     ...contextTools,
     ...fileTools,
     ...businessTools,
+    ...memoryTools,
     ...userTools,
     ...roleTools,
     ...integrationTools,
@@ -35,6 +37,7 @@ export function enabledOpexTools(disabledTools: readonly string[], permissions: 
     return OPEX_TOOLS.filter((tool) => enabled.has(tool.name) && canUseOpexTool(tool, permissions))
 }
 
-export function needsConfirmation(tool: OpexTool, policy: OpexConfirmationPolicy): boolean {
-    return tool.risk === "destructive" || (policy === "writes" && tool.risk === "write")
+/** Pela política geral e pelo ajuste de cada ferramenta (`confirmationOverrides`). */
+export function needsConfirmation(tool: OpexTool, policy: OpexConfirmationPolicy, overrides: Readonly<Record<string, boolean>> = {}): boolean {
+    return toolConfirms(tool, policy, overrides)
 }

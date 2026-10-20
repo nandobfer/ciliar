@@ -5,7 +5,7 @@ import type { AiFeatureAvailability } from "@/features/ai/types"
 import { getAiProvider } from "@/lib/ai/providers"
 import { OPEX_FEATURE, OPEX_TOOL_GROUPS, type OpexToolGroup } from "../constants"
 import { DEFAULT_OPEX_AGENT_SETTINGS, opexAgentSettingsSchema, type OpexAgentSettings, type OpexMainModel, type OpexTitleModel } from "../schemas"
-import { disabledOpexToolNames, enabledOpexToolNames, isOpexToolName, OPEX_TOOL_CATALOG } from "../tool-catalog"
+import { defaultToolConfirms, disabledOpexToolNames, enabledOpexToolNames, isOpexToolName, OPEX_TOOL_CATALOG } from "../tool-catalog"
 import type { OpexAgentSettingsDto, OpexStatusDto } from "../types"
 
 export async function loadOpexSettings(): Promise<{ settings: OpexAgentSettings; isDefault: boolean; updatedAt: Date | null }> {
@@ -23,6 +23,9 @@ export function withDefaults(saved: unknown): unknown {
         // Nomes que saíram do catálogo deixam de contar.
         disabledTools: (Array.isArray(value.disabledTools) ? value.disabledTools : []).filter((name) => typeof name === "string" && isOpexToolName(name)),
         files: { ...DEFAULT_OPEX_AGENT_SETTINGS.files, ...(value.files ?? {}) },
+        confirmationOverrides: Object.fromEntries(
+            Object.entries(value.confirmationOverrides && typeof value.confirmationOverrides === "object" ? value.confirmationOverrides : {}).filter(([name, flag]) => isOpexToolName(name) && typeof flag === "boolean"),
+        ),
     }
 }
 
@@ -72,7 +75,13 @@ export function normalizeOpexSettings(input: OpexAgentSettings): OpexAgentSettin
     if (unknown.length) throw new DomainError(400, `Ferramenta(s) fora do catálogo: ${unknown.join(", ")}`, "OPEX_TOOL_UNKNOWN")
     // Normaliza pelo catálogo: sem duplicadas e sem as sempre ligadas.
     const disabledTools = disabledOpexToolNames(enabledOpexToolNames(input.disabledTools))
-    return { ...input, main: normalizeMain(input.main), title: normalizeTitle(input.title), disabledTools }
+    const unknownOverrides = Object.keys(input.confirmationOverrides).filter((name) => !isOpexToolName(name))
+    if (unknownOverrides.length) throw new DomainError(400, `Ferramenta(s) fora do catálogo: ${unknownOverrides.join(", ")}`, "OPEX_TOOL_UNKNOWN")
+    // Guarda só o que difere do padrão (mudar a política geral continua valendo para as demais).
+    const confirmationOverrides = Object.fromEntries(
+        Object.entries(input.confirmationOverrides).filter(([name, flag]) => flag !== defaultToolConfirms(OPEX_TOOL_CATALOG.find((tool) => tool.name === name)!.risk, input.confirmation)),
+    )
+    return { ...input, main: normalizeMain(input.main), title: normalizeTitle(input.title), disabledTools, confirmationOverrides }
 }
 
 /** Salva conferindo no catálogo os modelos e variantes do agente e do subagente de título. */

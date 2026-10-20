@@ -26,10 +26,10 @@ const data: IntegrationDetailDto = {
     publicValues: {}, secrets: {}, encryptionKeyConfigured: true, stored: false, health: { status: 'unknown' },
 }
 
-describe('interface copiada, limitada a Provedores e ao Agente Opex', () => {
-    it('mostra as abas Provedores e Agente Opex, com os cards dos provedores navegáveis', () => {
+describe('interface copiada: Provedores, agentes e Resumo', () => {
+    it('mostra as abas Provedores, Agente Opex, Agente Entrevistador e Resumo, com os cards dos provedores navegáveis', () => {
         render(<AiEditorForm def={getIntegrationDef('ai')} data={data} draft={draftFrom(data)} setDraft={vi.fn()} dirty={false} pending={false} onSave={vi.fn()} onUndo={vi.fn()} />)
-        expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Provedores', 'Agente Opex'])
+        expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Provedores', 'Agente Opex', 'Agente Entrevistador', 'Resumo'])
         for (const provider of ['OpenCode', 'Gemini', 'Anthropic', 'OpenAI', 'DeepSeek', 'JEV']) expect(screen.getByRole('link', { name: new RegExp(provider) })).toBeTruthy()
         expect(screen.queryByText('Entender tarefas')).toBeNull()
         expect(screen.queryByText('Desenvolvimento agêntico')).toBeNull()

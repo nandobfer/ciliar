@@ -48,6 +48,10 @@ Leia `aicontext/README.md` e o guia do módulo antes de desenvolver.
      `__tests__/features/opex-agent/` (o teste do catálogo falha se faltar implementação).
 - O agente age sempre como o usuário real: o acesso é revalidado antes de cada ferramenta, respeita
   "Visualizar como" e nunca amplia permissões. Não crie ferramenta que altere a configuração do
-  próprio agente.
+  próprio agente. **Exceção:** as memórias dos agentes (inclusive as do próprio Agente Opex) têm
+  ferramentas (`aicontext/modules/ai-memories.md`).
+- Agente de IA novo com memórias: registre em `src/features/ai/agents.ts`, coloque o
+  `AgentMemoriesCard` na aba dele e acrescente `memoriesSection(await agentMemoryTexts(id))` às
+  instruções do runner.
 - Rode somente testes explicitamente selecionados. Não rode a suíte completa nem build sem pedido.
 - Nunca altere `~/code/opex` ao desenvolver o Ciliar; ele é somente uma referência de leitura.

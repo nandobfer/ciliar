@@ -13,7 +13,8 @@ As interfaces/serviços originais foram copiados: listagem com status, edição 
 teste em NDJSON, logs xterm com busca/maximização, Swagger e explorador, configuração e segredos.
 IA tem a aba **Provedores** (mesmo card e opções gerais), a aba **Agente Opex**
 (`?aba=agente-opex`, ver `opex-agent.md`) e a aba **Agente Entrevistador** (`?aba=agente-entrevistador`,
-modelo, instruções e roteiro versionado; ver `businesses.md`). As páginas dos
+modelo, instruções e roteiro versionado; ver `businesses.md`) e a aba **Resumo** (`?aba=resumo`, formata e
+resume as memórias dos agentes; ver `ai-memories.md`). As abas dos agentes terminam no card **Memórias**. As páginas dos
 provedores preservam Configuração, Modelos e Consumo (Gemini não tem Consumo), sem dados importados.
 
 ## Persistência e segurança

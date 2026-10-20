@@ -15,6 +15,12 @@ export const PERMISSION_TREE = [
     ] },
     { id: "agente_opex", label: "Agente Opex", viewKey: "opex.use", children: [
         { key: "opex.use", label: "Usar o chat do agente" },
+        // Vale para todo chat de agente do Ciliar (Agente Opex e Agente Entrevistador); só na interface.
+        { key: "opex.technical", label: "Ver informações técnicas" },
+    ] },
+    { id: "memorias_agentes", label: "Memórias dos agentes", viewKey: "ai_memories.view", children: [
+        { key: "ai_memories.view", label: "Ver as memórias" },
+        { key: "ai_memories.edit", label: "Criar, editar e excluir memórias", sensitive: true },
     ] },
     // Sem `viewKey`: o suporte (`view_all`) não ganha `businesses.use` (que força a entrevista a quem não tem negócio).
     { id: "negocios", label: "Negócios", children: [
