@@ -2,26 +2,40 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react"
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query"
-import { useEffect } from "react"
+import { useEffect, type ReactNode } from "react"
 import type { SessionDto } from "@/features/access/types"
 
-const state = vi.hoisted(() => ({ session: undefined as SessionDto | undefined, resetPusher: vi.fn(), pathname: "/integracoes" }))
+const state = vi.hoisted(() => ({ session: undefined as SessionDto | undefined, resetPusher: vi.fn(), pathname: "/integracoes", pending: null as Promise<void> | null }))
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn(), refresh: vi.fn() }), usePathname: () => state.pathname }))
 vi.mock("next-auth/react", () => ({ signOut: vi.fn() }))
-vi.mock("@/lib/api", () => ({ api: { get: async () => ({ data: { data: state.session } }), post: vi.fn() }, apiErrorCode: vi.fn(), apiErrorMessage: () => "Erro de acesso" }))
+vi.mock("@/lib/api", () => ({ api: { get: async () => { if (state.pending) await state.pending; return { data: { data: state.session } } }, post: vi.fn() }, apiErrorCode: vi.fn(), apiErrorMessage: () => "Erro de acesso" }))
 vi.mock("@/lib/pusher/client", () => ({ resetPusherClient: state.resetPusher }))
+vi.mock("framer-motion", async () => (await import("../../helpers/framer-motion")).framerMotionMock())
+vi.mock("@tsparticles/react", () => ({ default: () => <div data-testid="particles" />, ParticlesProvider: ({ children }: { children: ReactNode }) => children }))
+vi.mock("@tsparticles/slim", () => ({ loadSlim: vi.fn() }))
 vi.mock("@/features/access/components/ViewAsControls", () => ({ ViewAsControls: () => null }))
 vi.mock("@/features/platform/components/LegalAcceptance", () => ({ LegalAcceptance: () => <p>Aceite obrigatório</p> }))
 import { AccessProvider } from "@/features/access/components/AccessProvider"
 let dataClient: QueryClient
 function Probe() { const client = useQueryClient(); useEffect(() => { dataClient = client }, [client]); return <p>Conteúdo protegido</p> }
 beforeEach(() => {
-    vi.clearAllMocks(); sessionStorage.clear(); state.pathname = "/integracoes"
+    vi.clearAllMocks(); sessionStorage.clear(); state.pathname = "/integracoes"; state.pending = null
     state.session = { user: { id: "a".repeat(24), name: "Pessoa", email: "pessoa@example.test", legalAcceptanceRequired: false, legalVersion: 1 }, access: { permissions: ["*"], roles: [], realIsAdministrator: true, simulation: null } }
 })
 afterEach(cleanup)
 const mount = (root: QueryClient) => render(<QueryClientProvider client={root}><AccessProvider><Probe /></AccessProvider></QueryClientProvider>)
 describe("fronteira de sessão e dados", () => {
+    it("mostra o loading animado enquanto a sessão é validada e só então o conteúdo", async () => {
+        let release!: () => void
+        state.pending = new Promise<void>((resolve) => { release = resolve })
+        mount(new QueryClient({ defaultOptions: { queries: { retry: false } } }))
+        const status = await screen.findByRole("status", { name: "Carregando acesso" })
+        expect(status.textContent).toContain("Ciliar")
+        expect(screen.queryByText("Conteúdo protegido")).toBeNull()
+        await act(async () => { release() })
+        await screen.findByText("Conteúdo protegido")
+        expect(screen.queryByRole("status", { name: "Carregando acesso" })).toBeNull()
+    })
     it("descarta o cache anterior antes de renderizar uma autoridade diferente", async () => {
         const root = new QueryClient({ defaultOptions: { queries: { retry: false } } })
         mount(root); await screen.findByText("Conteúdo protegido")
