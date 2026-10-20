@@ -99,6 +99,7 @@ export function progressOf(doc: InterviewDoc, canDiscard: boolean): InterviewPro
                 ...question,
                 status: answer?.status ?? "pending",
                 display: answer?.status === "answered" ? formatFieldValue(question.field, answer.value, currency) : null,
+                value: answer?.status === "answered" ? (answer.value ?? null) : null,
                 current: doc.status === "in_progress" && next?.field === question.field,
             }
         }),

@@ -89,6 +89,11 @@ export interface InterviewQuestionProgressDto extends InterviewQuestionDef {
     status: InterviewAnswerStatus
     /** Valor coletado, já formatado para exibição. */
     display: string | null
+    /**
+     * Valor gravado (respondida), no formato do campo: texto, `PF`/`PJ`, lista de URLs, dias, metas, moeda
+     * ou `{ fileId, name, mediaType, size }` da logo. Preenche o controle da correção na tela.
+     */
+    value: unknown
     current: boolean
 }
 

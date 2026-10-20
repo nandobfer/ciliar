@@ -79,10 +79,24 @@ rascunhos ficam acima das seções: trocar de seção não os descarta.
   `businesses/{id}/logo/…` antes e removida se falhar), auditoria `business.create` + `interview.complete`.
   A tela leva ao espaço do negócio. **Descartar** só com outro negócio ativo (409 `INTERVIEW_REQUIRED`),
   apaga respostas, transcrição e imagens (`interview.discard`).
-- Telas: `InterviewScreen` (onboarding em tela cheia ou `/negocios/novo` dentro do shell), `InterviewChat`
-  (componentes do Opex via `OpexScopeOverride` com `apiBase: /interview`; `OpexComposer` e
-  `OpexMessageList` ganharam props opcionais de texto/anexo) e `InterviewProgressPanel`. A permissão
-  "Ver informações técnicas" (`opex.technical`) vale também aqui (ver `opex-agent.md`).
+- Telas: `InterviewScreen` (onboarding em tela cheia ou `/negocios/novo` dentro do shell) com o
+  `InterviewWorkspace` (`components/interview/`): **pergunta em foco + ficha do negócio sendo montada**,
+  menos "chat". Mesmo motor do Opex (sessão, stream, uploads via `OpexScopeOverride` com
+  `apiBase: /interview`).
+  - A fala atual do entrevistador (só o texto; sem balão, avatar, ferramentas ou raciocínio) vira o texto
+    da página, com "Você respondeu: …" acima e a etapa "Pergunta N de M" no topo (`currentExchange`).
+  - `InterviewAnswerControl`: um controle por campo (PF/PJ + enquadramento, links, dias e horários,
+    metas com valor/período/recorrência/janela, moeda, área de imagem da logo) que **monta a resposta
+    em texto e envia como mensagem** (`interview-answers.ts`: `composeAnswer`, validação com os mesmos
+    schemas). Quem grava continua sendo a ferramenta do campo. "Pular" envia `SKIP_MESSAGE`. O texto
+    livre (`OpexComposer`) continua abaixo.
+  - `BusinessDraftCard`: a ficha (logo, nome, tipo · subtipo, demais campos) com "agora", "Preencher
+    depois" e o "✓ salvo" ao gravar (no lugar dos cards de ferramenta). Clicar numa resposta abre o
+    controle preenchido (o progresso traz `value`) e envia "Quero corrigir <campo>: <valor>". No
+    celular, a ficha abre em "Ver ficha".
+  - "Ver conversa": a transcrição em texto numa gaveta lateral.
+  - As instruções padrão pedem falas curtas terminando na pergunta e explicam as respostas estruturadas
+    (configuração já salva: "Restaurar padrão" para aplicar).
 - **Memórias** do Entrevistador (`business-interviewer`): card no fim da aba e nas instruções de cada
   turno (ver `ai-memories.md`).
 

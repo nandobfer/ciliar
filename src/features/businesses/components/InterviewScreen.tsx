@@ -17,15 +17,14 @@ import { useAppSession } from "@/features/access/components/AccessProvider"
 import { OpexScopeOverride, type OpexUiScope } from "@/features/opex-agent/components/OpexScopeProvider"
 import { OpexUploadsProvider } from "@/features/opex-agent/hooks/useOpexUploads"
 import { INTERVIEW_QUERY_PREFIX, refreshSession, useBusinesses, useBusinessesRealtime, useDiscardInterview, useInterviewProgress, useInterviewState, useRestoreBusiness, useStartInterview } from "../hooks/useBusinesses"
-import { InterviewChat } from "./InterviewChat"
-import { InterviewProgressPanel } from "./InterviewProgressPanel"
+import { InterviewWorkspace } from "./interview/InterviewWorkspace"
 
 interface InterviewScreenProps {
     /** `onboarding`: tela cheia obrigatória (sem sidebar, só sair). `page`: `/negocios/novo` dentro do shell. */
     mode: "onboarding" | "page"
 }
 
-/** Entrevista do novo negócio: chat central + painel de progresso. Sem formulário de contingência. */
+/** Entrevista do novo negócio: pergunta em foco + ficha do negócio sendo montada. Sem formulário de contingência. */
 export function InterviewScreen({ mode }: InterviewScreenProps) {
     const { session, logout } = useAppSession()
     const userId = session?.user.id ?? "anonimo"
@@ -110,7 +109,7 @@ function InterviewContent({ mode }: InterviewScreenProps) {
             <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                     <h1 className="text-lg font-semibold md:text-2xl">Novo negócio</h1>
-                    <p className="mt-1 text-sm text-muted-foreground">Responda ao Agente Entrevistador: ao fim, o negócio é criado e você vai para o espaço dele.</p>
+                    <p className="mt-1 text-sm text-muted-foreground">Responda às perguntas: ao fim, o negócio é criado e você vai para o espaço dele.</p>
                 </div>
                 {data.canDiscard && (
                     <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setConfirmDiscard(true)}>
@@ -127,12 +126,7 @@ function InterviewContent({ mode }: InterviewScreenProps) {
                     </Button>
                 </div>
             )}
-            <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-                <div className="flex min-h-[420px] flex-col overflow-hidden rounded-xl border bg-popover">
-                    <InterviewChat interviewId={interviewId} maxImageMb={state.data.status.maxImageMb} acceptsImage={data.acceptsImage} completed={data.status === "completed"} />
-                </div>
-                <InterviewProgressPanel progress={data} />
-            </div>
+            <InterviewWorkspace progress={data} maxImageMb={state.data.status.maxImageMb} />
             <AlertDialog open={confirmDiscard} onOpenChange={setConfirmDiscard}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
