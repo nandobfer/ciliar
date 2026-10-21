@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
+import localFont from "next/font/local"
 import "./globals.css"
 import { cn } from "@/lib/utils"
 import { QueryProvider } from "@/lib/react-query/QueryProvider"
@@ -8,7 +8,13 @@ import { MotionProvider } from "@/components/motion/MotionProvider"
 import { CtrlEnterSubmit } from "@/components/ctrl-enter-submit"
 import { EditorModeShortcut } from "@/components/editor-mode-shortcut"
 
-const inter = Inter({ variable: "--font-sans", subsets: ["latin"] })
+const inter = localFont({
+    src: "./fonts/inter-latin-variable.woff2",
+    variable: "--font-sans",
+    weight: "100 900",
+    style: "normal",
+    display: "swap",
+})
 
 /**
  * Sempre renderizado por requisição: o layout lê o ambiente do servidor (dono do app, config do

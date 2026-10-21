@@ -7,12 +7,22 @@ Cópia real do código de `~/code/opex`, não uma recriação visual. Inclui tod
 campos, `globals.css`, configuração Shadcn, Tailwind/PostCSS e o shell/sidebar originais.
 Dependências e versões resolvidas foram mantidas, inclusive bibliotecas do catálogo de UI.
 
-O layout raiz usa Inter, pt-BR, tema escuro fixo, primária `#0B57C4` (azul do crm-marketing-campanhas), TanStack Query, sonner,
+O layout raiz usa Inter **local** (`next/font/local`, `src/app/fonts/inter-latin-variable.woff2`), pt-BR, tema escuro fixo, primária `#0B57C4` (azul do crm-marketing-campanhas), TanStack Query, sonner,
 Framer Motion. A configuração pública do Pusher fica somente no layout autenticado. Sidebar: 68px no desktop, gaveta expandida no
 mobile, mesmo foco/teclado e animações. O símbolo original continua em `public/opex-mark.png`.
 Única exceção ao tema fixo: o **espaço de um negócio** (`/negocios/[id]/…`, M2) aplica a cor primária e o modo
 claro/escuro do negócio (`html.light` em `globals.css`, `BusinessThemeController`); ver `business-space.md`.
 Marca textual e metadados: Ciliar. Preferências/eventos locais usam namespace `ciliar`.
+
+### Fonte sem rede no build
+
+Inter variável Latin, normal, pesos 100–900, `display: swap`, token `--font-sans` preservado.
+O WOFF2 oficial e a licença SIL OFL 1.1 estão versionados em `src/app/fonts/` (origem no README
+da pasta). Não usar `next/font/google`: ele baixa CSS/fontes durante `next build` e causava
+falhas intermitentes de conexão com `fonts.googleapis.com` no Docker. A fonte local é empacotada
+pelo Next e servida pelo próprio app; nenhum download de fonte é necessário no build ou no
+navegador. Instalação de dependências/imagens Docker continua dependendo de rede quando sem cache.
+Teste de regressão: `__tests__/app/local-font.test.ts`.
 
 O header de Visualizar como é a exceção explícita: copiado do Shekinah, fica na coluna de conteúdo
 ao lado da sidebar. Seletor em popover, faixa somente durante simulação. Componentes de listagem,
