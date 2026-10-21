@@ -136,6 +136,47 @@
     --chart-6: #fbbf24;
     color-scheme: dark;
   }
+
+  /*
+   * Modo CLARO, só no espaço de um negócio com o tema claro (o <html> troca `.dark` por `.light`).
+   * Tokens copiados do `:root` do ~/code/sipal/crm-marketing-campanhas (o Opex não tem modo claro).
+   * A sidebar fica neutra (decisão do produto): fundo do card, acento/borda dos tokens claros.
+   */
+  html.light {
+    --background: 0 0% 98%;
+    --foreground: 0 0% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+    --primary: 215 89% 41%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 215 89% 41%;
+    --sidebar: 0 0% 100%;
+    --sidebar-foreground: 0 0% 10%;
+    --sidebar-primary: 215 89% 41%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 240 5.9% 90%;
+    --chart-1: #0b57c4;
+    --chart-2: #2f8fd8;
+    --chart-3: #4b3fb3;
+    --chart-4: #7aa7e0;
+    --chart-5: #2fa6a0;
+    --chart-6: #8f6fd6;
+    color-scheme: light;
+  }
 }
 
 @layer base {

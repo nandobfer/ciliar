@@ -40,11 +40,12 @@ no Ciliar o agente age sempre como o **usuário real autenticado**, com as permi
 
 - **Sessões privadas do usuário real** (`opex_sessions.userId`): sessão de outro usuário responde
   **404**. Não há portal do cliente nem escopo de cliente.
-- **Escopo do servidor** (`server/scope.ts`): `{ userId, viewAsHeader, sessionVersion }` da
-  requisição. O acesso nunca é guardado pronto: `resolveScopeAccess` relê conta ativa, versão da
+- **Escopo do servidor** (`server/scope.ts`): `{ userId, viewAsHeader, sessionVersion, timeZone? }` da
+  requisição (`timeZone` = fuso do navegador, `x-ciliar-timezone`, usado no progresso das metas). O
+  acesso nunca é guardado pronto: `resolveScopeAccess` relê conta ativa, versão da
   sessão de login, perfis e simulação (`resolveAccess`) e exige `opex.use` (desde o M1 sem
-  `admin.access`: o prestador também conversa). As ferramentas fora dos grupos `context`, `files` e
-  `businesses` exigem também `admin.access` (`canUseOpexTool`).
+  `admin.access`: o prestador também conversa). As ferramentas fora dos grupos `context`, `files`,
+  `businesses` e `business-*` (M2) exigem também `admin.access` (`canUseOpexTool`).
 - **Antes de cada ferramenta** (`server/authorize.ts`): relê o acesso, confere que o agente segue
   ativo e a ferramenta segue ligada, confere as permissões do catálogo e as que dependem da entrada
   (`authorize` da ferramenta, ex.: `integrations.{id}.edit`). A execução roda em
@@ -98,7 +99,11 @@ chamando o serviço real com o `AccessContext` revalidado (nunca HTTP).
 |---|---|---|
 | Contexto (sempre) | `get_app_overview` | — |
 | Arquivos do chat | `list_chat_files`, `read_chat_file` | — |
-| Negócios (M1) | `list_businesses`, `get_business`, `get_business_interview`, `update_business`, `restore_business`, `archive_business`*, `delete_business`* (só arquivado) | `businesses.use` (leitura também `businesses.view_all`); não há `create_business` (só pela entrevista) |
+| Negócios (M1/M2) | `list_businesses`, `get_business`, `get_business_interview`, `update_business` (ficha, tema, contato, prazos, `removeLogo`), `set_business_logo` (imagem do chat), `restore_business`, `archive_business`*, `delete_business`* (só arquivado) | `businesses.use` (leitura também `businesses.view_all`); não há `create_business` (só pela entrevista) |
+| Atividades do negócio (M2) | `list_activities`, `get_activity` (histórico do valor/hora), `create_activity`, `update_activity`, `restore_activity`, `archive_activity`*, `delete_activity`* | `businesses.use` (leitura também `businesses.view_all`) |
+| Metas do negócio (M2) | `list_goals` (atual + linha do tempo), `get_current_goal`, `get_goal_progress` (fuso do navegador do turno), `create_goal` (nova atual; a anterior vai para o histórico), `update_goal` (nova versão), `restore_goal` (arquivada → atual), `archive_goal`* (a anterior volta a valer), `delete_goal`* (só arquivada) | idem |
+| Documentos do negócio (M2) | `list_documents`, `get_document`, `create_document` (arquivo do chat copiado para o negócio), `update_document` (metadados), `restore_document`, `archive_document`*, `delete_document`* | idem |
+| Sucessos do negócio (M2) | `list_successes`, `get_success`, `create_success` (`fileIds` do chat), `update_success` (`addFileIds`/`removeAttachmentIds`), `restore_success`, `archive_success`*, `delete_success`* | idem |
 | Memórias dos agentes | `list_agent_memories`, `get_agent_memory`, `create_agent_memory`, `update_agent_memory`, `delete_agent_memory`* (`agent` = enum de `src/features/ai/agents.ts`, inclusive o próprio Agente Opex) | `ai_memories.view` / `ai_memories.edit` |
 | Usuários | `list_users`, `get_user`, `create_user`* (convite sem senha, `sendInvite`), `resend_user_invite`, `update_user`*, `delete_user`* | `users.view/create/edit/delete` |
 | Perfis | `list_permission_catalog`, `list_roles`, `get_role`, `create_role`*, `update_role`* (com `businessLimit`), `reorder_roles`*, `delete_role`* | `roles.view/edit` (+ `users.edit` para membros) |

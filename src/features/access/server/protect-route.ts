@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { auth } from "@/auth"
 import { DomainError, withRoute, type RouteArgs } from "@/lib/api/route"
 import { logger } from "@/lib/logger"
+import { normalizeTimeZone, TIME_ZONE_HEADER } from "@/lib/timezone"
 import { assertMutationOrigin } from "@/features/auth/server/origin"
 import { resolveAccess, requirePermissions } from "./access"
 import { requestAccess } from "./context"
@@ -23,6 +24,7 @@ export function protectRoute<P>(handler: (request: NextRequest, context: P) => P
             const path = request.nextUrl.pathname
             if (!["GET", "HEAD", "OPTIONS"].includes(request.method)) assertMutationOrigin(request)
             const context = await resolveAccess(session.user.id, request.headers.get("x-perfix-view-as") ?? "none", null, session.user.sessionVersion)
+            context.timeZone = normalizeTimeZone(request.headers.get(TIME_ZONE_HEADER))
             // Própria conta: sessão e aceite dos termos. Não exige `admin.access` (cadastro público).
             const ownAccount = path === "/api/me" || path === "/api/me/legal" || path === "/api/me/legal/accept"
             if (context.legalAcceptanceRequired && !ownAccount) throw new DomainError(403, "Aceite os termos de uso e a política de privacidade para continuar", "TERMS_ACCEPTANCE_REQUIRED")

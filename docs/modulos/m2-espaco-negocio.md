@@ -3,12 +3,24 @@
 Núcleo de cada negócio. Só o dono acessa (e quem tem `businesses.view_all`, auditado). Tudo que a
 tela faz também é feito pelo **Agente Opex** com ferramentas.
 
+## Navegação
+
+Com um negócio aberto, a barra lateral mostra as páginas do espaço (Dashboard, Ficha, Atividades,
+Metas, Documentos e Sucessos) abaixo do seletor de negócio (P47; a Entrevista saiu, P55). Criar e editar itens é
+feito em diálogo sobre a lista (P54). Negócio arquivado abre somente leitura, com "Restaurar" (P53).
+
 ## 1. Página inicial: Dashboard
 
-- Progresso das metas ativas (atingido × alvo).
-- Trabalhos por coluna do Kanban (quando o M4 existir).
-- Faturamento recente (trabalhos em "Pago", quando o M4 existir).
-- Até M3/M4, o dashboard mostra só as metas (com progresso zero) e atalhos do espaço.
+- Período no topo (como no Opex): **Mês atual** (padrão), 3, 6 ou 12 meses (P57).
+- Indicadores: faturamento bruto no período, meta atual (% atingido), atividades ativas, valor/hora médio,
+  documentos e sucessos no período.
+- A meta atual numa linha inteira: progresso (atingido × alvo), quanto falta e dias restantes (P63).
+- Gráficos: faturamento bruto × a meta mensal que valia em cada mês, valor por hora das atividades,
+  evolução do valor/hora, sucessos no período e atividades/documentos por categoria. A primeira cor
+  dos gráficos segue a cor primária do negócio (P56). Os de faturamento aparecem desde já, vazios até
+  existirem trabalhos pagos (M4, P58).
+- Atalhos do espaço numa coluna à direita.
+- Trabalhos por coluna do Kanban entram com o M4.
 
 ## 2. Ficha do negócio (CRUD)
 
@@ -25,7 +37,7 @@ Editada por **formulário** (padrão de telas do `~/code/opex`) **e** pelo Agent
 | Site e redes | Lista de URLs. |
 | Disponibilidade | Dias da semana + janela de horário por dia; tudo opcional. |
 | Moeda | BRL padrão; BRL, USD, EUR… |
-| Contato comercial | E-mail e telefone, opcionais; e-mail da conta como padrão. Exibido no link do orçamento (M3). |
+| Contato comercial | E-mail e telefone, opcionais; sem e-mail, vale o e-mail atual da conta (P51). Exibido no link do orçamento (M3). |
 | Antecedência do alerta de prazo | Dias; padrão 3 (M3). |
 | Validade padrão do link do orçamento | Dias; padrão 15 (M3). |
 
@@ -38,7 +50,8 @@ pedidos/trabalhos; valores já cadastrados (atividades, metas) **não são conve
 Cada negócio define sua **cor primária** e o **modo claro/escuro** (padrão: `#0B57C4`, escuro).
 Referência de implementação: `~/code/sipal/crm-marketing-campanhas/src/lib/companies/theme.ts`.
 
-- Sobrescreve `--primary`, `--primary-foreground`, `--ring` e os tokens derivados da sidebar no
+- Sobrescreve `--primary`, `--primary-foreground`, `--ring` e os destaques da sidebar
+  (`--sidebar-primary`, `--sidebar-primary-foreground`; o fundo da sidebar continua neutro, P49) no
   contêiner do layout do negócio **e** como regra `:root` (para diálogos, popovers, tooltips e toasts
   renderizados no `<body>`).
 - Foreground escolhido por **contraste WCAG ≥ 4,5:1** (branco ou quase-preto); cor inválida ou sem
@@ -46,7 +59,8 @@ Referência de implementação: `~/code/sipal/crm-marketing-campanhas/src/lib/co
 - Valores CSS gerados **somente** a partir da cor validada (nunca do texto digitado): sem injeção de CSS.
 - Pré-visualização ao vivo na edição.
 - **Modo claro**: o Ciliar só tem tokens escuros; os tokens claros são copiados do `~/code/opex`
-  (se houver) ou do `~/code/sipal/crm-marketing-campanhas`, sem alterar o restante da UI.
+  (se houver) ou do `~/code/sipal/crm-marketing-campanhas`, sem alterar o restante da UI. Com o espaço
+  aberto, o `<html>` troca `.dark` por `.light` (P48).
 - **Onde vale**: todo o **espaço do negócio**, **portfólio público** (M5), **link do orçamento** (M3)
   e **e-mails** do negócio (orçamento).
 - **Telas globais** (`/clientes`, `/negocios`, visão geral de trabalhos, administração, entrevista)
@@ -69,8 +83,15 @@ Referência de implementação: `~/code/sipal/crm-marketing-campanhas/src/lib/co
 
 ## 4. Metas (somente faturamento bruto)
 
-- **Várias metas livres** por negócio, cada uma com nome opcional, valor alvo (moeda do negócio) e
-  período.
+- **Uma meta ativa por negócio** (P59), com nome opcional, valor alvo (moeda do negócio) e período.
+  - **Criar** uma meta: ela vira a atual e a anterior vai para o **histórico** (somente leitura, P60).
+  - **Editar** a atual cria uma **nova versão**; a versão anterior fica no histórico (P61).
+  - **Arquivar** a atual: a anterior (a substituída mais recente) volta a valer; sem anterior, o negócio
+    fica sem meta (P62). **Restaurar** uma arquivada faz dela a atual.
+  - Metas do histórico não podem ser editadas, arquivadas nem excluídas e não expiram; o prazo de
+    exclusão automática vale só para as arquivadas.
+  - A tela mostra a meta atual e, à direita, a **linha do tempo** (atual, novas versões, substituídas
+    e arquivadas, com os períodos em que cada uma valeu).
 - **Período**:
   - **Mês** ou **Ano**: **recorrente** (vale todo mês/ano, mostra o período corrente e o histórico)
     **ou** **específico** (ex.: março/2027, ano 2027) — o usuário escolhe.
@@ -80,6 +101,7 @@ Referência de implementação: `~/code/sipal/crm-marketing-campanhas/src/lib/co
   pela **data do pagamento** (M4).
 - **Meta por hora** = faturamento bruto da janela ÷ **horas apontadas** (realizadas) nesses trabalhos.
   Sem horas apontadas, o progresso fica indisponível (não divide por zero).
+- O mês/ano corrente segue o **fuso do navegador** do usuário; sem ele, `America/Sao_Paulo` (P50).
 
 ## 5. Documentos
 
@@ -119,7 +141,8 @@ negócios, atividades, metas, documentos e sucessos têm cada um o seu (dias).
 
 ## 8. Transcrição da entrevista
 
-Visível ao dono (somente leitura) no espaço do negócio.
+Sem página no espaço do negócio (P55): fica disponível pela API (somente leitura) e pelo Agente Opex
+(`get_business_interview`).
 
 ## 9. Permissões
 
@@ -130,11 +153,12 @@ leitura**: nunca altera dados de terceiros). Limites e prazos: `integrations.{pl
 
 | Grupo | Ferramentas | Risco |
 |---|---|---|
-| Negócio | `update_business` | write |
+| Negócio | `update_business` (inclusive tema, contato, prazos e remover a logo) | write |
+| | `set_business_logo` (imagem enviada no chat, P52) | write |
 | Atividades | `list_activities`, `get_activity` (com histórico de preço) | read |
 | | `create_activity`, `update_activity` | write |
 | | `archive_activity`, `restore_activity`, `delete_activity` | destructive / write / destructive |
-| Metas | `list_goals`, `get_goal_progress` | read |
+| Metas | `list_goals`, `get_current_goal`, `get_goal_progress` | read |
 | | `create_goal`, `update_goal` | write |
 | | `archive_goal`, `restore_goal`, `delete_goal` | destructive / write / destructive |
 | Documentos | `list_documents`, `get_document` | read |

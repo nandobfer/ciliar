@@ -11,6 +11,8 @@ export interface NavItemDef {
     href: string
     icon: LucideIcon
     badge?: NavBadgeKey
+    /** `false`: o Next não rola até o segmento novo (o layout que troca as páginas cuida da rolagem). */
+    scroll?: boolean
 }
 
 /**

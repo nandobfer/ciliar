@@ -1,5 +1,8 @@
 # Negócios e Agente Entrevistador (M1)
 
+> O espaço de cada negócio (ficha, tema, atividades, metas, documentos, sucessos e transcrição) está em
+> [`business-space.md`](business-space.md) (M2).
+
 Regras de produto em `docs/modulos/m1-entrevistador-negocio.md`. Código em `src/features/businesses`
 (puro: `constants.ts`, `schemas.ts`, `format.ts`, `types.ts`; servidor em `server/`; telas em
 `components/`). Um negócio só nasce pela entrevista: não há formulário nem `create_business`.
@@ -71,7 +74,8 @@ rascunhos ficam acima das seções: trocar de seção não os descarta.
   `set_currency`, `attach_logo` (só dos campos ativos), `skip_question` (recusa obrigatória) e
   `set_subtype`. O servidor valida pelo Zod do campo (URL, PF/PJ, HH:mm início < fim, metas) e o erro
   volta ao modelo, que pede de novo; corrigir = gravar de novo.
-- **Metas** (estrutura do M2, `business_goals`): faturamento bruto, `targetCents`, período hora/mês/ano;
+- **Meta** (estrutura do M2, `business_goals`): **uma só** (`goalsSchema` max 1; uma meta ativa por
+  negócio — ver `business-space.md`); faturamento bruto, `targetCents`, período hora/mês/ano;
   mês/ano recorrente ou específico; hora com janela mês/ano (recorrente ou específico) ou intervalo — o
   usuário decide, o agente não escolhe.
 - **Conclusão** (`complete.ts`): respondida a última pergunta, o negócio é criado direto na
@@ -86,7 +90,7 @@ rascunhos ficam acima das seções: trocar de seção não os descarta.
   - A fala atual do entrevistador (só o texto; sem balão, avatar, ferramentas ou raciocínio) vira o texto
     da página, com "Você respondeu: …" acima e a etapa "Pergunta N de M" no topo (`currentExchange`).
   - `InterviewAnswerControl`: um controle por campo (PF/PJ + enquadramento, links, dias e horários,
-    metas com valor/período/recorrência/janela, moeda, área de imagem da logo) que **monta a resposta
+    metas com valor/período/recorrência/janela, moeda, área de imagem da logo — `LogoDropzone`, compartilhada com a Ficha do M2) que **monta a resposta
     em texto e envia como mensagem** (`interview-answers.ts`: `composeAnswer`, validação com os mesmos
     schemas). Quem grava continua sendo a ferramenta do campo. "Pular" envia `SKIP_MESSAGE`. O texto
     livre (`OpexComposer`) continua abaixo.
@@ -107,10 +111,10 @@ rascunhos ficam acima das seções: trocar de seção não os descarta.
   `version` otimista. Editar/arquivar/restaurar/excluir só pelo dono efetivo.
 - `/negocios` (cards, arquivados com a data da exclusão automática, restaurar, excluir definitivamente
   com confirmação explícita), seletor no topo da sidebar (`BusinessSwitcher`, slot `sidebarHeaderItems`
-  do `AppShell`; "Novo negócio" indisponível no limite) e `/negocios/[id]` (placeholder "Em
-  desenvolvimento" até o M2; a transcrição na tela entra no M2).
+  do `AppShell`; "Novo negócio" indisponível no limite) e `/negocios/[id]`: o **espaço do negócio** (M2,
+  ver `business-space.md`).
 - Rotina nativa **`businesses-purge`** (60 min): exclui os arquivados há mais de
-  `retentionDays.businesses` (com metas, entrevista e objetos no S3; auditoria `business.purge` com ator
+  `retentionDays.businesses` (com todos os itens do espaço, arquivos, entrevista e objetos no S3; auditoria `business.purge` com ator
   `system:businesses-purge`) e as imagens pendentes da entrevista com mais de 24 h.
 - Tempo real: `businesses-updated` `{ id }` em `private-businesses-{userId}` (só o próprio usuário com
   `businesses.use`).

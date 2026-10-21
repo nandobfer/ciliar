@@ -2,6 +2,7 @@ import axios, { type AxiosInstance } from "axios"
 import { withBasePath } from "@/lib/base-path"
 import type { ApiResponse } from "@/lib/types/api"
 import { getViewAsHeaderValue } from "@nandobfer/perfix/react"
+import { browserTimeZone, TIME_ZONE_HEADER } from "@/lib/timezone"
 
 /**
  * Cliente HTTP do navegador. `baseURL` é `/api` (com o subcaminho público, se houver): chame os
@@ -17,6 +18,7 @@ const api: AxiosInstance = axios.create({
 api.interceptors.request.use(config => {
     if (!config.headers.has("x-perfix-view-as")) config.headers.set("x-perfix-view-as", getViewAsHeaderValue())
     config.headers.set("x-ciliar-request", "1")
+    if (typeof window !== "undefined") config.headers.set(TIME_ZONE_HEADER, browserTimeZone())
     return config
 })
 api.interceptors.response.use(response => response, error => {

@@ -54,7 +54,7 @@ async function answerAll(call: ReturnType<typeof tools>, name = "Studio Aurora")
     await call("skip_question", { field: "logo" })
     await call("set_links", { links: ["studioaurora.com.br"] })
     await call("set_availability", { days: [{ weekday: 1, start: "09:00", end: "18:00" }, { weekday: 3 }] })
-    return call("set_goals", { goals: [{ targetCents: 500000, period: "month", mode: "recurring" }, { targetCents: 15000, period: "hour", measure: "range", from: "2027-01-01", to: "2027-06-30" }] })
+    return call("set_goals", { goals: [{ targetCents: 15000, period: "hour", measure: "range", from: "2027-01-01", to: "2027-06-30" }] })
 }
 
 beforeAll(async () => {
@@ -94,6 +94,8 @@ describe("entrevista e criação do negócio", () => {
         await expect(call("set_availability", { days: [{ weekday: 1, start: "18:00", end: "09:00" }] })).rejects.toThrow(/antes do fim/)
         await expect(call("set_goals", { goals: [{ targetCents: 1000, period: "hour" }] })).rejects.toThrow(/janela de medição/)
         await expect(call("set_goals", { goals: [{ targetCents: 1000, period: "month", mode: "specific" }] })).rejects.toThrow(/AAAA-MM/)
+        // Uma meta por negócio.
+        await expect(call("set_goals", { goals: [{ targetCents: 1000, period: "month", mode: "recurring" }, { targetCents: 2000, period: "year", mode: "recurring" }] })).rejects.toThrow(/Uma meta por negócio/)
         await call("set_name", { name: "Nome errado" })
         const result = await answerAll(call)
         expect(result).toMatchObject({ completed: true, businessName: "Studio Aurora" })
@@ -103,10 +105,8 @@ describe("entrevista e criação do negócio", () => {
         const detail = await getBusinessDetail(ana, interview.businessId!)
         expect(detail).toMatchObject({ name: "Studio Aurora", number: 1, type: "PJ", subtype: "MEI", segment: "Fotografia", links: ["https://studioaurora.com.br"], currency: "BRL", status: "active", logo: null })
         expect(detail.availability).toEqual([{ weekday: 1, start: "09:00", end: "18:00" }, { weekday: 3, start: null, end: null }])
-        expect(detail.goals).toEqual([
-            expect.objectContaining({ period: "month", mode: "recurring", targetCents: 500000, month: null }),
-            expect.objectContaining({ period: "hour", measure: "range", mode: null, from: "2027-01-01", to: "2027-06-30" }),
-        ])
+        expect(detail.goals).toEqual([expect.objectContaining({ period: "hour", measure: "range", mode: null, from: "2027-01-01", to: "2027-06-30" })])
+        expect(await business.goals.findOne({ businessId: detail.id }).lean()).toMatchObject({ status: "active", activePeriods: [{ to: null }] })
         expect(await onboardingState(ana)).toMatchObject({ required: false })
         expect(await access.audits.countDocuments({ action: "business.create", actorId: ana.userId })).toBe(1)
         const transcript = await businessInterviewTranscript(ana, detail.id)

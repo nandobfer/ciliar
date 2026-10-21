@@ -1,8 +1,8 @@
 "use client"
 
-import { useRef, useState, type KeyboardEvent, type ReactNode } from "react"
+import { useState, type KeyboardEvent, type ReactNode } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { ArrowRight, ImagePlus, Loader2, Plus, RotateCcw, SkipForward, Trash2, X } from "lucide-react"
+import { ArrowRight, Loader2, Plus, RotateCcw, SkipForward, Trash2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DatePicker } from "@/components/ui/date-picker"
 import { IconAction } from "@/components/ui/icon-action"
@@ -16,6 +16,7 @@ import { TimePicker } from "@/components/ui/time-picker"
 import { cn } from "@/lib/utils"
 import type { OpexUploadItem } from "@/features/opex-agent/hooks/useOpexUploads"
 import { BUSINESS_TYPE_LABELS, BUSINESS_TYPES, CURRENCIES, INTERVIEW_IMAGE_MIMES, WEEKDAY_LABELS, type BusinessField, type Currency, type GoalMeasure, type GoalMode, type GoalPeriod } from "../../constants"
+import { LogoDropzone } from "../LogoDropzone"
 import { answerError, composeAnswer, draftFrom, emptyGoal, LOGO_MESSAGE, type AnswerDraft, type AnswerDrafts, type GoalDraft } from "../../interview-answers"
 
 type TextField = Exclude<BusinessField, "logo">
@@ -62,7 +63,7 @@ const MODE_OPTIONS: { value: GoalMode; label: string }[] = [
     { value: "specific", label: "Específica" },
 ]
 
-function currencySymbol(currency: string): string {
+export function currencySymbol(currency: string): string {
     try {
         return new Intl.NumberFormat("pt-BR", { style: "currency", currency }).formatToParts(0).find((part) => part.type === "currency")?.value ?? currency
     } catch {
@@ -141,7 +142,7 @@ function FieldControl({ field, value, subtype, currency, required, disabled, sub
             {field === "type" && <TypeControl draft={draft as AnswerDrafts["type"]} onChange={set} disabled={disabled} />}
             {field === "links" && <LinksControl draft={draft as string[]} onChange={set} disabled={disabled} />}
             {field === "availability" && <AvailabilityControl draft={draft as AnswerDrafts["availability"]} onChange={set} disabled={disabled} />}
-            {field === "goals" && <GoalsControl draft={draft as GoalDraft[]} onChange={set} disabled={disabled} currency={currency} />}
+            {field === "goals" && <GoalsControl single draft={draft as GoalDraft[]} onChange={set} disabled={disabled} currency={currency} />}
             {field === "currency" && (
                 <Select value={draft as Currency} onValueChange={(next) => set(next as Currency)} disabled={disabled}>
                     <SelectTrigger className="h-12 w-full max-w-xs text-base" aria-label="Moeda">
@@ -194,13 +195,18 @@ function TypeControl({ draft, onChange, disabled }: { draft: AnswerDrafts["type"
     )
 }
 
-function LinksControl({ draft, onChange, disabled }: { draft: string[]; onChange: (next: string[]) => void; disabled: boolean }) {
+/**
+ * Lista de links. `autoFocus` (padrão, entrevista): o último campo recebe o foco ao abrir. Sem ele (Ficha),
+ * nada é focado ao abrir (o navegador rolaria até o campo); só o campo criado por "Adicionar link".
+ */
+export function LinksControl({ draft, onChange, disabled, autoFocus = true }: { draft: string[]; onChange: (next: string[]) => void; disabled: boolean; autoFocus?: boolean }) {
+    const [added, setAdded] = useState(false)
     return (
         <div className="space-y-2">
             {draft.map((link, index) => (
                 <div key={index} className="flex items-center gap-2">
                     <Input
-                        autoFocus={index === draft.length - 1}
+                        autoFocus={(autoFocus || added) && index === draft.length - 1}
                         aria-label={`Link ${index + 1}`}
                         placeholder="instagram.com/seunegocio"
                         value={link}
@@ -210,14 +216,24 @@ function LinksControl({ draft, onChange, disabled }: { draft: string[]; onChange
                     {draft.length > 1 && <IconAction icon={Trash2} label={`Remover link ${index + 1}`} tone="danger" onClick={() => onChange(draft.filter((_, position) => position !== index))} />}
                 </div>
             ))}
-            <Button type="button" variant="outline" size="sm" className="gap-1.5" disabled={disabled} onClick={() => onChange([...draft, ""])}>
+            <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                disabled={disabled}
+                onClick={() => {
+                    setAdded(true)
+                    onChange([...draft, ""])
+                }}
+            >
                 <Plus className="h-4 w-4" aria-hidden /> Adicionar link
             </Button>
         </div>
     )
 }
 
-function AvailabilityControl({ draft, onChange, disabled }: { draft: AnswerDrafts["availability"]; onChange: (next: AnswerDrafts["availability"]) => void; disabled: boolean }) {
+export function AvailabilityControl({ draft, onChange, disabled }: { draft: AnswerDrafts["availability"]; onChange: (next: AnswerDrafts["availability"]) => void; disabled: boolean }) {
     const byDay = new Map(draft.map((day) => [day.weekday, day]))
     const toggle = (weekday: number) => {
         if (byDay.has(weekday)) onChange(draft.filter((day) => day.weekday !== weekday))
@@ -268,7 +284,8 @@ function AvailabilityControl({ draft, onChange, disabled }: { draft: AnswerDraft
     )
 }
 
-function GoalsControl({ draft, onChange, disabled, currency }: { draft: GoalDraft[]; onChange: (next: GoalDraft[]) => void; disabled: boolean; currency: string }) {
+/** Meta (entrevista e espaço do negócio): uma meta por negócio; `single` esconde adicionar/remover. */
+export function GoalsControl({ draft, onChange, disabled, currency, single = false }: { draft: GoalDraft[]; onChange: (next: GoalDraft[]) => void; disabled: boolean; currency: string; single?: boolean }) {
     const update = (index: number, patch: Partial<GoalDraft>) => onChange(draft.map((goal, position) => (position === index ? { ...goal, ...patch } : goal)))
     const thisYear = new Date().getFullYear()
     const years = Array.from({ length: 6 }, (_, offset) => thisYear + offset)
@@ -287,7 +304,7 @@ function GoalsControl({ draft, onChange, disabled, currency }: { draft: GoalDraf
                                 <MoneyInput id={`goal-${index}-value`} prefix={currencySymbol(currency)} value={goal.targetCents / 100} disabled={disabled} onChange={(next) => update(index, { targetCents: Math.round(next * 100) })} />
                             </div>
                             <OptionTabs<GoalPeriod> aria-label={`Meta ${index + 1}: período`} options={PERIOD_OPTIONS} value={goal.period} onChange={(period) => update(index, { period })} disabled={disabled} />
-                            {draft.length > 1 && <IconAction icon={Trash2} label={`Remover meta ${index + 1}`} tone="danger" onClick={() => onChange(draft.filter((_, position) => position !== index))} />}
+                            {!single && draft.length > 1 && <IconAction icon={Trash2} label={`Remover meta ${index + 1}`} tone="danger" onClick={() => onChange(draft.filter((_, position) => position !== index))} />}
                         </div>
                         {goal.period === "hour" && (
                             <div className="space-y-1.5">
@@ -327,9 +344,11 @@ function GoalsControl({ draft, onChange, disabled, currency }: { draft: GoalDraf
                     </div>
                 )
             })}
-            <Button type="button" variant="outline" size="sm" className="gap-1.5" disabled={disabled} onClick={() => onChange([...draft, emptyGoal()])}>
-                <Plus className="h-4 w-4" aria-hidden /> Adicionar meta
-            </Button>
+            {!single && (
+                <Button type="button" variant="outline" size="sm" className="gap-1.5" disabled={disabled} onClick={() => onChange([...draft, emptyGoal()])}>
+                    <Plus className="h-4 w-4" aria-hidden /> Adicionar meta
+                </Button>
+            )}
         </div>
     )
 }
@@ -354,54 +373,21 @@ function YearSelect({ label, years, value, onChange, disabled }: { label: string
 
 /** Logo/foto: área de soltar ou escolher a imagem (envio direto ao storage, como no chat). */
 function LogoControl({ required, disabled, submitLabel, onSubmit, onSkip, logo }: InterviewAnswerControlProps) {
-    const input = useRef<HTMLInputElement>(null)
-    const [dragging, setDragging] = useState(false)
     const item = logo.items.at(-1) ?? null
     const uploading = item?.status === "uploading" || item?.status === "confirming"
     const ready = logo.ready.length > 0
     const error = ready ? null : item?.status === "error" ? (item.error ?? "Falha no envio") : "Escolha uma imagem"
     return (
         <div className="space-y-3">
-            <button
-                type="button"
+            <LogoDropzone
+                previewUrl={item?.previewUrl}
+                name={item?.name}
+                hint={`PNG, JPEG, WebP ou GIF · até ${logo.maxImageMb} MB`}
+                accept={INTERVIEW_IMAGE_MIMES}
+                uploading={uploading}
+                progress={item?.progress ?? 0}
                 disabled={disabled}
-                onClick={() => input.current?.click()}
-                onDragOver={(event) => {
-                    event.preventDefault()
-                    setDragging(true)
-                }}
-                onDragLeave={() => setDragging(false)}
-                onDrop={(event) => {
-                    event.preventDefault()
-                    setDragging(false)
-                    logo.onFiles(Array.from(event.dataTransfer.files))
-                }}
-                className={cn("flex w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-6 text-center transition-colors", dragging ? "border-primary bg-primary/10" : "hover:border-primary/50 hover:bg-muted/30", disabled && "cursor-not-allowed opacity-60")}
-            >
-                {item?.previewUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element -- prévia local (blob)
-                    <img src={item.previewUrl} alt="Prévia da imagem" className="h-28 w-28 rounded-xl object-cover" />
-                ) : (
-                    <ImagePlus className="h-8 w-8 text-primary" aria-hidden />
-                )}
-                <span className="text-sm font-medium">{item ? item.name : "Solte a imagem aqui ou clique para escolher"}</span>
-                <span className="text-xs text-muted-foreground">PNG, JPEG, WebP ou GIF · até {logo.maxImageMb} MB</span>
-                {uploading && (
-                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground" role="status">
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> Enviando… {Math.round(item!.progress)}%
-                    </span>
-                )}
-            </button>
-            <input
-                ref={input}
-                type="file"
-                hidden
-                accept={INTERVIEW_IMAGE_MIMES.join(",")}
-                aria-label="Escolher a imagem do negócio"
-                onChange={(event) => {
-                    logo.onFiles(Array.from(event.target.files ?? []))
-                    event.target.value = ""
-                }}
+                onFiles={logo.onFiles}
             />
             {item && (
                 <div className="flex justify-end gap-2">

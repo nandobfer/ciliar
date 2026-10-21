@@ -7,6 +7,8 @@ export interface AccessContext {
     legalAcceptanceRequired: boolean; legalVersion: number;
     roles: RoleDto[]; realRoles: RoleDto[]; effective: ReadonlySet<string>; realEffective: ReadonlySet<string>;
     dto: AccessDto; viewAsHeader: string;
+    /** Fuso do navegador da requisição (`x-ciliar-timezone`; padrão São Paulo). Só nas rotas protegidas. */
+    timeZone?: string;
 }
 export const requestAccess = new AsyncLocalStorage<AccessContext>()
 export function currentAccess() {

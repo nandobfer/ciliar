@@ -26,15 +26,10 @@ export function routePermissions(path: string, method: string): string[] {
     if (path === "/api/ai/features/opex-agent" || path === "/api/ai/features/summary" || path === "/api/ai/features/business-interviewer" || path === "/api/ai/features/business-interviewer/script") return [method === "GET" ? "integrations.ai.view" : "integrations.ai.edit"]
     // Memórias dos agentes: o agente é conferido no catálogo pelo serviço.
     if (/^\/api\/ai\/agents\/[a-z][a-z-]{0,40}\/memories(?:\/[a-f\d]{24})?$/i.test(path)) return [method === "GET" ? "ai_memories.view" : "ai_memories.edit"]
-    // Negócios (M1): leitura confere dono/suporte no serviço; alterações só do dono (`businesses.use`).
+    // Negócios (M1) e espaço do negócio (M2): leitura confere dono/suporte no serviço; alterações só do dono (`businesses.use`).
     if (path === "/api/businesses") return [] // requireAny no handler (use ou view_all)
     if (path === "/api/businesses/search") return ["businesses.view_all"]
-    const business = /^\/api\/businesses\/[a-f\d]{24}(?:\/(archive|restore|logo|interview))?$/i.exec(path)
-    if (business) {
-        const tail = business[1]
-        if (!tail) return method === "GET" ? [] : ["businesses.use"]
-        return tail === "logo" || tail === "interview" ? [] : ["businesses.use"]
-    }
+    if (/^\/api\/businesses\/[a-f\d]{24}(?:\/(?:archive|restore|logo|interview|dashboard|categories)|\/(?:activities|goals|documents|successes|files)(?:\/[a-f\d]{24}(?:\/(?:archive|restore|complete))?)?)?$/i.test(path)) return method === "GET" ? [] : ["businesses.use"]
     if (/^\/api\/interview(?:\/|$)/.test(path)) return ["businesses.use"]
     if (path === "/api/docs" || path === "/api/openapi.json") return ["integrations.internal_api.view"]
     const provider = /^\/api\/ai\/providers\/([^/]+)\/(?:models|usage)$/.exec(path)

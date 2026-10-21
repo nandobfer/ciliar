@@ -284,9 +284,13 @@ export function registerBuiltInJobs(): void {
     registerInternalJob(BUSINESSES_PURGE_JOB_ID, async () => {
         const { purgeArchivedBusinesses } = await import("@/features/businesses/server/businesses")
         const { cleanupPendingInterviewFiles } = await import("@/features/businesses/server/interview/files")
+        const { purgeArchivedItems } = await import("@/features/businesses/server/items")
+        const { cleanupPendingBusinessFiles } = await import("@/features/businesses/server/files")
         const purged = await purgeArchivedBusinesses()
+        const items = await purgeArchivedItems()
         const images = await cleanupPendingInterviewFiles()
-        return images ? `${purged}; ${images} imagem(ns) pendente(s) da entrevista removida(s)` : purged
+        const files = await cleanupPendingBusinessFiles()
+        return [purged, items, images ? `${images} imagem(ns) pendente(s) da entrevista removida(s)` : null, files ? `${files} arquivo(s) pendente(s) do espaço removido(s)` : null].filter(Boolean).join("; ")
     })
 }
 

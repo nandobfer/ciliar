@@ -31,7 +31,7 @@ describe('base do Ciliar com controle de acesso', () => {
         expect(DEFAULT_CRON_JOBS).toEqual([
             { id: 'integrations-health-check', label: 'Verificação de status das integrações', kind: 'internal', enabled: true, schedule: { type: 'interval', minutes: 5 } },
             { id: 'opex-files-cleanup', label: 'Limpar arquivos pendentes do chat do Agente Opex', kind: 'internal', enabled: true, schedule: { type: 'interval', minutes: 60 } },
-            { id: 'businesses-purge', label: 'Excluir definitivamente os negócios arquivados após o prazo', kind: 'internal', enabled: true, schedule: { type: 'interval', minutes: 60 } },
+            { id: 'businesses-purge', label: 'Excluir definitivamente os negócios e itens arquivados após o prazo', kind: 'internal', enabled: true, schedule: { type: 'interval', minutes: 60 } },
         ])
         expect(withBuiltInJobs([])).toEqual(DEFAULT_CRON_JOBS)
         const schema = buildIntegrationUpdateSchema(getIntegrationDef('crons'))

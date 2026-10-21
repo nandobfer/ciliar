@@ -34,3 +34,5 @@ export const OPEX_CHANNEL_PREFIX = "private-opex-"
 export const businessesChannel = (userId: string) => `private-businesses-${userId}`
 
 export const BUSINESSES_UPDATED_EVENT = "businesses-updated"
+/** Itens do espaço do negócio (M2) no mesmo canal; payload `{ businessId, kind }` — só invalidação. */
+export const BUSINESS_SPACE_UPDATED_EVENT = "business-space-updated"

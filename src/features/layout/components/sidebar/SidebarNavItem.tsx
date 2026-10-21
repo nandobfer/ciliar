@@ -31,6 +31,7 @@ export function SidebarNavItem({ item, href, active, collapsed, badgeCount, redu
             <SidebarTooltip label={item.label} enabled={collapsed}>
                 <Link
                     href={href}
+                    scroll={item.scroll}
                     onClick={onNavigate}
                     aria-label={collapsed ? item.label : undefined}
                     aria-current={active ? "page" : undefined}

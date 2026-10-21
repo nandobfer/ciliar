@@ -50,7 +50,7 @@ Nenhuma pendência. Todos os módulos (M0–M5) estão definidos.
 | P36 | M0 | Prazo padrão de exclusão definitiva: 30 dias por tipo (1 a 3650). |
 | P37 | M0 | Convite por e-mail marcado por padrão quando há SMTP; "Reenviar convite" para convites pendentes. |
 | P38 | M0 | Até o M1, quem entra sem `admin.access` vê "Sem acesso" depois do aceite. (Superada no M1: o prestador vai para `/negocios`.) |
-| P39 | M1 | O espaço do negócio (`/negocios/[id]`) é um aviso "Em desenvolvimento" até o M2; a transcrição na tela entra com ele. |
+| P39 | M1 | O espaço do negócio (`/negocios/[id]`) é um aviso "Em desenvolvimento" até o M2; a transcrição na tela entra com ele. (Superada no M2: o espaço e a transcrição estão implementados.) |
 | P40 | M1 | Prestador sem `admin.access` usa Negócios e o Agente Opex (só `opex.use`); ferramentas administrativas seguem exigindo o painel. |
 | P41 | M1 | Onboarding obrigatório também no servidor: 403 `ONBOARDING_REQUIRED`. |
 | P42 | M1 | IA indisponível: e-mail (SMTP, no máximo 1/h) a quem tem `integrations.ai.edit` + aviso na aba do Entrevistador. |
@@ -58,3 +58,21 @@ Nenhuma pendência. Todos os módulos (M0–M5) estão definidos.
 | P44 | M1 | Na simulação de usuário, as ações de negócio agem sobre o alvo como dono (auditoria com o ator real); na de perfil, o dono é o admin real; o onboarding segue as permissões simuladas. |
 | P45 | M1 | Sem negócio ativo e com arquivados: entrevista obrigatória, com a opção de restaurar um arquivado. |
 | P46 | M1 | Metas da entrevista: o usuário decide recorrência/período específico e a janela da meta por hora (estrutura do M2). |
+| P47 | M2 | As páginas do espaço (Dashboard, Ficha, Atividades, Metas, Documentos, Sucessos, Entrevista) ficam como itens da barra lateral, abaixo do seletor de negócio. |
+| P48 | M2 | Modo claro: com o espaço aberto, o `<html>` troca `.dark` por `.light`; ao sair, volta ao escuro. |
+| P49 | M2 | O tema muda só os destaques (primária, foreground, anel e destaque da sidebar); o fundo da sidebar continua neutro (diferente do crm). |
+| P50 | M2 | O mês/ano corrente das metas segue o fuso do navegador; sem ele (ou inválido), `America/Sao_Paulo`. |
+| P51 | M2 | Contato comercial sem e-mail usa o e-mail atual da conta do dono (não é copiado). |
+| P52 | M2 | O Agente Opex troca a logo a partir de uma imagem do chat (`set_business_logo`) e a remove por `update_business`. |
+| P53 | M2 | Negócio arquivado: o espaço abre somente leitura, com aviso e "Restaurar". |
+| P54 | M2 | Criar/editar atividades, metas, documentos e sucessos em diálogo sobre a lista. |
+| P55 | M2 | A página da transcrição da entrevista saiu do espaço do negócio (e da barra lateral); a transcrição segue pela API e pelo Agente Opex. |
+| P56 | M2 | A primeira cor dos gráficos (`--chart-1`) segue a cor primária do negócio; as demais ficam fixas. |
+| P57 | M2 | O dashboard tem o seletor de período do Opex: Mês atual (padrão), 3, 6 ou 12 meses, guardado no navegador. |
+| P58 | M2 | Todos os gráficos sugeridos entram; os de faturamento aparecem vazios até existirem trabalhos pagos (M4). |
+| P59 | M2 | Uma meta ativa por negócio; criar uma meta nova tira a atual de vigor (índice único no banco). |
+| P60 | M2 | Metas substituídas ficam no histórico somente para leitura (sem editar, arquivar, restaurar ou excluir) e não expiram; o prazo de exclusão vale só para as arquivadas. |
+| P61 | M2 | Editar a meta atual cria uma nova versão; a versão anterior fica no histórico. |
+| P62 | M2 | Arquivar a meta atual reativa a substituída mais recente; sem anterior, o negócio fica sem meta. Restaurar uma arquivada faz dela a atual. |
+| P63 | M2 | Página de Metas: a meta atual + linha do tempo à direita (sem filtros/lista); no dashboard, a meta atual numa linha inteira e sem o gráfico "Progresso das metas ativas". |
+| P64 | M1 | A entrevista coleta uma meta só; entrevistas antigas com várias: a última fica ativa e as demais no histórico. |

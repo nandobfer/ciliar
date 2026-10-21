@@ -3,6 +3,10 @@ import { canUseOpexTool, enabledOpexToolNames, toolConfirms } from "../../tool-c
 import type { OpexTool } from "./define"
 import { apiTokenTools } from "./api-tokens"
 import { businessTools } from "./businesses"
+import { businessActivityTools } from "./business-activities"
+import { businessGoalTools } from "./business-goals"
+import { businessDocumentTools } from "./business-documents"
+import { businessSuccessTools } from "./business-successes"
 import { contextTools } from "./context"
 import { fileTools } from "./files"
 import { memoryTools } from "./memories"
@@ -16,6 +20,10 @@ export const OPEX_TOOLS: readonly OpexTool[] = [
     ...contextTools,
     ...fileTools,
     ...businessTools,
+    ...businessActivityTools,
+    ...businessGoalTools,
+    ...businessDocumentTools,
+    ...businessSuccessTools,
     ...memoryTools,
     ...userTools,
     ...roleTools,

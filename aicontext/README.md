@@ -13,6 +13,7 @@ ganhou o Agente Opex (chat com ferramentas) copiado do Opex.
 - [Agente Opex](modules/opex-agent.md): chat com ferramentas, sessões, arquivos, confirmações e catálogo.
 - [Memórias dos agentes e Resumo](modules/ai-memories.md): instruções permanentes por agente, formatadas pelo uso "Resumo".
 - [Negócios e Agente Entrevistador](modules/businesses.md) (M1): entrevista guiada, roteiro versionado, limite por perfil, onboarding e arquivamento.
+- [Espaço do negócio](modules/business-space.md) (M2): dashboard com período e gráficos, ficha com tema por negócio, atividades com histórico de preço, metas com progresso, documentos e sucessos.
 - [Docker e deploy](modules/deployment.md): infraestrutura copiada, Compose dev/produção e ambiente.
 
 Leia também `AGENTS.md`. Alterações devem manter este contexto e testes Vitest atualizados.

@@ -49,7 +49,7 @@ O roteiro é **totalmente configurável** pelo admin em `/integracoes/ia` (aba *
 | 4 | Logo/foto (upload) | Não |
 | 5 | Site e redes sociais (links) | Não |
 | 6 | Disponibilidade | Não |
-| 7 | Metas iniciais | Não |
+| 7 | Meta inicial | Não |
 
 ## 4. Campos nativos do Negócio usados no roteiro
 
@@ -62,7 +62,7 @@ O roteiro é **totalmente configurável** pelo admin em `/integracoes/ia` (aba *
 | Logo/foto | Imagem enviada no chat (Storage S3). |
 | Site e redes | Lista de links (URL válida). |
 | Disponibilidade | Opcional em tudo: dias da semana e, por dia, janela de horário (início–fim). |
-| Metas iniciais | Lista de metas (estrutura abaixo). |
+| Meta inicial | **Uma** meta (estrutura abaixo; uma meta ativa por negócio, P64). |
 | Moeda | **BRL por padrão**, não perguntada no roteiro padrão; editável no espaço do negócio. O admin pode incluir a pergunta "Moeda" no roteiro. |
 
 **Meta** (mesma estrutura do módulo Metas, M2): somente **faturamento bruto**, com valor alvo e

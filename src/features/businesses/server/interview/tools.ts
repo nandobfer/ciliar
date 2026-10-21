@@ -105,7 +105,7 @@ const fieldInputs: Record<Exclude<BusinessField, "logo">, { input: ZodType; valu
         }),
         value: (input: { goals: unknown[] }) => input.goals,
         schema: goalsSchema,
-        description: "Grava as metas iniciais (só faturamento bruto), com o que o usuário decidiu: valor, período e recorrência/janela. Substitui a lista inteira.",
+        description: "Grava a meta inicial (UMA só por negócio, somente faturamento bruto), com o que o usuário decidiu: valor, período e recorrência/janela. Informe uma lista com exatamente uma meta.",
     },
     currency: { input: z.object({ currency: z.enum(CURRENCIES) }), value: (input: { currency: string }) => input.currency, schema: currencySchema, description: "Grava a moeda do negócio (ISO 4217)." },
 }

@@ -3,7 +3,6 @@ import { opexMainModelSchema } from "@/features/opex-agent/schemas"
 import {
     BUSINESS_DESCRIPTION_MAX,
     BUSINESS_FIELDS,
-    BUSINESS_GOALS_MAX,
     BUSINESS_LINKS_MAX,
     BUSINESS_NAME_MAX,
     BUSINESS_TYPES,
@@ -16,6 +15,7 @@ import {
     INTERVIEW_MESSAGE_MAX,
     INTERVIEW_PROMPT_MAX,
 } from "./constants"
+import { businessThemeSchema, contactEmailSchema, contactPhoneSchema, deadlineAlertDaysSchema, quoteValidityDaysSchema } from "./space-schemas"
 
 /** Valores dos campos nativos do Negócio — mesmas regras na entrevista, na API e no Agente Opex. */
 
@@ -107,12 +107,19 @@ export const goalSchema = z
         }
     })
 export type BusinessGoalInput = z.output<typeof goalSchema>
-export const goalsSchema = z.array(goalSchema).min(1, "Informe ao menos uma meta").max(BUSINESS_GOALS_MAX, `Até ${BUSINESS_GOALS_MAX} metas`)
+/** Meta da entrevista: uma só por negócio (lista de um item, como o campo `goals` do roteiro). */
+export const goalsSchema = z.array(goalSchema).min(1, "Informe a meta").max(1, "Uma meta por negócio")
 
 export type AvailabilityDay = z.output<typeof availabilityDaySchema>
 
-/** Edição da ficha (tela futura do M2 e Agente Opex). Só os campos informados mudam. */
+/** Edição da ficha (tela do M2 e Agente Opex). Só os campos informados mudam. */
 export const businessUpdateSchema = z.strictObject({
+    theme: businessThemeSchema.optional(),
+    /** `null` = usa o e-mail da conta do dono. */
+    contactEmail: contactEmailSchema.nullable().optional(),
+    contactPhone: contactPhoneSchema.nullable().optional(),
+    deadlineAlertDays: deadlineAlertDaysSchema.optional(),
+    quoteValidityDays: quoteValidityDaysSchema.optional(),
     name: z.string().trim().max(BUSINESS_NAME_MAX).optional(),
     type: businessTypeSchema.nullable().optional(),
     subtype: businessSubtypeSchema.nullable().optional(),

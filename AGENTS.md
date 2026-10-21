@@ -8,7 +8,9 @@ Leia `aicontext/README.md` e o guia do módulo antes de desenvolver.
 - Tema escuro fixo, primária `#0B57C4` (azul do crm-marketing-campanhas), cores por tokens. Shadcn/Radix, Tailwind 4, lucide-react,
   sonner, date-fns e Framer Motion (respeitando movimento reduzido).
 - Escopo atual: Integrações, Usuários, Perfis, Visualizar como, o Agente Opex (chat com
-  ferramentas), a Plataforma (M0) e Negócios + Agente Entrevistador (M1), por solicitação do usuário.
+  ferramentas), a Plataforma (M0), Negócios + Agente Entrevistador (M1) e o Espaço do negócio (M2),
+  por solicitação do usuário. Exceção ao tema fixo: o espaço de um negócio usa a cor e o modo do
+  negócio (`aicontext/modules/business-space.md`).
 - Auth.js nativo no Next, **somente Google** (sem e-mail/senha). Cadastro público com o perfil
   padrão da Plataforma, convite (pré-cadastro do e-mail) e vínculo automático por e-mail verificado.
   Aceite versionado dos termos/política é conferido no servidor. Toda API administrativa exige

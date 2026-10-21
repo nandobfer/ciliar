@@ -1,6 +1,6 @@
 import mongoose, { Schema, type Connection, type Types } from "mongoose"
 import type { OpexMessageStatus, OpexPart, OpexUsageDto } from "@/features/opex-agent/types"
-import type { BusinessField, BusinessStatus, BusinessType, Currency, GoalMeasure, GoalMode, GoalPeriod, InterviewQuestionDef } from "../constants"
+import type { BusinessField, BusinessFilePurpose, BusinessStatus, BusinessThemeMode, BusinessType, Currency, GoalMeasure, GoalMode, GoalPeriod, GoalStatus, GoalSupersedeReason, InterviewQuestionDef } from "../constants"
 import type { InterviewStatus } from "../types"
 
 /**
@@ -10,6 +10,7 @@ import type { InterviewStatus } from "../types"
 
 export interface BusinessLogo { key: string; name: string; mediaType: string; size: number }
 export interface AvailabilityDay { weekday: number; start: string | null; end: string | null }
+export interface BusinessTheme { primaryColor: string; mode: BusinessThemeMode }
 
 export interface BusinessRecord {
     /** Dono (um único usuário por negócio). */
@@ -25,6 +26,15 @@ export interface BusinessRecord {
     links: string[]
     availability: AvailabilityDay[]
     currency: Currency
+    /** Tema do espaço, portfólio, link do orçamento e e-mails do negócio (M2). */
+    theme: BusinessTheme
+    /** Contato comercial (M2/M3). `contactEmail` vazio = e-mail da conta do dono. */
+    contactEmail: string | null
+    contactPhone: string | null
+    /** Antecedência do alerta de prazo (M3), em dias. */
+    deadlineAlertDays: number
+    /** Validade padrão do link do orçamento (M3), em dias. */
+    quoteValidityDays: number
     status: BusinessStatus
     archivedAt: Date | null
     interviewId: string | null
@@ -35,6 +45,7 @@ export interface BusinessRecord {
     updatedAt: Date
 }
 
+const themeSchema = new Schema<BusinessTheme>({ primaryColor: { type: String, default: "#0B57C4" }, mode: { type: String, enum: ["dark", "light"], default: "dark" } }, { _id: false })
 const logoSchema = new Schema<BusinessLogo>({ key: String, name: String, mediaType: String, size: Number }, { _id: false })
 const availabilitySchema = new Schema<AvailabilityDay>({ weekday: Number, start: { type: String, default: null }, end: { type: String, default: null } }, { _id: false })
 
@@ -51,6 +62,11 @@ const businessSchema = new Schema<BusinessRecord>(
         links: { type: [String], default: [] },
         availability: { type: [availabilitySchema], default: [] },
         currency: { type: String, default: "BRL" },
+        theme: { type: themeSchema, default: () => ({ primaryColor: "#0B57C4", mode: "dark" }) },
+        contactEmail: { type: String, default: null },
+        contactPhone: { type: String, default: null },
+        deadlineAlertDays: { type: Number, default: 3 },
+        quoteValidityDays: { type: Number, default: 15 },
         status: { type: String, enum: ["active", "archived"], default: "active" },
         archivedAt: { type: Date, default: null },
         interviewId: { type: String, default: null },
@@ -75,11 +91,23 @@ export interface BusinessGoalRecord {
     year: number | null
     from: string | null
     to: string | null
-    status: BusinessStatus
+    status: GoalStatus
     archivedAt: Date | null
+    /** Períodos em que a meta foi a ativa (`to: null` = ativa agora). */
+    activePeriods: GoalActivePeriod[]
+    supersededAt: Date | null
+    supersededBy: string | null
+    supersededReason: GoalSupersedeReason | null
+    version: number
     createdBy: string
+    updatedBy: string | null
     createdAt: Date
     updatedAt: Date
+}
+
+export interface GoalActivePeriod {
+    from: Date
+    to: Date | null
 }
 
 const goalSchema = new Schema<BusinessGoalRecord>(
@@ -95,13 +123,186 @@ const goalSchema = new Schema<BusinessGoalRecord>(
         year: { type: Number, default: null },
         from: { type: String, default: null },
         to: { type: String, default: null },
-        status: { type: String, enum: ["active", "archived"], default: "active" },
+        status: { type: String, enum: ["active", "superseded", "archived"], default: "active" },
         archivedAt: { type: Date, default: null },
+        activePeriods: { type: [{ _id: false, from: { type: Date, required: true }, to: { type: Date, default: null } }], default: [] },
+        supersededAt: { type: Date, default: null },
+        supersededBy: { type: String, default: null },
+        supersededReason: { type: String, enum: ["new", "edit", "restore"], default: null },
+        version: { type: Number, default: 0 },
         createdBy: { type: String, required: true },
+        updatedBy: { type: String, default: null },
     },
     { collection: "business_goals", timestamps: true, versionKey: false },
 )
 goalSchema.index({ businessId: 1, status: 1 })
+// O índice único "uma meta ativa por negócio" NÃO fica no schema (o autoIndex falharia com dados antigos):
+// `ensureGoalIndexes` (migração de boot) normaliza os dados e só então o cria.
+goalSchema.index({ status: 1, archivedAt: 1 })
+
+// ── Espaço do negócio (M2) ──────────────────────────────────────────────────────
+
+/** Campos comuns dos itens do espaço (arquivamento como o do negócio + versão otimista). */
+interface ItemBase {
+    businessId: string
+    ownerId: string
+    status: BusinessStatus
+    archivedAt: Date | null
+    version: number
+    createdBy: string
+    updatedBy: string
+    createdAt: Date
+    updatedAt: Date
+}
+const itemBase = {
+    businessId: { type: String, required: true },
+    ownerId: { type: String, required: true },
+    status: { type: String, enum: ["active", "archived"], default: "active" as BusinessStatus },
+    archivedAt: { type: Date, default: null },
+    version: { type: Number, default: 0 },
+    createdBy: { type: String, required: true },
+    updatedBy: { type: String, required: true },
+}
+
+export interface BusinessActivityRecord extends ItemBase {
+    name: string
+    description: string | null
+    category: string | null
+    /** Valor por hora em unidades mínimas da moeda do negócio. */
+    hourlyRateCents: number
+    /** Inativa não aparece em novos pedidos (M3); mantém o histórico. */
+    active: boolean
+}
+const activitySchema = new Schema<BusinessActivityRecord>(
+    {
+        ...itemBase,
+        name: { type: String, required: true },
+        description: { type: String, default: null },
+        category: { type: String, default: null },
+        hourlyRateCents: { type: Number, required: true },
+        active: { type: Boolean, default: true },
+    },
+    { collection: "business_activities", timestamps: true, versionKey: false },
+)
+activitySchema.index({ businessId: 1, status: 1, name: 1 })
+activitySchema.index({ status: 1, archivedAt: 1 })
+
+/** Histórico do valor/hora (anterior, novo, data e ator real). `fromCents: null` = criação. */
+export interface ActivityPriceRecord {
+    activityId: string
+    businessId: string
+    fromCents: number | null
+    toCents: number
+    actorId: string
+    simulation: unknown
+    createdAt: Date
+}
+const activityPriceSchema = new Schema<ActivityPriceRecord>(
+    {
+        activityId: { type: String, required: true },
+        businessId: { type: String, required: true },
+        fromCents: { type: Number, default: null },
+        toCents: { type: Number, required: true },
+        actorId: { type: String, required: true },
+        simulation: { type: Schema.Types.Mixed, default: null },
+    },
+    { collection: "business_activity_prices", timestamps: { createdAt: true, updatedAt: false }, versionKey: false },
+)
+activityPriceSchema.index({ activityId: 1, createdAt: -1 })
+activityPriceSchema.index({ businessId: 1 })
+
+/** Referência a um arquivo do espaço (`business_files`). */
+export interface BusinessFileRef { id: string; name: string; mediaType: string; size: number }
+const fileRefSchema = new Schema<BusinessFileRef>({ id: String, name: String, mediaType: String, size: Number }, { _id: false })
+
+export interface BusinessDocumentRecord extends ItemBase {
+    name: string
+    category: string | null
+    description: string | null
+    /** Publicável no Portfólio (M5). */
+    portfolio: boolean
+    file: BusinessFileRef
+}
+const documentSchema = new Schema<BusinessDocumentRecord>(
+    {
+        ...itemBase,
+        name: { type: String, required: true },
+        category: { type: String, default: null },
+        description: { type: String, default: null },
+        portfolio: { type: Boolean, default: false },
+        file: { type: fileRefSchema, required: true },
+    },
+    { collection: "business_documents", timestamps: true, versionKey: false },
+)
+documentSchema.index({ businessId: 1, status: 1, createdAt: -1 })
+documentSchema.index({ status: 1, archivedAt: 1 })
+
+export interface BusinessSuccessRecord extends ItemBase {
+    title: string
+    description: string | null
+    /** `AAAA-MM-DD`. */
+    date: string | null
+    result: string | null
+    attachments: BusinessFileRef[]
+    /** Vínculos que entram com o M3 (cliente) e o M4 (trabalho). */
+    clientId: string | null
+    workId: string | null
+}
+const successSchema = new Schema<BusinessSuccessRecord>(
+    {
+        ...itemBase,
+        title: { type: String, required: true },
+        description: { type: String, default: null },
+        date: { type: String, default: null },
+        result: { type: String, default: null },
+        attachments: { type: [fileRefSchema], default: [] },
+        clientId: { type: String, default: null },
+        workId: { type: String, default: null },
+    },
+    { collection: "business_successes", timestamps: true, versionKey: false },
+)
+successSchema.index({ businessId: 1, status: 1, createdAt: -1 })
+successSchema.index({ status: 1, archivedAt: 1 })
+
+/**
+ * Arquivo do espaço (documento, anexo de sucesso ou logo): só metadados; o binário fica no Storage S3.
+ * Reserva com PUT assinado (`uploadKey`), confirmação e cópia para `key`; `pending` até ser usado.
+ */
+export interface BusinessFileRecord {
+    businessId: string
+    ownerId: string
+    purpose: BusinessFilePurpose
+    pending: boolean
+    ready: boolean
+    /** Item que usa o arquivo (documento ou sucesso). */
+    itemId: string | null
+    name: string
+    mediaType: string
+    size: number
+    key: string
+    uploadKey: string
+    createdBy: string
+    createdAt: Date
+}
+const businessFileSchema = new Schema<BusinessFileRecord>(
+    {
+        businessId: { type: String, required: true },
+        ownerId: { type: String, required: true },
+        purpose: { type: String, enum: ["document", "success", "logo"], required: true },
+        pending: { type: Boolean, default: true },
+        ready: { type: Boolean, default: false },
+        itemId: { type: String, default: null },
+        name: { type: String, required: true },
+        mediaType: { type: String, required: true },
+        size: { type: Number, required: true },
+        key: { type: String, required: true },
+        uploadKey: { type: String, required: true },
+        createdBy: { type: String, required: true },
+    },
+    { collection: "business_files", timestamps: { createdAt: true, updatedAt: false }, versionKey: false },
+)
+businessFileSchema.index({ businessId: 1, itemId: 1 })
+businessFileSchema.index({ pending: 1, createdAt: 1 })
 
 /** Estado por dono: fence das transações (limite de vagas) e o contador do "Negócio N". */
 export interface BusinessOwnerStateRecord { _id: string; fence: number; seq: number }
@@ -266,6 +467,11 @@ export function businessModels(connection: Connection = mongoose.connection) {
     return {
         businesses: modelOf(connection, "Business", businessSchema),
         goals: modelOf(connection, "BusinessGoal", goalSchema),
+        activities: modelOf(connection, "BusinessActivity", activitySchema),
+        activityPrices: modelOf(connection, "BusinessActivityPrice", activityPriceSchema),
+        documents: modelOf(connection, "BusinessDocument", documentSchema),
+        successes: modelOf(connection, "BusinessSuccess", successSchema),
+        files: modelOf(connection, "BusinessFile", businessFileSchema),
         ownerStates: modelOf(connection, "BusinessOwnerState", ownerStateSchema),
         scripts: modelOf(connection, "InterviewScript", scriptSchema),
         interviews: modelOf(connection, "BusinessInterview", interviewSchema),

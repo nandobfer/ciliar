@@ -4,13 +4,13 @@ import { dbConnect } from "@/lib/db"
 import { loggerFor } from "@/lib/logger"
 import { deleteFile, getFileObject, storageErrorInfo } from "@/lib/storage/s3"
 import { publishToChannels } from "@/lib/pusher/channels"
-import { BUSINESSES_UPDATED_EVENT, businessesChannel } from "@/lib/pusher/channel-names"
+import { BUSINESS_SPACE_UPDATED_EVENT, BUSINESSES_UPDATED_EVENT, businessesChannel } from "@/lib/pusher/channel-names"
 import { parseInput } from "@/features/access/server/commands"
 import { accessModels } from "@/features/access/server/models"
 import type { AccessContext } from "@/features/access/server/context"
 import { denied } from "@/features/access/server/access"
 import { loadPlatformState } from "@/features/platform/server/state"
-import { autoBusinessName, DEFAULT_CURRENCY } from "../constants"
+import { autoBusinessName, DEFAULT_BUSINESS_THEME, DEFAULT_CURRENCY, DEFAULT_DEADLINE_ALERT_DAYS, DEFAULT_QUOTE_VALIDITY_DAYS, type BusinessItemKind } from "../constants"
 import { businessUpdateSchema, type BusinessGoalInput } from "../schemas"
 import type { BusinessCapacityDto, BusinessDetailDto, BusinessDto, BusinessGoalDto, BusinessListDto } from "../types"
 import {
@@ -45,6 +45,11 @@ export async function publishBusinessesChanged(ownerId: string, id: string): Pro
     await publishToChannels([businessesChannel(ownerId)], BUSINESSES_UPDATED_EVENT, { id }).catch(() => undefined)
 }
 
+/** Itens do espaço (M2): invalidação `{ businessId, kind }` no canal do dono. */
+export async function publishSpaceChanged(ownerId: string, businessId: string, kind: BusinessItemKind): Promise<void> {
+    await publishToChannels([businessesChannel(ownerId)], BUSINESS_SPACE_UPDATED_EVENT, { businessId, kind }).catch(() => undefined)
+}
+
 export function toBusinessDto(doc: BusinessDoc, retentionDays: number, ownerName: string | null = null): BusinessDto {
     const id = doc._id.toString()
     const archivedAt = doc.archivedAt ? new Date(doc.archivedAt) : null
@@ -58,10 +63,15 @@ export function toBusinessDto(doc: BusinessDoc, retentionDays: number, ownerName
         subtype: doc.subtype ?? null,
         segment: doc.segment ?? null,
         description: doc.description ?? null,
-        logo: doc.logo ? { name: doc.logo.name, mediaType: doc.logo.mediaType, size: doc.logo.size, url: businessLogoPath(id) } : null,
+        logo: doc.logo ? { name: doc.logo.name, mediaType: doc.logo.mediaType, size: doc.logo.size, url: `${businessLogoPath(id)}?v=${encodeURIComponent(doc.logo.key.split("/").slice(-2).join("-"))}` } : null,
         links: doc.links ?? [],
         availability: (doc.availability ?? []).map((day) => ({ weekday: day.weekday, start: day.start ?? null, end: day.end ?? null })),
         currency: doc.currency ?? DEFAULT_CURRENCY,
+        theme: { primaryColor: doc.theme?.primaryColor ?? DEFAULT_BUSINESS_THEME.primaryColor, mode: doc.theme?.mode === "light" ? "light" : "dark" },
+        contactEmail: doc.contactEmail ?? null,
+        contactPhone: doc.contactPhone ?? null,
+        deadlineAlertDays: doc.deadlineAlertDays ?? DEFAULT_DEADLINE_ALERT_DAYS,
+        quoteValidityDays: doc.quoteValidityDays ?? DEFAULT_QUOTE_VALIDITY_DAYS,
         status: doc.status,
         archivedAt: archivedAt ? archivedAt.toISOString() : null,
         purgeAt: archivedAt && doc.status === "archived" ? new Date(archivedAt.getTime() + retentionDays * DAY_MS).toISOString() : null,
@@ -98,7 +108,7 @@ async function ownerNames(ids: readonly string[]): Promise<Map<string, string>> 
     return new Map(users.map((user) => [String(user._id), user.name]))
 }
 
-function assertBusinessId(id: string): void {
+export function assertBusinessId(id: string): void {
     if (!Types.ObjectId.isValid(id)) throw businessNotFound()
 }
 
@@ -128,7 +138,7 @@ export async function assertBusinessVacancy(access: AccessContext, session: Clie
  * Negócio visível: o dono efetivo vê os próprios; o suporte (`businesses.view_all`) vê os demais
  * em leitura, com auditoria do acesso. Qualquer outro caso é 404 (não revela existência).
  */
-export async function loadVisibleBusiness(access: AccessContext, id: string, options: { audit?: boolean } = {}): Promise<{ doc: BusinessDoc; own: boolean }> {
+export async function loadVisibleBusiness(access: AccessContext, id: string, options: { audit?: boolean; section?: string } = {}): Promise<{ doc: BusinessDoc; own: boolean }> {
     assertBusinessId(id)
     await dbConnect()
     const doc = await businessModels().businesses.findById(id).lean<BusinessDoc>()
@@ -136,8 +146,27 @@ export async function loadVisibleBusiness(access: AccessContext, id: string, opt
     const own = doc.ownerId === businessOwnerOf(access)
     if (own && canUseBusinesses(access)) return { doc, own }
     if (!canSupportBusinesses(access)) throw businessNotFound()
-    if (options.audit !== false) await auditBusiness(access, "business.support_view", id, null, { ownerId: doc.ownerId })
+    if (options.audit !== false) await auditBusiness(access, "business.support_view", id, null, { ownerId: doc.ownerId, ...(options.section ? { section: options.section } : {}) })
     return { doc, own: false }
+}
+
+/** Moeda travada: já há pedidos ou trabalhos no negócio. O M3 (pedidos) e o M4 (trabalhos) acrescentam as contagens. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- assinatura final: M3/M4 consultam pedidos/trabalhos do negócio na sessão
+export async function currencyLocked(_businessId: string, _session?: ClientSession | null): Promise<boolean> {
+    return false
+}
+
+/** Itens com valor na moeda do negócio (não convertidos ao trocar a moeda). */
+async function valuedItems(businessId: string): Promise<{ activities: number; goals: number }> {
+    const models = businessModels()
+    const [activities, goals] = await Promise.all([models.activities.countDocuments({ businessId }), models.goals.countDocuments({ businessId })])
+    return { activities, goals }
+}
+
+async function ownerEmail(ownerId: string): Promise<string | null> {
+    if (!Types.ObjectId.isValid(ownerId)) return null
+    const user = await accessModels().users.findById(ownerId).select({ email: 1 }).lean<{ email?: string }>()
+    return user?.email ?? null
 }
 
 export async function listBusinesses(access: AccessContext, query: { status?: "active" | "archived" | "all"; ownerId?: string | null } = {}): Promise<BusinessListDto> {
@@ -172,17 +201,28 @@ export async function searchAllBusinesses(access: AccessContext, query: { q?: st
 }
 
 export async function getBusinessDetail(access: AccessContext, id: string): Promise<BusinessDetailDto> {
-    const { doc, own } = await loadVisibleBusiness(access, id)
-    const [goals, days, names] = await Promise.all([
+    const { doc, own } = await loadVisibleBusiness(access, id, { section: "ficha" })
+    const [goals, days, names, email, locked, valued] = await Promise.all([
         businessModels().goals.find({ businessId: id, status: "active" }).sort({ createdAt: 1 }).lean<GoalDoc[]>(),
         retentionDays(),
         ownerNames([doc.ownerId]),
+        ownerEmail(doc.ownerId),
+        currencyLocked(id),
+        valuedItems(id),
     ])
-    return { ...toBusinessDto(doc, days, names.get(doc.ownerId) ?? null), goals: goals.map(toGoalDto), editable: own && canUseBusinesses(access) }
+    return {
+        ...toBusinessDto(doc, days, names.get(doc.ownerId) ?? null),
+        goals: goals.map(toGoalDto),
+        editable: own && canUseBusinesses(access) && doc.status === "active",
+        own,
+        accountEmail: email,
+        currencyLocked: locked,
+        valuedItems: valued,
+    }
 }
 
 /** Negócio do dono efetivo para alteração (o suporte nunca altera negócios de terceiros). */
-async function loadOwnedForWrite(ownerId: string, id: string, session: ClientSession): Promise<BusinessDoc> {
+export async function loadOwnedForWrite(ownerId: string, id: string, session: ClientSession): Promise<BusinessDoc> {
     assertBusinessId(id)
     const doc = await businessModels().businesses.findById(id).session(session).lean<BusinessDoc>()
     if (!doc || doc.ownerId !== ownerId) throw businessNotFound()
@@ -206,7 +246,16 @@ export async function updateBusiness(access: AccessContext, id: string, raw: unk
         if (patch.description !== undefined) next.description = patch.description || null
         if (patch.links !== undefined) next.links = [...new Set(patch.links)]
         if (patch.availability !== undefined) next.availability = [...patch.availability].sort((a, b) => a.weekday - b.weekday)
-        if (patch.currency !== undefined) next.currency = patch.currency
+        if (patch.currency !== undefined && patch.currency !== doc.currency) {
+            if (await currencyLocked(id, session)) throw new DomainError(409, "A moeda não pode mais ser trocada: o negócio já tem pedidos ou trabalhos.", "CURRENCY_LOCKED")
+            next.currency = patch.currency
+        }
+        if (patch.theme !== undefined) next.theme = patch.theme
+        if (patch.contactEmail !== undefined) next.contactEmail = patch.contactEmail || null
+        if (patch.contactPhone !== undefined) next.contactPhone = patch.contactPhone || null
+        if (patch.deadlineAlertDays !== undefined) next.deadlineAlertDays = patch.deadlineAlertDays
+        if (patch.quoteValidityDays !== undefined) next.quoteValidityDays = patch.quoteValidityDays
+        if (!Object.keys(next).length) return
         const before = Object.fromEntries(Object.keys(next).map((key) => [key, doc[key as keyof BusinessRecord]]))
         await businessModels().businesses.updateOne({ _id: doc._id, version }, { $set: { ...next, updatedBy: current.userId }, $inc: { version: 1 } }, { session })
         await auditBusiness(current, "business.update", id, before, next, session)
@@ -239,19 +288,25 @@ export async function restoreBusiness(access: AccessContext, id: string): Promis
     return getBusinessDetail(access, id)
 }
 
-/** Apaga os dados do negócio (metas e entrevista) na transação e devolve as chaves do storage para remover depois. */
+/** Apaga os dados do negócio (itens do espaço, arquivos e entrevista) na transação e devolve as chaves do storage para remover depois. */
 async function deleteBusinessData(doc: BusinessDoc, session: ClientSession): Promise<string[]> {
     const models = businessModels()
     const id = doc._id.toString()
     const interviews = await models.interviews.find({ businessId: id }).select({ _id: 1 }).session(session).lean()
     const interviewIds = interviews.map((interview) => interview._id)
     const files = await models.interviewFiles.find({ interviewId: { $in: interviewIds } }).select({ key: 1, uploadKey: 1 }).session(session).lean()
+    const spaceFiles = await models.files.find({ businessId: id }).select({ key: 1, uploadKey: 1 }).session(session).lean()
     await models.goals.deleteMany({ businessId: id }, { session })
+    await models.activities.deleteMany({ businessId: id }, { session })
+    await models.activityPrices.deleteMany({ businessId: id }, { session })
+    await models.documents.deleteMany({ businessId: id }, { session })
+    await models.successes.deleteMany({ businessId: id }, { session })
+    await models.files.deleteMany({ businessId: id }, { session })
     await models.interviewMessages.deleteMany({ interviewId: { $in: interviewIds } }, { session })
     await models.interviewFiles.deleteMany({ interviewId: { $in: interviewIds } }, { session })
     await models.interviews.deleteMany({ _id: { $in: interviewIds } }, { session })
     await models.businesses.deleteOne({ _id: doc._id }, { session })
-    return [doc.logo?.key, ...files.flatMap((file) => [file.key, file.uploadKey])].filter((key): key is string => Boolean(key))
+    return [doc.logo?.key, ...[...files, ...spaceFiles].flatMap((file) => [file.key, file.uploadKey])].filter((key): key is string => Boolean(key))
 }
 
 export async function removeObjectsQuietly(keys: readonly string[]): Promise<number> {
@@ -335,7 +390,30 @@ export async function insertBusiness(
         { session },
     )
     const id = business!._id.toString()
-    if (goals.length) await models.goals.create(goals.map((goal) => ({ ...goal, businessId: id, ownerId, status: "active", createdBy: current.userId })), { session, ordered: true })
+    // Uma meta ativa por negócio: entrevistas antigas com várias metas ficam com a última ativa e as
+    // demais no histórico (substituídas no mesmo instante).
+    if (goals.length) {
+        const now = new Date()
+        const ids = goals.map(() => new Types.ObjectId())
+        await models.goals.create(
+            goals.map((goal, index) => {
+                const last = index === goals.length - 1
+                return {
+                    _id: ids[index],
+                    ...goal,
+                    businessId: id,
+                    ownerId,
+                    status: last ? "active" : "superseded",
+                    activePeriods: [{ from: now, to: last ? null : now }],
+                    supersededAt: last ? null : now,
+                    supersededBy: last ? null : ids[index + 1]!.toString(),
+                    supersededReason: last ? null : "new",
+                    createdBy: current.userId,
+                }
+            }),
+            { session, ordered: true },
+        )
+    }
     return id
 }
 

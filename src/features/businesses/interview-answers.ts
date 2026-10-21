@@ -63,7 +63,7 @@ export function draftFrom<F extends Exclude<BusinessField, "logo">>(field: F, va
         availability: () => (has && Array.isArray(value) ? (value as { weekday: number; start: string | null; end: string | null }[]).map((day) => ({ weekday: day.weekday, start: day.start ?? "", end: day.end ?? "" })) : []),
         goals: () =>
             has && Array.isArray(value) && value.length
-                ? (value as Record<string, unknown>[]).map((goal) => ({
+                ? (value as Record<string, unknown>[]).slice(-1).map((goal) => ({
                       ...emptyGoal(),
                       targetCents: Number(goal.targetCents) || 0,
                       period: (goal.period as GoalPeriod) ?? "month",

@@ -16,10 +16,12 @@ export interface OpexServerScope {
     /** `x-perfix-view-as` da requisição que iniciou o turno (`none` sem simulação). */
     viewAsHeader: string
     sessionVersion: number
+    /** Fuso do navegador da requisição que iniciou o turno (períodos das metas). */
+    timeZone?: string
 }
 
 export function scopeOfAccess(access: AccessContext): OpexServerScope {
-    return { userId: access.userId, viewAsHeader: access.viewAsHeader, sessionVersion: access.sessionVersion }
+    return { userId: access.userId, viewAsHeader: access.viewAsHeader, sessionVersion: access.sessionVersion, ...(access.timeZone ? { timeZone: access.timeZone } : {}) }
 }
 
 export function actorIdOf(scope: OpexServerScope): string {
