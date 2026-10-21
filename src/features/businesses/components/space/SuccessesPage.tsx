@@ -26,6 +26,9 @@ import { useBusinessUploads, useItemList, useSaveItem } from "../../hooks/useBus
 import { useBusinessSpace } from "./BusinessSpaceLayout"
 import { ArchivedNote, ItemStatusSelect, matchesSearch, useItemFilters, useItemRowActions } from "./item-ui"
 import { UploadField } from "./UploadField"
+import { FieldTrigger } from "@/components/ui/field-trigger"
+import { SearchPicker } from "@/components/ui/search-picker"
+import { useClients } from "@/features/orders/hooks/useOrders"
 
 const dateLabel = (key: string) => key.split("-").reverse().join("/")
 
@@ -99,6 +102,9 @@ function SuccessDialog({ success, onClose }: { success: SuccessDto | null; onClo
     const [result, setResult] = useState(success?.result ?? "")
     const [description, setDescription] = useState(success?.description ?? "")
     const [kept, setKept] = useState(success?.attachments ?? [])
+    const [clientId, setClientId] = useState(success?.clientId ?? "")
+    const clients = useClients()
+    const client = clients.data?.items.find((item) => item.id === clientId)
     const [error, setError] = useState<string | null>(null)
     const added = uploads.items.flatMap((item) => (item.status === "done" && item.file ? [item.file.id] : []))
     const total = kept.length + uploads.items.length
@@ -110,7 +116,7 @@ function SuccessDialog({ success, onClose }: { success: SuccessDto | null; onClo
     }
 
     const submit = async () => {
-        const parsed = successCreateSchema.safeParse({ title, date: date || null, result: result.trim() || null, description: description.trim() || null, attachmentIds: [...kept.map((file) => file.id), ...added] })
+        const parsed = successCreateSchema.safeParse({ title, date: date || null, result: result.trim() || null, description: description.trim() || null, attachmentIds: [...kept.map((file) => file.id), ...added], clientId: clientId || null })
         if (!parsed.success) return setError(parsed.error.issues[0]!.message)
         setError(null)
         await save.mutateAsync({ id: success?.id, data: success ? { ...parsed.data, version: success.version } : parsed.data }).then(() => { uploads.reset(); onClose() }, () => undefined)
@@ -132,6 +138,27 @@ function SuccessDialog({ success, onClose }: { success: SuccessDto | null; onClo
                             <DatePicker id="success-date" value={date} onChange={setDate} inputDisabled={save.isPending} />
                         </Field>
                     </div>
+                    <Field id="success-client" label="Cliente (opcional)">
+                        <SearchPicker
+                            trigger={<FieldTrigger id="success-client" disabled={save.isPending} placeholder="Sem cliente" value={client?.name} />}
+                            items={(clients.data?.items ?? []).filter((item) => item.status === "active" || item.id === clientId)}
+                            loading={clients.isLoading}
+                            getKey={(item) => item.id}
+                            searchKeys={["name", "email"]}
+                            renderItem={(item) => <span className="truncate text-sm">{item.name}</span>}
+                            onPick={(item) => setClientId(item.id)}
+                            footer={
+                                <Button type="button" variant="ghost" size="sm" className="w-full justify-start" onClick={() => setClientId("")}>
+                                    Sem cliente
+                                </Button>
+                            }
+                            matchTriggerWidth
+                            searchLabel="Buscar cliente"
+                            listLabel="Clientes"
+                            emptyText="Nenhum cliente cadastrado"
+                            emptySearchText="Nenhum cliente encontrado"
+                        />
+                    </Field>
                     <Field id="success-result" label="Resultado/métrica">
                         <Input id="success-result" value={result} maxLength={SUCCESS_RESULT_MAX} placeholder="Ex.: aumentou as vendas em 30%" disabled={save.isPending} onChange={(event) => setResult(event.target.value)} />
                     </Field>

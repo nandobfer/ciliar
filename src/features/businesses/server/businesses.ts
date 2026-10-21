@@ -10,7 +10,8 @@ import { accessModels } from "@/features/access/server/models"
 import type { AccessContext } from "@/features/access/server/context"
 import { denied } from "@/features/access/server/access"
 import { loadPlatformState } from "@/features/platform/server/state"
-import { autoBusinessName, DEFAULT_BUSINESS_THEME, DEFAULT_CURRENCY, DEFAULT_DEADLINE_ALERT_DAYS, DEFAULT_QUOTE_VALIDITY_DAYS, type BusinessItemKind } from "../constants"
+import { orderModels } from "@/features/orders/server/models"
+import { autoBusinessName, DEFAULT_BUSINESS_THEME, DEFAULT_CURRENCY, DEFAULT_DEADLINE_ALERT_DAYS, DEFAULT_QUOTE_VALIDITY_DAYS, type BusinessSpaceKind } from "../constants"
 import { businessUpdateSchema, type BusinessGoalInput } from "../schemas"
 import type { BusinessCapacityDto, BusinessDetailDto, BusinessDto, BusinessGoalDto, BusinessListDto } from "../types"
 import {
@@ -46,7 +47,7 @@ export async function publishBusinessesChanged(ownerId: string, id: string): Pro
 }
 
 /** Itens do espaço (M2): invalidação `{ businessId, kind }` no canal do dono. */
-export async function publishSpaceChanged(ownerId: string, businessId: string, kind: BusinessItemKind): Promise<void> {
+export async function publishSpaceChanged(ownerId: string, businessId: string, kind: BusinessSpaceKind): Promise<void> {
     await publishToChannels([businessesChannel(ownerId)], BUSINESS_SPACE_UPDATED_EVENT, { businessId, kind }).catch(() => undefined)
 }
 
@@ -150,10 +151,11 @@ export async function loadVisibleBusiness(access: AccessContext, id: string, opt
     return { doc, own: false }
 }
 
-/** Moeda travada: já há pedidos ou trabalhos no negócio. O M3 (pedidos) e o M4 (trabalhos) acrescentam as contagens. */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- assinatura final: M3/M4 consultam pedidos/trabalhos do negócio na sessão
-export async function currencyLocked(_businessId: string, _session?: ClientSession | null): Promise<boolean> {
-    return false
+/** Moeda travada: já há pedidos (qualquer status, inclusive rascunho/cancelado) ou trabalhos no negócio. */
+export async function currencyLocked(businessId: string, session: ClientSession | null = null): Promise<boolean> {
+    const { orders, works } = orderModels()
+    const [order, work] = await Promise.all([orders.exists({ businessId }).session(session), works.exists({ businessId }).session(session)])
+    return Boolean(order || work)
 }
 
 /** Itens com valor na moeda do negócio (não convertidos ao trocar a moeda). */
@@ -288,7 +290,7 @@ export async function restoreBusiness(access: AccessContext, id: string): Promis
     return getBusinessDetail(access, id)
 }
 
-/** Apaga os dados do negócio (itens do espaço, arquivos e entrevista) na transação e devolve as chaves do storage para remover depois. */
+/** Apaga os dados do negócio (itens do espaço, pedidos, trabalhos, arquivos e entrevista) na transação e devolve as chaves do storage para remover depois. */
 async function deleteBusinessData(doc: BusinessDoc, session: ClientSession): Promise<string[]> {
     const models = businessModels()
     const id = doc._id.toString()
@@ -301,6 +303,11 @@ async function deleteBusinessData(doc: BusinessDoc, session: ClientSession): Pro
     await models.activityPrices.deleteMany({ businessId: id }, { session })
     await models.documents.deleteMany({ businessId: id }, { session })
     await models.successes.deleteMany({ businessId: id }, { session })
+    // Pedidos (com versões) e trabalhos do negócio; os clientes são do usuário e ficam.
+    const orders = orderModels()
+    await orders.orders.deleteMany({ businessId: id }, { session })
+    await orders.orderVersions.deleteMany({ businessId: id }, { session })
+    await orders.works.deleteMany({ businessId: id }, { session })
     await models.files.deleteMany({ businessId: id }, { session })
     await models.interviewMessages.deleteMany({ interviewId: { $in: interviewIds } }, { session })
     await models.interviewFiles.deleteMany({ interviewId: { $in: interviewIds } }, { session })

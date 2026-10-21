@@ -18,7 +18,7 @@ export function isOpexProviderId(value: string): value is OpexProviderId {
  * Grupos de ferramentas. As ferramentas em si (nome, risco e permissões exigidas) ficam no catálogo
  * puro `tool-catalog.ts`; a configuração guarda só as **desligadas** (ferramenta nova nasce ligada).
  */
-export const OPEX_TOOL_GROUPS = ["context", "files", "businesses", "business-activities", "business-goals", "business-documents", "business-successes", "memories", "users", "roles", "integrations", "api-tokens", "routines", "platform"] as const
+export const OPEX_TOOL_GROUPS = ["context", "files", "businesses", "business-activities", "business-goals", "business-documents", "business-successes", "clients", "orders", "memories", "users", "roles", "integrations", "api-tokens", "routines", "platform"] as const
 export type OpexToolGroup = (typeof OPEX_TOOL_GROUPS)[number]
 
 export const OPEX_TOOL_GROUP_LABELS: Record<OpexToolGroup, { label: string; description: string }> = {
@@ -29,6 +29,8 @@ export const OPEX_TOOL_GROUP_LABELS: Record<OpexToolGroup, { label: string; desc
     "business-goals": { label: "Metas do negócio", description: "Listar com o progresso, criar, editar, arquivar, restaurar e excluir definitivamente as metas de faturamento" },
     "business-documents": { label: "Documentos do negócio", description: "Listar, ler, criar a partir de um arquivo do chat, editar, arquivar, restaurar e excluir definitivamente os documentos" },
     "business-successes": { label: "Sucessos do negócio", description: "Listar, ler, criar (anexos do chat), editar, arquivar, restaurar e excluir definitivamente os sucessos" },
+    clients: { label: "Clientes", description: "Listar, ler (com os pedidos e os totais por moeda), criar, editar, arquivar, restaurar e excluir definitivamente (sem pedidos) os clientes" },
+    orders: { label: "Pedidos", description: "Listar, ler (com versões e decisões), criar, editar, gerar o título, enviar o orçamento (link e e-mail), revogar o link, aceitar, recusar, reabrir e cancelar os pedidos" },
     memories: { label: "Memórias dos agentes", description: "Listar, ler, criar, editar e excluir as memórias (instruções permanentes) dos agentes de IA, inclusive as do próprio Agente Opex" },
     users: { label: "Usuários", description: "Listar, ler, convidar (pré-cadastro), reenviar convite, editar, ativar/desativar, atribuir perfis e excluir usuários" },
     roles: { label: "Perfis", description: "Listar, ler, criar, editar permissões, reordenar e excluir perfis" },
@@ -66,6 +68,7 @@ export const DEFAULT_OPEX_INSTRUCTIONS = [
     "Os agentes de IA (você, o Agente Opex, e o Agente Entrevistador) seguem memórias: instruções permanentes cadastradas pela administração. Com as ferramentas de memórias você lista, lê, cria, edita e exclui as memórias de cada agente (o texto é revisado pelo uso \"Resumo\"); a mudança vale a partir da próxima resposta do agente.",
     "Um Negócio só nasce pela entrevista do Agente Entrevistador: você não cria negócios. Para criar, oriente o usuário a abrir /negocios/novo. Você pode listar, ler, editar, arquivar, restaurar e excluir definitivamente (só arquivados) os negócios do usuário.",
     "No espaço de cada negócio você cuida da ficha (inclusive tema, contato comercial, prazos e logo), das atividades (valor por hora em unidades mínimas da moeda do negócio, com histórico), das metas de faturamento bruto (com o progresso), dos documentos e dos sucessos. Documentos, anexos e a logo vêm de arquivos enviados no chat. Toda ferramenta recebe o negócio (businessId de list_businesses); o suporte (businesses.view_all) só lê.",
+    "Clientes são do usuário (servem a todos os negócios dele). Pedidos são de um negócio e de um cliente: Rascunho → Enviado (link secreto do cliente, sem login) → Aceito (cria o Trabalho em Abertura) ou Recusado (pode ser reaberto); Rascunho/Enviado podem ser cancelados. Horas dos itens em minutos e valores em unidades mínimas da moeda do negócio. Nunca escreva o token do link; só mostre a URL quando o usuário pedir para copiar.",
     "O login é somente pelo Google: não existem senhas. Cadastrar usuário é um convite (pré-cadastro do e-mail Google com os perfis); a pessoa entra com o Google usando esse e-mail.",
     "Você executa o que o usuário pede usando as ferramentas do app. Use quantas ferramentas forem necessárias: consulte antes de perguntar, encadeie chamadas e confira o resultado.",
     "Você age sempre como o usuário autenticado: cada ferramenta revalida a sessão e as permissões dele (inclusive durante uma simulação de \"Visualizar como\"). Se uma ferramenta negar acesso, explique que o perfil do usuário não permite a ação; nunca tente contornar.",

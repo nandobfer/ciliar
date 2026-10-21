@@ -23,6 +23,9 @@ Todo **Trabalho** (M4) nasce de um **Pedido aceito**. Referências no `~/code/op
 
 ## 2. Pedido
 
+Pedidos ficam no espaço do negócio e também na tela global **`/pedidos`**, com filtros por
+negócio, cliente e status. Detalhes da implementação: `aicontext/modules/orders.md`.
+
 | Campo | Regra |
 |---|---|
 | Código | Sequencial **por negócio** (`PED-0001`), exibido no link e no card do trabalho. |

@@ -4,7 +4,7 @@ import { dbConnect } from "@/lib/db"
 import { accessModels } from "@/features/access/server/models"
 import type { AccessContext } from "@/features/access/server/context"
 import { loadPlatformState } from "@/features/platform/server/state"
-import { BUSINESS_ITEM_AUDIT, BUSINESS_ITEM_KINDS, BUSINESS_ITEM_LABELS, type BusinessItemKind } from "../constants"
+import { BUSINESS_ITEM_AUDIT, BUSINESS_ITEM_KINDS, BUSINESS_ITEM_LABELS, type BusinessItemKind, type BusinessSpaceKind } from "../constants"
 import { auditBusiness, businessTransaction, canUseBusinesses, ensureBusinessCollections } from "./access"
 import { loadOwnedForWrite, loadVisibleBusiness, publishSpaceChanged, removeObjectsQuietly } from "./businesses"
 import { businessModels, type BusinessRecord } from "./models"
@@ -75,7 +75,7 @@ export async function readBusiness(access: AccessContext, businessId: string, se
 export async function writeItem<T>(
     access: AccessContext,
     businessId: string,
-    kind: BusinessItemKind,
+    kind: BusinessSpaceKind,
     action: (context: { current: AccessContext; session: ClientSession; business: BusinessDoc; ownerId: string }) => Promise<{ result: T; removeKeys?: string[] }>,
 ): Promise<T> {
     let ownerId = ""

@@ -189,3 +189,10 @@ simulação, negócio arquivado, metas/dashboard, arquivos e limites, sucessos, 
 purge por tipo, gráficos do dashboard e ferramentas do agente), `space-ui.test.tsx` (tema na tela e
 progresso) e `space-layout-ui.test.tsx` (título = nome do negócio, período, atalhos à direita, Ficha em duas colunas,
 sem foco ao abrir, logo por arrastar e somente leitura).
+
+## Integração com M3
+
+O espaço inclui **Pedidos** (`/negocios/[id]/pedidos`), além da lista global `/pedidos`.
+Qualquer pedido/trabalho trava a moeda; exclusão/purge do negócio remove pedidos/versões/trabalhos.
+Sucessos têm cliente opcional do dono, selecionado com busca. Arquivos aceitam `purpose: order`.
+Detalhes: [Clientes e Pedidos](orders.md).

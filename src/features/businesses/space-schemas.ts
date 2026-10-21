@@ -112,6 +112,8 @@ export const successCreateSchema = z.strictObject({
     date: dateKey.nullable().optional(),
     result: optionalText(SUCCESS_RESULT_MAX, "resultado"),
     attachmentIds: attachmentIds.default([]),
+    /** Cliente do dono ligado ao sucesso (M3). */
+    clientId: objectId.nullable().optional(),
 })
 export type SuccessCreateInput = z.infer<typeof successCreateSchema>
 
@@ -122,6 +124,7 @@ export const successUpdateSchema = z.strictObject({
     result: optionalText(SUCCESS_RESULT_MAX, "resultado"),
     /** Lista COMPLETA dos anexos: os atuais que ficam + os novos enviados. */
     attachmentIds: attachmentIds.optional(),
+    clientId: objectId.nullable().optional(),
     version,
 })
 

@@ -20,6 +20,7 @@ const slim = (success: SuccessDto) => ({
     date: success.date,
     result: success.result,
     attachments: success.attachments.map((file) => ({ id: file.id, name: file.name, mediaType: file.mediaType })),
+    clientId: success.clientId,
     status: success.status,
     archivedAt: success.archivedAt,
     purgeAt: success.purgeAt,
@@ -57,6 +58,7 @@ export const businessSuccessTools = [
             date: z.string().nullable().optional().describe("AAAA-MM-DD"),
             result: z.string().trim().max(300).nullable().optional().describe("Resultado/métrica (ex.: \"aumentou as vendas em 30%\")"),
             fileIds: chatFiles.optional(),
+            clientId: z.string().nullable().optional().describe("Cliente ligado ao sucesso (de list_clients)"),
         }),
         summarize: (input) => `Criar o sucesso "${input.title}" no negócio ${input.businessId}${input.fileIds?.length ? ` com ${input.fileIds.length} anexo(s) do chat` : ""}`,
         execute: async ({ businessId: id, fileIds, ...input }, context) => {
@@ -72,6 +74,7 @@ export const businessSuccessTools = [
             description: z.string().trim().max(4000).nullable().optional(),
             date: z.string().nullable().optional().describe("AAAA-MM-DD"),
             result: z.string().trim().max(300).nullable().optional(),
+            clientId: z.string().nullable().optional().describe("Cliente ligado (de list_clients); null desliga"),
             addFileIds: chatFiles.optional(),
             removeAttachmentIds: z.array(z.string()).max(20).optional().describe("Ids de anexos atuais (de get_success) a remover"),
         }),

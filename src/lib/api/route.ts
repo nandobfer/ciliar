@@ -32,7 +32,9 @@ export function withRoute<P extends Record<string, string> = Record<string, neve
             return await handler({ req, params })
         } catch (error) {
             if (error instanceof DomainError) return fail(error.status, error.message, error.code, error.details)
-            logApiError({ route: req.nextUrl?.pathname ?? "", method: req.method, error })
+            // O token do orçamento é uma credencial: nunca registrar o segmento secreto da URL.
+            const route = (req.nextUrl?.pathname ?? "").replace(/(\/api\/public\/orders\/)[^/]+/, "$1[redacted]")
+            logApiError({ route, method: req.method, error })
             return fail(500, "Erro interno. Tente novamente.")
         }
     }

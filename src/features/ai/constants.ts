@@ -3,7 +3,7 @@
 import type { AiProviderId } from "@/lib/ai/providers"
 
 /** Abas da página "Provedores de IA". `provedores` é a padrão (omitida da URL). */
-export const AI_TABS = ["provedores", "agente-opex", "agente-entrevistador", "resumo"] as const
+export const AI_TABS = ["provedores", "agente-opex", "agente-entrevistador", "titulo-pedidos", "resumo"] as const
 export type AiTab = (typeof AI_TABS)[number]
 
 export const AI_PROVIDER_TABS = ["configuracao", "modelos", "consumo"] as const

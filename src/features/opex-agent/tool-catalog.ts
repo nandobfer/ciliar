@@ -352,7 +352,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         label: "Criar sucesso",
         risk: "write",
         access: { all: ["businesses.use"] },
-        description: "Cria um sucesso num negócio ativo do usuário: título (obrigatório), descrição, data (AAAA-MM-DD), resultado/métrica e anexos a partir de arquivos enviados no chat (fileIds de list_chat_files; mesmos limites dos documentos).",
+        description: "Cria um sucesso num negócio ativo do usuário: título (obrigatório), descrição, data (AAAA-MM-DD), resultado/métrica, cliente ligado (clientId de list_clients) e anexos a partir de arquivos enviados no chat (fileIds de list_chat_files; mesmos limites dos documentos).",
     },
     {
         name: "update_success",
@@ -360,7 +360,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         label: "Editar sucesso",
         risk: "write",
         access: { all: ["businesses.use"] },
-        description: "Edita um sucesso ativo: título, descrição, data e resultado (só os informados mudam); addFileIds anexa arquivos do chat e removeAttachmentIds remove anexos atuais.",
+        description: "Edita um sucesso ativo: título, descrição, data, resultado e cliente ligado (só os informados mudam); addFileIds anexa arquivos do chat e removeAttachmentIds remove anexos atuais.",
     },
     {
         name: "archive_success",
@@ -385,6 +385,154 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         risk: "destructive",
         access: { all: ["businesses.use"] },
         description: "Exclui definitivamente um sucesso ARQUIVADO com os anexos (irreversível).",
+    },
+
+    // ── Clientes (M3) ──────────────────────────────────────────────────────────
+    {
+        name: "list_clients",
+        group: "clients",
+        label: "Listar clientes",
+        risk: "read",
+        access: { any: ["businesses.use", "businesses.view_all"] },
+        description: "Clientes do usuário (são do usuário, não do negócio: o mesmo cliente serve a todos os negócios). Filtros: busca por nome/e-mail/telefone, negócio (businessId: clientes com pedidos nele) e situação. Traz a quantidade de pedidos e os totais por moeda.",
+    },
+    {
+        name: "get_client",
+        group: "clients",
+        label: "Ler cliente",
+        risk: "read",
+        access: { any: ["businesses.use", "businesses.view_all"] },
+        description: "Um cliente com contatos, observações privadas, os pedidos de todos os negócios e os totais por moeda (aceitos e abertos).",
+    },
+    {
+        name: "create_client",
+        group: "clients",
+        label: "Criar cliente",
+        risk: "write",
+        access: { all: ["businesses.use"] },
+        description: "Cria um cliente: nome (obrigatório, pessoa ou empresa), e-mail e telefone/WhatsApp opcionais (o e-mail é necessário para enviar o orçamento por e-mail) e observações privadas (nunca aparecem no link do cliente).",
+    },
+    {
+        name: "update_client",
+        group: "clients",
+        label: "Editar cliente",
+        risk: "write",
+        access: { all: ["businesses.use"] },
+        description: "Edita um cliente ativo: nome, e-mail, telefone e observações (só os informados mudam; vazio limpa).",
+    },
+    {
+        name: "archive_client",
+        group: "clients",
+        label: "Arquivar cliente",
+        risk: "destructive",
+        access: { all: ["businesses.use"] },
+        description: "Arquiva um cliente (excluído definitivamente após o prazo de clientes da Plataforma, exceto se tiver pedidos: aí fica arquivado; pode ser restaurado).",
+    },
+    {
+        name: "restore_client",
+        group: "clients",
+        label: "Restaurar cliente",
+        risk: "write",
+        access: { all: ["businesses.use"] },
+        description: "Restaura um cliente arquivado.",
+    },
+    {
+        name: "delete_client",
+        group: "clients",
+        label: "Excluir cliente definitivamente",
+        risk: "destructive",
+        access: { all: ["businesses.use"] },
+        description: "Exclui definitivamente um cliente ARQUIVADO e SEM pedidos (irreversível). Cliente com pedidos nunca é excluído.",
+    },
+
+    // ── Pedidos (M3) ───────────────────────────────────────────────────────────
+    {
+        name: "list_orders",
+        group: "orders",
+        label: "Listar pedidos",
+        risk: "read",
+        access: { any: ["businesses.use", "businesses.view_all"] },
+        description: "Pedidos (orçamentos) do usuário: de um negócio (businessId) ou de todos os negócios, com filtros por cliente e status (draft = Rascunho, sent = Enviado, accepted = Aceito, rejected = Recusado, cancelled = Cancelado). Traz código (PED-0001), título, cliente, valor, horas, prazo e o link (validade).",
+    },
+    {
+        name: "get_order",
+        group: "orders",
+        label: "Ler pedido",
+        risk: "read",
+        access: { any: ["businesses.use", "businesses.view_all"] },
+        description: "Um pedido com a descrição, título/resumo (e se são manuais), itens (atividade, minutos e valor/hora congelado), total sugerido e ajustado, prazo, anexos (visível ao cliente), versões com o que mudou e as decisões (quem, nome, IP, data). Nunca devolve o token do link.",
+    },
+    {
+        name: "create_order",
+        group: "orders",
+        label: "Criar pedido",
+        risk: "write",
+        access: { all: ["businesses.use"] },
+        description: "Cria um pedido em Rascunho num negócio ativo: cliente (clientId de list_clients ou newClient para cadastrar junto), necessidade (descrição livre, obrigatória), itens (activityId de uma atividade ATIVA + minutos estimados; o valor/hora é copiado agora), valor total ajustado opcional (unidades mínimas; sem ele, Σ horas × valor/hora), prazo de entrega (AAAA-MM-DD) e anexos de arquivos do chat. Título e resumo são gerados pela IA em segundo plano, salvo se informados.",
+    },
+    {
+        name: "update_order",
+        group: "orders",
+        label: "Editar pedido",
+        risk: "write",
+        access: { all: ["businesses.use"] },
+        description: "Edita um pedido em Rascunho ou Enviado: cliente, descrição, título/resumo manuais (null devolve à IA), itens (lista COMPLETA: itens atuais pelo id de get_order + novos por activityId), valor ajustado (null volta ao calculado), prazo, anexos do chat a incluir e anexos atuais a remover ou mudar a visibilidade. Depois do primeiro envio, cada alteração gera uma versão; com o link ativo, o cliente vê a versão atual e o histórico.",
+    },
+    {
+        name: "regenerate_order_title",
+        group: "orders",
+        label: "Gerar título do pedido",
+        risk: "write",
+        access: { all: ["businesses.use"] },
+        description: "Pede de novo à IA o título e o resumo do pedido (em segundo plano; o que for manual não muda).",
+    },
+    {
+        name: "send_order",
+        group: "orders",
+        label: "Enviar pedido",
+        risk: "destructive",
+        access: { all: ["businesses.use"] },
+        description: "Envia o orçamento (Rascunho → Enviado) ou renova a validade de um enviado: gera o link secreto do cliente (sem login; token novo se não houver link válido), validUntil opcional (padrão: a validade do negócio) e, com email: true, manda o e-mail ao cliente (exige e-mail do cliente e SMTP). Só devolve a URL do link com copyLink: true, quando o usuário pediu para copiá-la.",
+    },
+    {
+        name: "revoke_order_link",
+        group: "orders",
+        label: "Revogar link do pedido",
+        risk: "destructive",
+        access: { all: ["businesses.use"] },
+        description: "Revoga o link de um pedido Enviado (o cliente perde o acesso) e volta o pedido a Rascunho.",
+    },
+    {
+        name: "accept_order",
+        group: "orders",
+        label: "Aceitar pedido",
+        risk: "write",
+        access: { all: ["businesses.use"] },
+        description: "Registra o aceite manual de um pedido Enviado (o cliente fechou fora do link): grava o ator e a cópia da versão e cria o Trabalho na coluna Abertura. Depois do aceite o pedido fica somente leitura.",
+    },
+    {
+        name: "reject_order",
+        group: "orders",
+        label: "Recusar pedido",
+        risk: "write",
+        access: { all: ["businesses.use"] },
+        description: "Registra a recusa manual de um pedido Enviado, com motivo opcional.",
+    },
+    {
+        name: "reopen_order",
+        group: "orders",
+        label: "Reabrir pedido",
+        risk: "write",
+        access: { all: ["businesses.use"] },
+        description: "Reabre um pedido Recusado: volta a Rascunho como nova versão (a recusa fica no histórico); para o cliente ver de novo, envie.",
+    },
+    {
+        name: "cancel_order",
+        group: "orders",
+        label: "Cancelar pedido",
+        risk: "destructive",
+        access: { all: ["businesses.use"] },
+        description: "Cancela um pedido em Rascunho ou Enviado (desistência antes da decisão): revoga o link. Estado final.",
     },
 
     // ── Memórias dos agentes ──────────────────────────────────────────────────
@@ -686,7 +834,7 @@ export const OPEX_ALWAYS_ON_TOOLS = new Set(OPEX_TOOL_CATALOG.filter((tool) => t
 const has = (permissions: ReadonlySet<string>, key: string) => permissions.has("*") || permissions.has(key)
 
 /** Grupos do prestador: não exigem o painel. Os demais (administração) exigem também `admin.access`. */
-export const OPEX_NO_PANEL_GROUPS: ReadonlySet<OpexToolGroup> = new Set<OpexToolGroup>(["context", "files", "businesses", "business-activities", "business-goals", "business-documents", "business-successes"])
+export const OPEX_NO_PANEL_GROUPS: ReadonlySet<OpexToolGroup> = new Set<OpexToolGroup>(["context", "files", "businesses", "business-activities", "business-goals", "business-documents", "business-successes", "clients", "orders"])
 
 /** As permissões efetivas liberam a ferramenta? (Revalidado no servidor antes de cada execução.) */
 export function canUseOpexTool(meta: Pick<OpexToolMeta, "access" | "group">, permissions: ReadonlySet<string>): boolean {

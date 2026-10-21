@@ -7,6 +7,25 @@ no Ciliar o agente age sempre como o **usuário real autenticado**, com as permi
 
 ## Onde fica e como abre
 
+### Ferramentas M3: Clientes e Pedidos
+
+Grupos sem painel (`businesses.use`; leituras também com `businesses.view_all`), implementados
+em `server/tools/clients.ts` e `server/tools/orders.ts`. Regras em [orders.md](orders.md).
+
+| Grupo | Ferramentas | Risco |
+|---|---|---|
+| Clientes | `list_clients`, `get_client` | read |
+| Clientes | `create_client`, `update_client`, `restore_client` | write |
+| Clientes | `archive_client`, `delete_client` | destructive |
+| Pedidos | `list_orders`, `get_order` | read |
+| Pedidos | `create_order`, `update_order`, `regenerate_order_title` | write |
+| Pedidos | `accept_order`, `reject_order`, `reopen_order` | write |
+| Pedidos | `send_order`, `revoke_order_link`, `cancel_order` | destructive |
+
+Todos os writes têm resumo. Enviar só devolve URL com `copyLink: true`, quando o usuário pede;
+demais leituras não expõem token. Anexos vêm de arquivos do chat e podem ser ocultos do cliente.
+`create_success`/`update_success` também recebem `clientId` (cliente do dono).
+
 - Item **"Agente Opex"** (ícone `Bot`) no rodapé da barra lateral (`AppLayoutShell` passa
   `sidebarFooterItems` ao `AppShell`), **só com a permissão `opex.use`** (ramo "Agente Opex" do catálogo).
 - Popover ancorado no item, abertura com spring de escala (Framer Motion, respeitando movimento

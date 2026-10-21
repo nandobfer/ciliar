@@ -35,6 +35,8 @@ export interface BusinessRecord {
     deadlineAlertDays: number
     /** Validade padrão do link do orçamento (M3), em dias. */
     quoteValidityDays: number
+    /** Contador do código dos pedidos (`PED-0001`, M3), incrementado na transação. */
+    orderSeq: number
     status: BusinessStatus
     archivedAt: Date | null
     interviewId: string | null
@@ -67,6 +69,7 @@ const businessSchema = new Schema<BusinessRecord>(
         contactPhone: { type: String, default: null },
         deadlineAlertDays: { type: Number, default: 3 },
         quoteValidityDays: { type: Number, default: 15 },
+        orderSeq: { type: Number, default: 0 },
         status: { type: String, enum: ["active", "archived"], default: "active" },
         archivedAt: { type: Date, default: null },
         interviewId: { type: String, default: null },
@@ -274,7 +277,7 @@ export interface BusinessFileRecord {
     purpose: BusinessFilePurpose
     pending: boolean
     ready: boolean
-    /** Item que usa o arquivo (documento ou sucesso). */
+    /** Item que usa o arquivo (documento, sucesso ou pedido). */
     itemId: string | null
     name: string
     mediaType: string
@@ -288,7 +291,7 @@ const businessFileSchema = new Schema<BusinessFileRecord>(
     {
         businessId: { type: String, required: true },
         ownerId: { type: String, required: true },
-        purpose: { type: String, enum: ["document", "success", "logo"], required: true },
+        purpose: { type: String, enum: ["document", "success", "logo", "order"], required: true },
         pending: { type: Boolean, default: true },
         ready: { type: Boolean, default: false },
         itemId: { type: String, default: null },

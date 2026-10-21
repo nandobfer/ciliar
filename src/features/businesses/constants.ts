@@ -77,6 +77,8 @@ export const BUSINESS_ITEM_KINDS = ["activities", "goals", "documents", "success
 export type BusinessItemKind = (typeof BUSINESS_ITEM_KINDS)[number]
 /** Nome do item na auditoria (`business.<item>.<ação>`). */
 export const BUSINESS_ITEM_AUDIT: Record<BusinessItemKind, string> = { activities: "activity", goals: "goal", documents: "document", successes: "success" }
+/** Invalidações do espaço (`business-space-updated`): os itens do M2 e os pedidos (M3). */
+export type BusinessSpaceKind = BusinessItemKind | "orders"
 export const BUSINESS_ITEM_LABELS: Record<BusinessItemKind, { one: string; many: string }> = {
     activities: { one: "Atividade", many: "Atividades" },
     goals: { one: "Meta", many: "Metas" },
@@ -94,8 +96,8 @@ export const SUCCESS_ATTACHMENTS_MAX = 20
 /** Valor/hora máximo (unidades mínimas). */
 export const HOURLY_RATE_MAX_CENTS = 100_000_000_00
 
-/** Arquivos enviados no espaço: documento, anexo de sucesso ou logo. Pendentes somem em 24 h. */
-export const BUSINESS_FILE_PURPOSES = ["document", "success", "logo"] as const
+/** Arquivos enviados no espaço: documento, anexo de sucesso, logo ou anexo de pedido (M3). Pendentes somem em 24 h. */
+export const BUSINESS_FILE_PURPOSES = ["document", "success", "logo", "order"] as const
 export type BusinessFilePurpose = (typeof BUSINESS_FILE_PURPOSES)[number]
 export const BUSINESS_FILE_PENDING_TTL_MS = 24 * 60 * 60 * 1000
 export const BUSINESS_FILE_UPLOAD_URL_TTL_SECONDS = 15 * 60
@@ -109,6 +111,7 @@ export const BUSINESS_SPACE_SECTIONS = [
     { slug: "metas", label: "Metas" },
     { slug: "documentos", label: "Documentos" },
     { slug: "sucessos", label: "Sucessos" },
+    { slug: "pedidos", label: "Pedidos" },
 ] as const
 export type BusinessSpaceSlug = (typeof BUSINESS_SPACE_SECTIONS)[number]["slug"]
 export const businessSpaceHref = (id: string, slug: BusinessSpaceSlug = "") => (slug ? `/negocios/${id}/${slug}` : `/negocios/${id}`)

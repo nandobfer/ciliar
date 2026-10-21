@@ -11,6 +11,10 @@ import { homeHrefOf } from "@/features/access/components/AccessProvider"
 import { APP_NAV, PERSISTENT_PAGE_HREFS } from "../navigation"
 import { usePermissions } from "@nandobfer/perfix/react"
 import { INTEGRATION_IDS } from "@/lib/integrations/catalog"
+import { OrdersRealtime } from "@/features/orders/components/OrdersRealtime"
+
+/** Telas do prestador (Negócios, Clientes e Pedidos): `businesses.use` ou `businesses.view_all`. */
+const BUSINESS_HREFS = ["/negocios", "/clientes", "/pedidos"]
 
 interface AppLayoutShellProps {
     ownerName: string
@@ -31,7 +35,7 @@ export function AppLayoutShell({ ownerName, version, children }: AppLayoutShellP
     // Negócio aberto: as páginas do espaço entram como seção própria e navegar entre elas não remonta a casca.
     const businessId = canBusinesses ? activeBusinessId(pathname) : null
     const nav = APP_NAV.map(section => ({ ...section, items: section.items.filter(item =>
-        item.href === "/negocios" ? canBusinesses
+        BUSINESS_HREFS.includes(item.href) ? canBusinesses
             : !can("admin.access") ? false
             : item.href === "/usuarios" ? can("users.view") : item.href === "/perfis" ? can("roles.view") : canAny(INTEGRATION_IDS.map(id => `integrations.${id}.view`)),
     ) })).filter(section => section.items.length)
@@ -48,6 +52,7 @@ export function AppLayoutShell({ ownerName, version, children }: AppLayoutShellP
             sidebarHeaderItems={can("businesses.use") ? businessHeaderItems : undefined}
         >
             <BusinessThemeController />
+            {can("businesses.use") && <OrdersRealtime />}
             {children}
         </AppShell>
     )

@@ -10,7 +10,7 @@ import { buildPublicApiSpec } from '@/features/public-api/openapi/spec'
 
 describe('base do Ciliar com controle de acesso', () => {
     it('inclui Negócios, Integrações, Usuários e Perfis, preservando a página inicial', () => {
-        expect(APP_NAV_ITEMS.map(({ href, label }) => ({ href, label }))).toEqual([{ href: '/negocios', label: 'Negócios' }, { href: '/integracoes', label: 'Integrações' }, { href: '/usuarios', label: 'Usuários' }, { href: '/perfis', label: 'Perfis' }])
+        expect(APP_NAV_ITEMS.map(({ href, label }) => ({ href, label }))).toEqual([{ href: '/negocios', label: 'Negócios' }, { href: '/clientes', label: 'Clientes' }, { href: '/pedidos', label: 'Pedidos' }, { href: '/integracoes', label: 'Integrações' }, { href: '/usuarios', label: 'Usuários' }, { href: '/perfis', label: 'Perfis' }])
         expect(HOME_HREF).toBe('/integracoes')
         expect(activeNavHref('/integracoes/ia/opencode', APP_NAV_ITEMS)).toBe('/integracoes')
         expect(activeNavHref('/tarefas', APP_NAV_ITEMS)).toBeNull()
@@ -22,7 +22,7 @@ describe('base do Ciliar com controle de acesso', () => {
         expect(INTEGRATIONS.map((def) => def.id)).toEqual([...INTEGRATION_IDS])
         expect(IN_DEVELOPMENT_INTEGRATIONS).toEqual([])
         for (const id of ['github', 'orcamentos', 'google_drive', 'desconhecido']) expect(isIntegrationId(id)).toBe(false)
-        expect(AI_TABS).toEqual(['provedores', 'agente-opex', 'agente-entrevistador'])
+        expect(AI_TABS).toEqual(['provedores', 'agente-opex', 'agente-entrevistador', 'titulo-pedidos', 'resumo'])
         expect(integrationPath('ai_opencode')).toBe('/integracoes/ia/opencode')
         expect(integrationPath('platform')).toBe('/integracoes/plataforma')
     })

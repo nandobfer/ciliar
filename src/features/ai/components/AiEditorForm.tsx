@@ -2,7 +2,7 @@
 
 import { useState, type Dispatch, type SetStateAction } from "react"
 import { motion } from "framer-motion"
-import { BrainCircuit, Bot, MessagesSquare, ScrollText } from "lucide-react"
+import { BrainCircuit, Bot, MessagesSquare, ReceiptText, ScrollText } from "lucide-react"
 import type { IntegrationDef } from "@/lib/integrations/catalog"
 import type { IntegrationDetailDto } from "@/features/integrations/types"
 import { DetailActions } from "@/features/integrations/components/detail/DetailActions"
@@ -17,6 +17,7 @@ import { AiProvidersTab } from "./AiProvidersTab"
 import { OpexAgentTab } from "@/features/opex-agent/components/settings/OpexAgentTab"
 import { InterviewerAgentTab } from "@/features/businesses/components/settings/InterviewerAgentTab"
 import { SummaryFeatureTab } from "./summary/SummaryFeatureTab"
+import { OrderTitleFeatureTab } from "@/features/orders/components/OrderTitleFeatureTab"
 
 interface AiEditorFormProps {
     def: IntegrationDef
@@ -33,6 +34,7 @@ const TABS: IntegrationTabDef<AiTab>[] = [
     { id: "provedores", label: "Provedores", icon: BrainCircuit },
     { id: "agente-opex", label: "Agente Opex", icon: Bot },
     { id: "agente-entrevistador", label: "Agente Entrevistador", icon: MessagesSquare },
+    { id: "titulo-pedidos", label: "Título de pedidos", icon: ReceiptText },
     { id: "resumo", label: "Resumo", icon: ScrollText },
 ]
 
@@ -74,6 +76,7 @@ export function AiEditorForm({ def, data, draft, setDraft, dirty, pending, onSav
                 )}
                 {tab === "agente-opex" && <OpexAgentTab key={resetKey} onDirtyChange={setTabDirty} />}
                 {tab === "agente-entrevistador" && <InterviewerAgentTab key={resetKey} onDirtyChange={setTabDirty} />}
+                {tab === "titulo-pedidos" && <OrderTitleFeatureTab key={resetKey} onDirtyChange={setTabDirty} />}
                 {tab === "resumo" && <SummaryFeatureTab key={resetKey} onDirtyChange={setTabDirty} />}
             </IntegrationTabs>
         </motion.form>

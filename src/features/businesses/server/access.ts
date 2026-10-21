@@ -5,6 +5,7 @@ import { can } from "@/features/access/catalog"
 import { assertTransactionTopology, auditAccess, denied, resolveAccess } from "@/features/access/server/access"
 import type { AccessContext } from "@/features/access/server/context"
 import type { RoleDto } from "@/features/access/types"
+import { orderModels } from "@/features/orders/server/models"
 import { businessModels } from "./models"
 
 /**
@@ -46,8 +47,7 @@ export async function auditBusiness(context: Pick<AccessContext, "userId" | "dto
 }
 
 export async function ensureBusinessCollections(): Promise<void> {
-    const models = businessModels()
-    await Promise.all(Object.values(models).map((model) => model.init()))
+    await Promise.all([...Object.values(businessModels()), ...Object.values(orderModels())].map((model) => model.init()))
 }
 
 /**
