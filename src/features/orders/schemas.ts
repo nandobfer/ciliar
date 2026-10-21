@@ -22,10 +22,11 @@ import {
 
 export const objectIdSchema = z.string().regex(/^[a-f\d]{24}$/i, "Id inválido")
 const version = z.number().int().nonnegative()
-const dateKey = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data no formato AAAA-MM-DD").refine((key) => {
+export const dateKeySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data no formato AAAA-MM-DD").refine((key) => {
     const date = new Date(`${key}T00:00:00Z`)
     return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === key
 }, "Data inválida")
+const dateKey = dateKeySchema
 const optionalText = (max: number, label: string) => z.string().trim().max(max, `Até ${max.toLocaleString("pt-BR")} caracteres ${label}`).nullable().optional()
 
 // ── Clientes ───────────────────────────────────────────────────────────────
@@ -81,10 +82,11 @@ export type OrderItemInput = z.infer<typeof orderItemInputSchema>
 
 export const orderAttachmentInputSchema = z.strictObject({ fileId: objectIdSchema, clientVisible: z.boolean().default(true) })
 
-const items = z.array(orderItemInputSchema).max(ORDER_ITEMS_MAX, `Até ${ORDER_ITEMS_MAX} itens`).refine((list) => {
+export const orderItemsSchema = z.array(orderItemInputSchema).max(ORDER_ITEMS_MAX, `Até ${ORDER_ITEMS_MAX} itens`).refine((list) => {
     const ids = list.flatMap((item) => item.id ? [item.id] : [])
     return new Set(ids).size === ids.length
 }, "Item existente repetido")
+const items = orderItemsSchema
 const attachments = z
     .array(orderAttachmentInputSchema)
     .max(ORDER_ATTACHMENTS_MAX, `Até ${ORDER_ATTACHMENTS_MAX} anexos`)
@@ -94,7 +96,8 @@ const description = z.string().trim().min(1, "Descreva a necessidade do cliente"
 const title = z.string().trim().max(ORDER_TITLE_MAX, `Até ${ORDER_TITLE_MAX} caracteres no título`).nullable().optional()
 const summary = z.string().trim().max(ORDER_SUMMARY_MAX, `Até ${ORDER_SUMMARY_MAX} caracteres no resumo`).nullable().optional()
 /** Valor ajustado manualmente; `null` volta ao calculado (Σ horas × valor/hora). */
-const totalOverride = z.number({ error: "Informe o valor" }).int("Valor em unidades mínimas (centavos)").min(0, "O valor não pode ser negativo").max(ORDER_TOTAL_MAX_CENTS, "Valor muito alto").nullable().optional()
+export const orderTotalOverrideSchema = z.number({ error: "Informe o valor" }).int("Valor em unidades mínimas (centavos)").min(0, "O valor não pode ser negativo").max(ORDER_TOTAL_MAX_CENTS, "Valor muito alto").nullable().optional()
+const totalOverride = orderTotalOverrideSchema
 
 export const orderCreateSchema = z
     .strictObject({

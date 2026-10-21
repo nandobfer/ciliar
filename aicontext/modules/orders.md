@@ -29,13 +29,16 @@ Implementação em `src/features/orders/`, conforme `docs/modulos/m3-clientes-pe
 - Escritas pelo prestador usam `writeItem`/`businessTransaction`: negócio ativo, acesso relido,
   fence do dono e `version`. Decisão pública, retorno da IA e purge de clientes compartilham esse
   fence. O formulário usa a versão em que começou a edição, não a de uma atualização recebida.
-- `business_order_versions`: snapshot, número, motivo (`send`, `edit`, `reopen`), publicação,
+- `business_order_versions`: snapshot, número, motivo (`send`, `edit`, `reopen`, `work`), publicação,
   ator e simulação. Antes do primeiro envio não grava versões; depois, cada edição grava.
   Rascunhos/reabertura não são públicos; o envio publica a versão atual. Prorrogar sem mudança
   não duplica snapshot. Cliente vê diferenças apenas entre versões publicadas.
 - Decisão guarda cópia imutável e número da versão, nome, data, IP e ator/origem. Aceite cria
-  `business_works`, único por pedido: coluna `opening` (Abertura), horas e valor copiados.
-  **Sem UI de Kanban no M3**; o pedido aceito é somente leitura (edição via trabalho no M4).
+  `business_works`, único por pedido: coluna `opening` (Abertura), horas e valor copiados, a
+  movimentação inicial e a posição no quadro. O pedido aceito é somente leitura pela tela de
+  pedidos: itens, horas, valor e prazo são editados **pelo trabalho** (M4, versão `work` não
+  publicada; ver [works.md](works.md)). Excluir o trabalho deixa o pedido Aceito como registro
+  (`workId: null`, `workDeletedAt`).
 - Qualquer pedido/trabalho trava a moeda, inclusive rascunho/cancelado. Excluir/purgar negócio
   remove pedidos, versões e trabalhos; mantém clientes do usuário.
 - Índices em `ensure-business-indexes`, **sem `dbConnect` na migração**.

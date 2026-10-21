@@ -1,6 +1,6 @@
 import type { AiFeatureAvailability } from "@/features/ai/types"
 import type { BusinessFileDto } from "@/features/businesses/types"
-import type { OrderAction, OrderAiStatus, OrderDecider, OrderStatus, OrderVersionReason, WorkFixedColumn } from "./constants"
+import type { OrderAction, OrderAiStatus, OrderDecider, OrderStatus, OrderVersionReason } from "./constants"
 import type { OrderChange, OrderSnapshot } from "./logic"
 import type { OrderTitleFeatureSettings } from "./schemas"
 
@@ -99,6 +99,8 @@ export interface OrderSummaryDto {
     deadlineAlertDays: number
     link: OrderLinkDto | null
     workId: string | null
+    /** Trabalho excluído definitivamente (o pedido aceito ficou como registro). */
+    workDeletedAt: string | null
     createdAt: string
     updatedAt: string
 }
@@ -157,17 +159,6 @@ export interface OrderSendResultDto {
     order: OrderDto
     url: string
     email: "sent" | "skipped" | "no-email" | "smtp-unavailable" | "failed" | null
-}
-
-export interface WorkDto {
-    id: string
-    businessId: string
-    orderId: string
-    code: string
-    column: WorkFixedColumn
-    estimatedMinutes: number
-    totalCents: number
-    createdAt: string
 }
 
 // ── Link público ───────────────────────────────────────────────────────────

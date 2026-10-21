@@ -1,4 +1,4 @@
-import { ClipboardList, Clock, FileText, LayoutDashboard, ReceiptText, Target, Trophy, type LucideIcon } from "lucide-react"
+import { ClipboardList, Clock, FileText, Hammer, LayoutDashboard, ReceiptText, Target, Trophy, type LucideIcon } from "lucide-react"
 import type { NavSectionDef } from "@/features/layout/types"
 import { BUSINESS_SPACE_SECTIONS, businessSpaceHref, type BusinessSpaceSlug } from "../../constants"
 
@@ -10,6 +10,7 @@ const ICONS: Record<BusinessSpaceSlug, LucideIcon> = {
     documentos: FileText,
     sucessos: Trophy,
     pedidos: ReceiptText,
+    trabalhos: Hammer,
 }
 
 /** Seção "Negócio" da barra lateral com as páginas do espaço do negócio aberto. */

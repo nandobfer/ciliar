@@ -26,6 +26,28 @@ Todos os writes têm resumo. Enviar só devolve URL com `copyLink: true`, quando
 demais leituras não expõem token. Anexos vêm de arquivos do chat e podem ser ocultos do cliente.
 `create_success`/`update_success` também recebem `clientId` (cliente do dono).
 
+### Ferramentas M4: Trabalhos
+
+Grupos sem painel (`work-columns`, `works`, `work-time`, `work-notes`; `businesses.use`, leituras
+também com `businesses.view_all`), em `server/tools/works.ts`. Regras em [works.md](works.md).
+
+| Grupo | Ferramentas | Risco |
+|---|---|---|
+| Colunas dos trabalhos | `list_work_columns` | read |
+| Colunas dos trabalhos | `create_work_column`, `update_work_column`, `reorder_work_columns` | write |
+| Colunas dos trabalhos | `delete_work_column` (só vazia, arquivados contam) | destructive |
+| Trabalhos | `list_works`, `get_work` (itens, horas, notas, anexos, pagamentos, movimentações e versões) | read |
+| Trabalhos | `move_work` (nunca para/de Pago: `authorize` recusa `paid`), `mark_work_paid` (data/valor/forma; num pago, corrige — W4), `update_work` (itens, horas estimadas, valor, prazo — versão `work`), `restore_work` | write |
+| Trabalhos | `unmark_work_paid` (sai do faturamento), `archive_work`, `delete_work` | destructive |
+| Horas dos trabalhos | `list_time_entries` | read |
+| Horas dos trabalhos | `create_time_entry` (item do pedido ou atividade ativa; data padrão hoje no fuso do turno), `update_time_entry` | write |
+| Horas dos trabalhos | `delete_time_entry` | destructive |
+| Notas, anexos e sucesso | `add_work_note`, `update_work_note` (só a própria), `add_work_attachment` (arquivos do chat), `convert_work_to_success` (um por trabalho) | write |
+| Notas, anexos e sucesso | `delete_work_note` (só a própria) | destructive |
+
+`update_work_note`/`delete_work_note` cobrem o que a tela permite (P26). As versões (`version`)
+são lidas pelo próprio executor antes de cada escrita.
+
 - Item **"Agente Opex"** (ícone `Bot`) no rodapé da barra lateral (`AppLayoutShell` passa
   `sidebarFooterItems` ao `AppShell`), **só com a permissão `opex.use`** (ramo "Agente Opex" do catálogo).
 - Popover ancorado no item, abertura com spring de escala (Framer Motion, respeitando movimento
@@ -123,6 +145,8 @@ chamando o serviço real com o `AccessContext` revalidado (nunca HTTP).
 | Metas do negócio (M2) | `list_goals` (atual + linha do tempo), `get_current_goal`, `get_goal_progress` (fuso do navegador do turno), `create_goal` (nova atual; a anterior vai para o histórico), `update_goal` (nova versão), `restore_goal` (arquivada → atual), `archive_goal`* (a anterior volta a valer), `delete_goal`* (só arquivada) | idem |
 | Documentos do negócio (M2) | `list_documents`, `get_document`, `create_document` (arquivo do chat copiado para o negócio), `update_document` (metadados), `restore_document`, `archive_document`*, `delete_document`* | idem |
 | Sucessos do negócio (M2) | `list_successes`, `get_success`, `create_success` (`fileIds` do chat), `update_success` (`addFileIds`/`removeAttachmentIds`), `restore_success`, `archive_success`*, `delete_success`* | idem |
+| Clientes e Pedidos (M3) | ver "Ferramentas M3" acima | idem |
+| Trabalhos (M4) | ver "Ferramentas M4" acima: colunas, trabalhos, horas, notas/anexos/sucesso | idem |
 | Memórias dos agentes | `list_agent_memories`, `get_agent_memory`, `create_agent_memory`, `update_agent_memory`, `delete_agent_memory`* (`agent` = enum de `src/features/ai/agents.ts`, inclusive o próprio Agente Opex) | `ai_memories.view` / `ai_memories.edit` |
 | Usuários | `list_users`, `get_user`, `create_user`* (convite sem senha, `sendInvite`), `resend_user_invite`, `update_user`*, `delete_user`* | `users.view/create/edit/delete` |
 | Perfis | `list_permission_catalog`, `list_roles`, `get_role`, `create_role`*, `update_role`* (com `businessLimit`), `reorder_roles`*, `delete_role`* | `roles.view/edit` (+ `users.edit` para membros) |

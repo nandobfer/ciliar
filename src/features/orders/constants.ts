@@ -36,10 +36,13 @@ export type OrderAction = (typeof ORDER_ACTIONS)[number]
 export const ORDER_DECIDERS = ["provider", "client"] as const
 export type OrderDecider = (typeof ORDER_DECIDERS)[number]
 
-/** Motivo de cada versão: envio, edição salva depois do primeiro envio ou reabertura de um recusado. */
-export const ORDER_VERSION_REASONS = ["send", "edit", "reopen"] as const
+/**
+ * Motivo de cada versão: envio, edição salva depois do primeiro envio, reabertura de um recusado ou
+ * alteração dos dados comerciais pelo trabalho (M4, nunca publicada: o link mostra a versão aceita).
+ */
+export const ORDER_VERSION_REASONS = ["send", "edit", "reopen", "work"] as const
 export type OrderVersionReason = (typeof ORDER_VERSION_REASONS)[number]
-export const ORDER_VERSION_REASON_LABELS: Record<OrderVersionReason, string> = { send: "Enviado", edit: "Alterado", reopen: "Reaberto" }
+export const ORDER_VERSION_REASON_LABELS: Record<OrderVersionReason, string> = { send: "Enviado", edit: "Alterado", reopen: "Reaberto", work: "Alterado no trabalho" }
 
 export const ORDER_CODE_PREFIX = "PED-"
 export const orderCode = (number: number) => `${ORDER_CODE_PREFIX}${String(number).padStart(4, "0")}`
@@ -69,11 +72,9 @@ export const quotePagePath = (token: string) => `${QUOTE_PAGE_PATH}/${token}`
 export const QUOTE_READ_LIMIT = 120
 export const QUOTE_DECISION_LIMIT = 10
 
-// ── Trabalhos (registro mínimo do M3; o Kanban é o M4) ──────────────────────
+// ── Trabalhos (o aceite cria o trabalho em Abertura; Kanban no M4) ──────────
 
-export const WORK_FIXED_COLUMNS = ["opening", "execution", "validation", "paid"] as const
-export type WorkFixedColumn = (typeof WORK_FIXED_COLUMNS)[number]
-export const WORK_COLUMN_LABELS: Record<WorkFixedColumn, string> = { opening: "Abertura", execution: "Execução", validation: "Validação", paid: "Pago" }
+export { WORK_COLUMN_LABELS, WORK_FIXED_COLUMNS, type WorkFixedColumn } from "@/features/works/constants"
 
 // ── Agente de título e resumo ───────────────────────────────────────────────
 

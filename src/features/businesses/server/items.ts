@@ -7,6 +7,7 @@ import { loadPlatformState } from "@/features/platform/server/state"
 import { BUSINESS_ITEM_AUDIT, BUSINESS_ITEM_KINDS, BUSINESS_ITEM_LABELS, type BusinessItemKind, type BusinessSpaceKind } from "../constants"
 import { auditBusiness, businessTransaction, canUseBusinesses, ensureBusinessCollections } from "./access"
 import { loadOwnedForWrite, loadVisibleBusiness, publishSpaceChanged, removeObjectsQuietly } from "./businesses"
+import { workModels } from "@/features/works/server/models"
 import { businessModels, type BusinessRecord } from "./models"
 
 /**
@@ -152,6 +153,8 @@ export async function itemCleanup(kind: BusinessItemKind, doc: { _id: Types.Obje
         return []
     }
     if (kind === "documents" || kind === "successes") {
+        // Sucesso convertido de um trabalho: o trabalho volta a poder ser convertido.
+        if (kind === "successes") await workModels().works.updateMany({ businessId: doc.businessId, successId: id }, { $set: { successId: null } }, { session })
         const files = await models.files.find({ businessId: doc.businessId, itemId: id }).select({ key: 1, uploadKey: 1 }).session(session).lean()
         await models.files.deleteMany({ businessId: doc.businessId, itemId: id }, { session })
         return files.flatMap((file) => [file.key, file.uploadKey])

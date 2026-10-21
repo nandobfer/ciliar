@@ -1,4 +1,4 @@
-import { Briefcase, Contact, Plug, ReceiptText, Users, Shield } from "lucide-react"
+import { Briefcase, Contact, Hammer, Plug, ReceiptText, Users, Shield } from "lucide-react"
 import type { NavBadgeKey, NavItemDef, NavSectionDef } from "./types"
 
 /** Navegação do app, em seções. */
@@ -10,6 +10,7 @@ export const APP_NAV: readonly NavSectionDef[] = [
             { href: "/negocios", label: "Negócios", title: "Negócios", icon: Briefcase },
             { href: "/clientes", label: "Clientes", title: "Clientes", icon: Contact },
             { href: "/pedidos", label: "Pedidos", title: "Pedidos", icon: ReceiptText },
+            { href: "/trabalhos", label: "Trabalhos", title: "Trabalhos", icon: Hammer },
         ],
     },
     {

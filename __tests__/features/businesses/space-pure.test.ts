@@ -130,7 +130,7 @@ describe("rotas, navegação e ferramentas do espaço", () => {
 
     it("barra lateral: as seis páginas do espaço (sem Entrevista), sem o Next rolar até o segmento", () => {
         const section = businessSpaceNavSection("c".repeat(24))
-        expect(section.items.map((entry) => entry.href)).toEqual(["", "/ficha", "/atividades", "/metas", "/documentos", "/sucessos", "/pedidos"].map((slug) => `/negocios/${"c".repeat(24)}${slug}`))
+        expect(section.items.map((entry) => entry.href)).toEqual(["", "/ficha", "/atividades", "/metas", "/documentos", "/sucessos", "/pedidos", "/trabalhos"].map((slug) => `/negocios/${"c".repeat(24)}${slug}`))
         expect(section.items.every((entry) => entry.scroll === false)).toBe(true)
     })
 

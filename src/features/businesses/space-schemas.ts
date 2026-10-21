@@ -114,6 +114,8 @@ export const successCreateSchema = z.strictObject({
     attachmentIds: attachmentIds.default([]),
     /** Cliente do dono ligado ao sucesso (M3). */
     clientId: objectId.nullable().optional(),
+    /** "Converter em Sucesso" (M4): trabalho do negócio ligado ao sucesso (um por trabalho). */
+    workId: objectId.nullable().optional(),
 })
 export type SuccessCreateInput = z.infer<typeof successCreateSchema>
 

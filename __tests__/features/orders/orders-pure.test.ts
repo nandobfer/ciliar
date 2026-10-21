@@ -173,8 +173,8 @@ describe("entradas, token e rotas", () => {
         expect(() => routePermissions(`${order}/destroy`, "POST")).toThrow()
     })
 
-    it("o espaço do negócio ganha Pedidos na barra lateral", () => {
+    it("o espaço do negócio ganha Pedidos (M3) e Trabalhos (M4) na barra lateral", () => {
         expect(BUSINESS_SPACE_SECTIONS.map((section) => section.slug)).toContain("pedidos")
-        expect(businessSpaceNavSection("abc").items.at(-1)).toMatchObject({ href: "/negocios/abc/pedidos", label: "Pedidos" })
+        expect(businessSpaceNavSection("abc").items.slice(-2)).toEqual([expect.objectContaining({ href: "/negocios/abc/pedidos", label: "Pedidos" }), expect.objectContaining({ href: "/negocios/abc/trabalhos", label: "Trabalhos" })])
     })
 })

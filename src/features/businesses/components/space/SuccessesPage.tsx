@@ -93,16 +93,25 @@ export function SuccessesPage() {
     )
 }
 
-function SuccessDialog({ success, onClose }: { success: SuccessDto | null; onClose: () => void }) {
+/** Pré-preenchimento do "Converter em Sucesso" (M4): título, data e cliente do trabalho, ligado a ele. */
+export interface SuccessPreset {
+    title: string
+    date: string | null
+    clientId: string | null
+    workId: string
+    workCode: string
+}
+
+export function SuccessDialog({ success, preset, onClose, onSaved }: { success: SuccessDto | null; preset?: SuccessPreset; onClose: () => void; onSaved?: (success: SuccessDto) => void }) {
     const { business } = useBusinessSpace()
     const save = useSaveItem(business.id, "successes")
     const uploads = useBusinessUploads(business.id, "success")
-    const [title, setTitle] = useState(success?.title ?? "")
-    const [date, setDate] = useState(success?.date ?? "")
+    const [title, setTitle] = useState(success?.title ?? preset?.title ?? "")
+    const [date, setDate] = useState(success?.date ?? preset?.date ?? "")
     const [result, setResult] = useState(success?.result ?? "")
     const [description, setDescription] = useState(success?.description ?? "")
     const [kept, setKept] = useState(success?.attachments ?? [])
-    const [clientId, setClientId] = useState(success?.clientId ?? "")
+    const [clientId, setClientId] = useState(success?.clientId ?? preset?.clientId ?? "")
     const clients = useClients()
     const client = clients.data?.items.find((item) => item.id === clientId)
     const [error, setError] = useState<string | null>(null)
@@ -116,18 +125,18 @@ function SuccessDialog({ success, onClose }: { success: SuccessDto | null; onClo
     }
 
     const submit = async () => {
-        const parsed = successCreateSchema.safeParse({ title, date: date || null, result: result.trim() || null, description: description.trim() || null, attachmentIds: [...kept.map((file) => file.id), ...added], clientId: clientId || null })
+        const parsed = successCreateSchema.safeParse({ title, date: date || null, result: result.trim() || null, description: description.trim() || null, attachmentIds: [...kept.map((file) => file.id), ...added], clientId: clientId || null, ...(preset && !success ? { workId: preset.workId } : {}) })
         if (!parsed.success) return setError(parsed.error.issues[0]!.message)
         setError(null)
-        await save.mutateAsync({ id: success?.id, data: success ? { ...parsed.data, version: success.version } : parsed.data }).then(() => { uploads.reset(); onClose() }, () => undefined)
+        await save.mutateAsync({ id: success?.id, data: success ? { ...parsed.data, version: success.version } : parsed.data }).then((saved) => { uploads.reset(); onSaved?.(saved); onClose() }, () => undefined)
     }
 
     return (
         <Dialog open onOpenChange={(open) => !open && close()}>
             <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>{success ? "Editar sucesso" : "Novo sucesso"}</DialogTitle>
-                    <DialogDescription>Imagens e anexos seguem os limites de documentos da Plataforma.</DialogDescription>
+                    <DialogTitle>{success ? "Editar sucesso" : preset ? `Converter ${preset.workCode} em sucesso` : "Novo sucesso"}</DialogTitle>
+                    <DialogDescription>{preset && !success ? "O sucesso fica ligado ao trabalho e ao cliente. " : ""}Imagens e anexos seguem os limites de documentos da Plataforma.</DialogDescription>
                 </DialogHeader>
                 <form className="space-y-4" noValidate onSubmit={(event) => { event.preventDefault(); void submit() }}>
                     <div className={FORM_GRID}>

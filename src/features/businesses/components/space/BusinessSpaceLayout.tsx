@@ -79,7 +79,8 @@ export function BusinessSpaceLayout({ id, children }: { id: string; children: Re
 
     return (
         <BusinessSpaceContext.Provider value={{ business, editable: business.editable }}>
-            <div style={businessThemeStyle(theme)} className="flex flex-col gap-6">
+            {/* Ocupa a altura da área de conteúdo: o Kanban de Trabalhos (M4) cresce até o fim da tela. */}
+            <div style={businessThemeStyle(theme)} className="flex min-h-full flex-col gap-6">
                 {/* No dashboard o nome do negócio é o título da página (ver `BusinessDashboardPage`). */}
                 {pathname !== businessSpaceHref(business.id) && (
                     <div className="flex items-center gap-3">
@@ -122,7 +123,7 @@ export function BusinessSpaceLayout({ id, children }: { id: string; children: Re
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: reduceMotion ? 0 : -6 }}
                         transition={{ duration: reduceMotion ? 0 : 0.2, ease: "easeOut" }}
-                        className="flex flex-col gap-6"
+                        className="flex flex-1 flex-col gap-6"
                     >
                         {children}
                     </motion.div>

@@ -11,6 +11,7 @@ import type { AccessContext } from "@/features/access/server/context"
 import { denied } from "@/features/access/server/access"
 import { loadPlatformState } from "@/features/platform/server/state"
 import { orderModels } from "@/features/orders/server/models"
+import { workModels } from "@/features/works/server/models"
 import { autoBusinessName, DEFAULT_BUSINESS_THEME, DEFAULT_CURRENCY, DEFAULT_DEADLINE_ALERT_DAYS, DEFAULT_QUOTE_VALIDITY_DAYS, type BusinessSpaceKind } from "../constants"
 import { businessUpdateSchema, type BusinessGoalInput } from "../schemas"
 import type { BusinessCapacityDto, BusinessDetailDto, BusinessDto, BusinessGoalDto, BusinessListDto } from "../types"
@@ -303,11 +304,17 @@ async function deleteBusinessData(doc: BusinessDoc, session: ClientSession): Pro
     await models.activityPrices.deleteMany({ businessId: id }, { session })
     await models.documents.deleteMany({ businessId: id }, { session })
     await models.successes.deleteMany({ businessId: id }, { session })
-    // Pedidos (com versões) e trabalhos do negócio; os clientes são do usuário e ficam.
+    // Pedidos (com versões) e trabalhos (colunas, movimentações, notas e horas) do negócio; os clientes são do usuário e ficam.
     const orders = orderModels()
     await orders.orders.deleteMany({ businessId: id }, { session })
     await orders.orderVersions.deleteMany({ businessId: id }, { session })
-    await orders.works.deleteMany({ businessId: id }, { session })
+    const works = workModels()
+    await works.works.deleteMany({ businessId: id }, { session })
+    await works.columns.deleteMany({ businessId: id }, { session })
+    await works.layouts.deleteMany({ businessId: id }, { session })
+    await works.moves.deleteMany({ businessId: id }, { session })
+    await works.notes.deleteMany({ businessId: id }, { session })
+    await works.timeEntries.deleteMany({ businessId: id }, { session })
     await models.files.deleteMany({ businessId: id }, { session })
     await models.interviewMessages.deleteMany({ interviewId: { $in: interviewIds } }, { session })
     await models.interviewFiles.deleteMany({ interviewId: { $in: interviewIds } }, { session })

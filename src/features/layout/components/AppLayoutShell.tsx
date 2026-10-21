@@ -12,9 +12,10 @@ import { APP_NAV, PERSISTENT_PAGE_HREFS } from "../navigation"
 import { usePermissions } from "@nandobfer/perfix/react"
 import { INTEGRATION_IDS } from "@/lib/integrations/catalog"
 import { OrdersRealtime } from "@/features/orders/components/OrdersRealtime"
+import { WorksRealtime } from "@/features/works/components/WorksRealtime"
 
-/** Telas do prestador (Negócios, Clientes e Pedidos): `businesses.use` ou `businesses.view_all`. */
-const BUSINESS_HREFS = ["/negocios", "/clientes", "/pedidos"]
+/** Telas do prestador (Negócios, Clientes, Pedidos e Trabalhos): `businesses.use` ou `businesses.view_all`. */
+const BUSINESS_HREFS = ["/negocios", "/clientes", "/pedidos", "/trabalhos"]
 
 interface AppLayoutShellProps {
     ownerName: string
@@ -53,6 +54,7 @@ export function AppLayoutShell({ ownerName, version, children }: AppLayoutShellP
         >
             <BusinessThemeController />
             {can("businesses.use") && <OrdersRealtime />}
+            {can("businesses.use") && <WorksRealtime />}
             {children}
         </AppShell>
     )

@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { format } from "date-fns"
 import { motion, useReducedMotion } from "framer-motion"
-import { ArrowLeft, Ban, Check, Copy, History, Link2, Link2Off, Loader2, RotateCcw, Send, X } from "lucide-react"
+import { ArrowLeft, Ban, Check, Copy, Hammer, History, Link2, Link2Off, Loader2, RotateCcw, Send, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -28,6 +28,7 @@ import { useClients, useCopyOrderLink, useOrder, useOrderAction, useSaveOrder, u
 import { dateKeyLabel, DeadlineBadge, OrderStatusPill } from "./OrderBadges"
 import { OrderForm } from "./OrderForm"
 import { orderHref } from "./OrdersPage"
+import { workHref } from "@/features/works/constants"
 
 /** Novo pedido (`/negocios/[id]/pedidos/novo`). */
 export function NewOrderPage() {
@@ -89,7 +90,7 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                     <OrderStatusPill status={order.status} />
                     <DeadlineBadge status={order.status} dueDate={order.dueDate} alertDays={order.deadlineAlertDays} />
-                    {order.status === "accepted" && <span className="text-xs text-muted-foreground">Versão aceita guardada como registro; itens, horas e valor seguem no trabalho (M4).</span>}
+                    {order.status === "accepted" && <span className="text-xs text-muted-foreground">Versão aceita guardada como registro; itens, horas, valor e prazo são editados pelo trabalho.</span>}
                 </div>
             </PageHeader>
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
@@ -186,7 +187,14 @@ function OrderActionsCard({ order }: { order: OrderDto }) {
                         </Button>
                     )}
                 </div>
-                {order.workId && <p className="rounded-md border border-success/40 bg-success/10 p-2 text-xs text-success">Trabalho criado na coluna Abertura.</p>}
+                {order.workId && (
+                    <Button asChild variant="outline" className="w-full gap-1.5">
+                        <Link href={workHref(order.businessId, order.workId)}>
+                            <Hammer className="h-4 w-4" aria-hidden /> Abrir trabalho
+                        </Link>
+                    </Button>
+                )}
+                {!order.workId && order.workDeletedAt && <p className="rounded-md border bg-muted/30 p-2 text-xs text-muted-foreground">Trabalho excluído definitivamente em {format(new Date(order.workDeletedAt), "dd/MM/yyyy")}; o pedido aceito fica como registro.</p>}
             </CardContent>
             {sending && <SendDialog order={order} onClose={() => setSending(false)} />}
             {rejecting && <RejectDialog order={order} pending={action.isPending} onClose={() => setRejecting(false)} onConfirm={(reason) => action.mutate({ action: "reject", data: { reason: reason || null, version: order.version } }, { onSuccess: () => setRejecting(false) })} />}
@@ -300,7 +308,8 @@ function OrderDecisionCard({ order }: { order: OrderDto }) {
     )
 }
 
-function OrderVersionsCard({ order }: { order: OrderDto }) {
+/** Histórico de versões do pedido (também no detalhe do trabalho, com as alterações pelo trabalho). */
+export function OrderVersionsCard({ order }: { order: Pick<OrderDto, "versions"> }) {
     const reduceMotion = useReducedMotion()
     if (!order.versions.length) return null
     return (

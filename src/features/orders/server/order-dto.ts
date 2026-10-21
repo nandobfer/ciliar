@@ -91,6 +91,7 @@ function toSummary(doc: OrderDoc, context: SummaryContext): OrderSummaryDto {
         deadlineAlertDays: business?.deadlineAlertDays ?? DEFAULT_DEADLINE_ALERT_DAYS,
         link: linkDto(doc.link),
         workId: doc.workId ?? null,
+        workDeletedAt: doc.workDeletedAt ? new Date(doc.workDeletedAt).toISOString() : null,
         createdAt: new Date(doc.createdAt).toISOString(),
         updatedAt: new Date(doc.updatedAt).toISOString(),
     }

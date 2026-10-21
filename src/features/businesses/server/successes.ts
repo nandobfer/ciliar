@@ -4,7 +4,9 @@ import { parseInput } from "@/features/access/server/commands"
 import type { AccessContext } from "@/features/access/server/context"
 import { successCreateSchema, successUpdateSchema } from "../space-schemas"
 import type { ItemListDto, SuccessDto } from "../types"
-import { auditBusiness } from "./access"
+import { workModels } from "@/features/works/server/models"
+import { auditBusiness, businessOwnerOf } from "./access"
+import { publishSpaceChanged } from "./businesses"
 import { claimBusinessFiles, refOfFile, releaseBusinessFiles, toBusinessFileDto } from "./files"
 import { auditAction, deleteItem, itemArchived, itemBaseDto, itemCleanup, itemConflict, loadItem, readBusiness, retentionDaysOf, setItemStatus, writeItem } from "./items"
 import { businessModels, type BusinessFileRef, type BusinessSuccessRecord } from "./models"
@@ -13,7 +15,7 @@ import { loadOwnedClient } from "@/features/orders/server/clients"
 /**
  * Sucessos do negócio (M2): cases/conquistas com título, descrição, data, resultado/métrica e
  * imagens/anexos (mesmos limites dos documentos). Vínculo opcional a um cliente do dono (M3,
- * `clientId`); o vínculo a trabalho entra com o M4 (`workId`).
+ * `clientId`) e ao trabalho que o originou (M4, "Converter em Sucesso": `workId`, um por trabalho).
  */
 
 type SuccessDoc = BusinessSuccessRecord & { _id: Types.ObjectId }
@@ -45,19 +47,30 @@ export async function getSuccess(access: AccessContext, businessId: string, succ
 
 export async function createSuccess(access: AccessContext, businessId: string, raw: unknown): Promise<SuccessDto> {
     const input = parseInput(successCreateSchema, raw)
+    let workTouched = false
     const id = await writeItem(access, businessId, "successes", async ({ current, session, ownerId }) => {
         const models = businessModels()
         if (input.clientId) await loadOwnedClient(ownerId, input.clientId, session)
+        const work = input.workId ? await workModels().works.findOne({ _id: input.workId, businessId }).session(session).lean() : null
+        if (input.workId && !work) throw new DomainError(404, "Trabalho não encontrado", "WORK_NOT_FOUND")
+        if (work?.successId) throw new DomainError(409, "Este trabalho já foi convertido em sucesso.", "WORK_ALREADY_CONVERTED")
         const [created] = await models.successes.create(
-            [{ businessId, ownerId, title: input.title, description: input.description || null, date: input.date ?? null, result: input.result || null, attachments: [], clientId: input.clientId ?? null, workId: null, status: "active", archivedAt: null, version: 0, createdBy: current.userId, updatedBy: current.userId }],
+            [{ businessId, ownerId, title: input.title, description: input.description || null, date: input.date ?? null, result: input.result || null, attachments: [], clientId: input.clientId ?? null, workId: input.workId ?? null, status: "active", archivedAt: null, version: 0, createdBy: current.userId, updatedBy: current.userId }],
             { session },
         )
         const successId = created!._id.toString()
+        if (work) {
+            const linked = await workModels().works.updateOne({ _id: work._id, successId: null }, { $set: { successId, updatedBy: current.userId }, $inc: { version: 1 } }, { session })
+            if (!linked.modifiedCount) throw new DomainError(409, "Este trabalho já foi convertido em sucesso.", "WORK_ALREADY_CONVERTED")
+            await auditBusiness(current, "business.work.convert_success", work._id.toString(), null, { businessId, code: work.code, successId }, session)
+            workTouched = true
+        }
         const files = await claimBusinessFiles(session, businessId, "success", successId, input.attachmentIds)
         if (files.length) await models.successes.updateOne({ _id: created!._id }, { $set: { attachments: files.map(refOfFile) } }, { session })
-        await auditBusiness(current, auditAction("successes", "create"), successId, null, { businessId, title: input.title, date: input.date ?? null, result: input.result ?? null, attachments: files.map((file) => file.name) }, session)
+        await auditBusiness(current, auditAction("successes", "create"), successId, null, { businessId, title: input.title, date: input.date ?? null, result: input.result ?? null, attachments: files.map((file) => file.name), workId: input.workId ?? null }, session)
         return { result: successId }
     })
+    if (workTouched) await publishSpaceChanged(businessOwnerOf(access), businessId, "works")
     return getSuccess(access, businessId, id)
 }
 

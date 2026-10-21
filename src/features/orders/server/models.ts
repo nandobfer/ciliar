@@ -1,10 +1,11 @@
 import mongoose, { Schema, type Connection } from "mongoose"
 import type { EncryptedSecret } from "@/lib/crypto/secretBox"
-import type { OrderAiStatus, OrderDecider, OrderStatus, OrderVersionReason, WorkFixedColumn } from "../constants"
+import { workModels } from "@/features/works/server/models"
+import type { OrderAiStatus, OrderDecider, OrderStatus, OrderVersionReason } from "../constants"
 import type { OrderSnapshot } from "../logic"
 
 /**
- * Coleções de Clientes, Pedidos e do registro mínimo de Trabalhos (M3), no banco `ciliar`. Ver
+ * Coleções de Clientes e Pedidos (M3), no banco `ciliar`. Ver
  * `aicontext/modules/orders.md`. Índices pela migração `ensure-business-indexes`.
  */
 
@@ -114,6 +115,8 @@ export interface OrderRecord {
     decisions: OrderDecisionRecord[]
     cancelledAt: Date | null
     workId: string | null
+    /** Trabalho excluído definitivamente (W5): o pedido aceito fica como registro. */
+    workDeletedAt: Date | null
     version: number
     createdBy: string
     updatedBy: string
@@ -159,6 +162,7 @@ const orderSchema = new Schema<OrderRecord>(
         decisions: { type: [decisionSchema], default: [] },
         cancelledAt: { type: Date, default: null },
         workId: { type: String, default: null },
+        workDeletedAt: { type: Date, default: null },
         version: { type: Number, default: 0 },
         createdBy: { type: String, required: true },
         updatedBy: { type: String, required: true },
@@ -188,7 +192,7 @@ const orderVersionSchema = new Schema<OrderVersionRecord>(
         orderId: { type: String, required: true, immutable: true },
         businessId: { type: String, required: true, immutable: true },
         number: { type: Number, required: true, immutable: true },
-        reason: { type: String, enum: ["send", "edit", "reopen"], required: true, immutable: true },
+        reason: { type: String, enum: ["send", "edit", "reopen", "work"], required: true, immutable: true },
         published: { type: Boolean, default: false },
         snapshot: { type: Schema.Types.Mixed, required: true, immutable: true },
         actorId: { type: String, required: true, immutable: true },
@@ -199,46 +203,7 @@ const orderVersionSchema = new Schema<OrderVersionRecord>(
 orderVersionSchema.index({ orderId: 1, number: 1 }, { unique: true })
 orderVersionSchema.index({ businessId: 1 })
 
-/** Registro mínimo do Trabalho (M4 constrói o Kanban por cima). */
-export interface WorkRecord {
-    businessId: string
-    ownerId: string
-    orderId: string
-    clientId: string
-    code: string
-    column: WorkFixedColumn
-    estimatedMinutes: number
-    totalCents: number
-    currency: string
-    dueDate: string | null
-    status: "active" | "archived"
-    archivedAt: Date | null
-    version: number
-    createdBy: string
-    createdAt: Date
-    updatedAt: Date
-}
-const workSchema = new Schema<WorkRecord>(
-    {
-        businessId: { type: String, required: true },
-        ownerId: { type: String, required: true },
-        orderId: { type: String, required: true },
-        clientId: { type: String, required: true },
-        code: { type: String, required: true },
-        column: { type: String, default: "opening" },
-        estimatedMinutes: { type: Number, default: 0 },
-        totalCents: { type: Number, default: 0 },
-        currency: { type: String, required: true },
-        dueDate: { type: String, default: null },
-        status: { type: String, enum: ["active", "archived"], default: "active" },
-        archivedAt: { type: Date, default: null },
-        version: { type: Number, default: 0 },
-        createdBy: { type: String, required: true },
-    },
-    { collection: "business_works", timestamps: true, versionKey: false },
-)
-workSchema.index({ orderId: 1 }, { unique: true })
-workSchema.index({ businessId: 1, status: 1, column: 1 })
+/** O Trabalho (M4) fica em `works/server/models.ts`; `orderModels().works` aponta para o mesmo modelo. */
 
 function modelOf<T>(connection: Connection, name: string, schema: Schema<T>): mongoose.Model<T> {
     return (connection.models[name] as mongoose.Model<T>) || connection.model<T>(name, schema)
@@ -249,6 +214,6 @@ export function orderModels(connection: Connection = mongoose.connection) {
         clients: modelOf(connection, "BusinessClient", clientSchema),
         orders: modelOf(connection, "BusinessOrder", orderSchema),
         orderVersions: modelOf(connection, "BusinessOrderVersion", orderVersionSchema),
-        works: modelOf(connection, "BusinessWork", workSchema),
+        works: workModels(connection).works,
     }
 }

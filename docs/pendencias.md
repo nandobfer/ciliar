@@ -76,3 +76,9 @@ Nenhuma pendência. Todos os módulos (M0–M5) estão definidos.
 | P62 | M2 | Arquivar a meta atual reativa a substituída mais recente; sem anterior, o negócio fica sem meta. Restaurar uma arquivada faz dela a atual. |
 | P63 | M2 | Página de Metas: a meta atual + linha do tempo à direita (sem filtros/lista); no dashboard, a meta atual numa linha inteira e sem o gráfico "Progresso das metas ativas". |
 | P64 | M1 | A entrevista coleta uma meta só; entrevistas antigas com várias: a última fica ativa e as demais no histórico. |
+| P65 | M4 | Editar itens/horas/valor/prazo no trabalho altera o pedido aceito com uma versão "Alterado no trabalho" não publicada; o link do cliente segue mostrando a versão aceita. |
+| P66 | M4 | Cards com posição manual salva e o seletor de ordenação do Opex: Manual, Prazo, Mais novos, Mais antigos. |
+| P67 | M4 | Coluna customizada tem nome, cor, ícone e descrição (sem limite WIP). |
+| P68 | M4 | Em Pago dá para "Editar pagamento" (auditado; o anterior fica no histórico). |
+| P69 | M4 | Excluir um trabalho arquivado mantém o pedido Aceito como registro; horas, notas, anexos e movimentações saem e o sucesso ligado perde o vínculo. |
+| P70 | M4 | Um Sucesso por trabalho, pelo diálogo do M2 pré-preenchido; depois o botão vira "Ver sucesso". |

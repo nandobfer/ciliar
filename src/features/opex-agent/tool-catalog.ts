@@ -535,6 +535,198 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         description: "Cancela um pedido em Rascunho ou Enviado (desistência antes da decisão): revoga o link. Estado final.",
     },
 
+    // ── Colunas dos trabalhos (M4) ────────────────────────────────────────────
+    {
+        name: "list_work_columns",
+        group: "work-columns",
+        label: "Listar colunas dos trabalhos",
+        risk: "read",
+        access: { any: ["businesses.use", "businesses.view_all"] },
+        description: "Quadro de trabalhos de um negócio: as colunas na ordem (fixas Abertura, Execução, Validação e Pago, que nunca mudam, e as customizadas entre Abertura e Pago, com a chave col-…), a ordem (layout) e quantos trabalhos há em cada uma (arquivados inclusive).",
+    },
+    {
+        name: "create_work_column",
+        group: "work-columns",
+        label: "Criar coluna dos trabalhos",
+        risk: "write",
+        access: { all: ["businesses.use"] },
+        description: "Cria uma coluna customizada no quadro do negócio: nome, cor (violet, sky, emerald, amber, rose, cyan, orange, pink, lime, zinc), ícone e descrição opcional; afterKey = coluna depois da qual entra (sempre entre Abertura e Pago; sem afterKey, antes de Pago).",
+    },
+    {
+        name: "update_work_column",
+        group: "work-columns",
+        label: "Editar coluna dos trabalhos",
+        risk: "write",
+        access: { all: ["businesses.use"] },
+        description: "Renomeia ou muda cor, ícone e descrição de uma coluna customizada (as fixas não mudam).",
+    },
+    {
+        name: "reorder_work_columns",
+        group: "work-columns",
+        label: "Reordenar colunas dos trabalhos",
+        risk: "write",
+        access: { all: ["businesses.use"] },
+        description: "Nova ordem COMPLETA das colunas do quadro (chaves de list_work_columns): Abertura primeiro, Pago por último e Execução antes de Validação; as customizadas ficam em qualquer ponto entre elas.",
+    },
+    {
+        name: "delete_work_column",
+        group: "work-columns",
+        label: "Excluir coluna dos trabalhos",
+        risk: "destructive",
+        access: { all: ["businesses.use"] },
+        description: "Exclui uma coluna customizada VAZIA (sem trabalhos, inclusive arquivados). Com trabalhos, mova-os antes.",
+    },
+
+    // ── Trabalhos (M4) ───────────────────────────────────────────────────────
+    {
+        name: "list_works",
+        group: "works",
+        label: "Listar trabalhos",
+        risk: "read",
+        access: { any: ["businesses.use", "businesses.view_all"] },
+        description: "Trabalhos (pedidos aceitos) do usuário: de um negócio (businessId) ou de todos, com filtros por cliente e situação (active, archived, all). Traz código do pedido, título, cliente, coluna (chave e nome), valor, prazo, horas estimadas × apontadas e o pagamento.",
+    },
+    {
+        name: "get_work",
+        group: "works",
+        label: "Ler trabalho",
+        risk: "read",
+        access: { any: ["businesses.use", "businesses.view_all"] },
+        description: "Um trabalho com os itens do pedido (itemId, atividade, minutos e valor/hora), valor, prazo, lançamentos de horas, notas, anexos, o pagamento e o histórico (pagamentos, movimentações e versões do pedido).",
+    },
+    {
+        name: "move_work",
+        group: "works",
+        label: "Mover trabalho",
+        risk: "write",
+        access: { all: ["businesses.use"] },
+        description: "Move um trabalho ativo para outra coluna do quadro do negócio (chave de list_work_columns). Nunca para nem de Pago: para entrar em Pago use mark_work_paid; para sair, unmark_work_paid.",
+    },
+    {
+        name: "mark_work_paid",
+        group: "works",
+        label: "Marcar trabalho como pago",
+        risk: "write",
+        access: { all: ["businesses.use"] },
+        description: "Move o trabalho para Pago registrando o pagamento: data do pagamento (AAAA-MM-DD; padrão hoje, é a data do faturamento das metas), valor recebido (unidades mínimas; padrão o valor do pedido) e forma de pagamento (texto livre: PIX, transferência…). Num trabalho já pago, corrige o pagamento (o anterior fica no histórico).",
+    },
+    {
+        name: "unmark_work_paid",
+        group: "works",
+        label: "Tirar trabalho de Pago",
+        risk: "destructive",
+        access: { all: ["businesses.use"] },
+        description: "Tira o trabalho de Pago para outra coluna: remove-o do faturamento (metas e dashboard); o registro do pagamento fica no histórico.",
+    },
+    {
+        name: "update_work",
+        group: "works",
+        label: "Editar trabalho",
+        risk: "write",
+        access: { all: ["businesses.use"] },
+        description: "Edita os dados comerciais do trabalho: itens (lista COMPLETA: os atuais pelo itemId de get_work, com os minutos estimados, + novos por activityId de uma atividade ATIVA), valor ajustado (null volta ao calculado) e prazo (AAAA-MM-DD). Altera o pedido aceito com uma versão no histórico; o link do cliente continua mostrando a versão aceita.",
+    },
+    {
+        name: "archive_work",
+        group: "works",
+        label: "Arquivar trabalho",
+        risk: "destructive",
+        access: { all: ["businesses.use"] },
+        description: "Arquiva um trabalho desistido/cancelado após o aceite (some do Kanban/Tabela; excluído definitivamente após o prazo de Trabalhos da Plataforma). Um trabalho em Pago arquivado SAI do faturamento enquanto estiver arquivado.",
+    },
+    {
+        name: "restore_work",
+        group: "works",
+        label: "Restaurar trabalho",
+        risk: "write",
+        access: { all: ["businesses.use"] },
+        description: "Restaura um trabalho arquivado na mesma coluna; se estava em Pago, volta a contar no faturamento com o pagamento registrado.",
+    },
+    {
+        name: "delete_work",
+        group: "works",
+        label: "Excluir trabalho definitivamente",
+        risk: "destructive",
+        access: { all: ["businesses.use"] },
+        description: "Exclui definitivamente um trabalho ARQUIVADO com horas, notas, anexos e movimentações (irreversível). O pedido continua Aceito como registro e o sucesso ligado perde o vínculo.",
+    },
+
+    // ── Horas dos trabalhos (M4) ──────────────────────────────────────────────
+    {
+        name: "list_time_entries",
+        group: "work-time",
+        label: "Listar horas do trabalho",
+        risk: "read",
+        access: { any: ["businesses.use", "businesses.view_all"] },
+        description: "Lançamentos de horas de um trabalho: item/atividade, valor/hora congelado, data, minutos, descrição e autor.",
+    },
+    {
+        name: "create_time_entry",
+        group: "work-time",
+        label: "Lançar horas",
+        risk: "write",
+        access: { all: ["businesses.use"] },
+        description: "Lança horas realizadas num trabalho ativo (apontamento manual, sem cronômetro): source orderItem + refId = itemId de get_work, ou source activity + refId = id de uma atividade ATIVA do negócio fora do pedido (o valor/hora é congelado agora); data trabalhada (AAAA-MM-DD, não futura), minutos (1 a 1440) e descrição opcional.",
+    },
+    {
+        name: "update_time_entry",
+        group: "work-time",
+        label: "Editar lançamento de horas",
+        risk: "write",
+        access: { all: ["businesses.use"] },
+        description: "Edita um lançamento de horas (só os campos informados mudam; trocar o item/atividade congela o valor/hora novo).",
+    },
+    {
+        name: "delete_time_entry",
+        group: "work-time",
+        label: "Excluir lançamento de horas",
+        risk: "destructive",
+        access: { all: ["businesses.use"] },
+        description: "Exclui um lançamento de horas do trabalho (irreversível).",
+    },
+
+    // ── Notas, anexos e sucesso dos trabalhos (M4) ─────────────────────────────
+    {
+        name: "add_work_note",
+        group: "work-notes",
+        label: "Adicionar nota ao trabalho",
+        risk: "write",
+        access: { all: ["businesses.use"] },
+        description: "Adiciona uma nota/comentário interno ao trabalho (o autor é o usuário; nunca aparece ao cliente).",
+    },
+    {
+        name: "update_work_note",
+        group: "work-notes",
+        label: "Editar nota do trabalho",
+        risk: "write",
+        access: { all: ["businesses.use"] },
+        description: "Edita uma nota do trabalho — somente uma nota de autoria do próprio usuário.",
+    },
+    {
+        name: "delete_work_note",
+        group: "work-notes",
+        label: "Excluir nota do trabalho",
+        risk: "destructive",
+        access: { all: ["businesses.use"] },
+        description: "Exclui uma nota do trabalho — somente uma nota de autoria do próprio usuário.",
+    },
+    {
+        name: "add_work_attachment",
+        group: "work-notes",
+        label: "Anexar arquivo ao trabalho",
+        risk: "write",
+        access: { all: ["businesses.use"] },
+        description: "Anexa ao trabalho (entregáveis) arquivos enviados no chat (fileIds de list_chat_files; mesmos limites dos documentos).",
+    },
+    {
+        name: "convert_work_to_success",
+        group: "work-notes",
+        label: "Converter trabalho em sucesso",
+        risk: "write",
+        access: { all: ["businesses.use"] },
+        description: "Cria um Sucesso do negócio ligado ao trabalho e ao cliente (um por trabalho): título (padrão: o título do pedido), descrição, data (padrão: a do pagamento ou hoje) e resultado/métrica.",
+    },
+
     // ── Memórias dos agentes ──────────────────────────────────────────────────
     {
         name: "list_agent_memories",
@@ -834,7 +1026,7 @@ export const OPEX_ALWAYS_ON_TOOLS = new Set(OPEX_TOOL_CATALOG.filter((tool) => t
 const has = (permissions: ReadonlySet<string>, key: string) => permissions.has("*") || permissions.has(key)
 
 /** Grupos do prestador: não exigem o painel. Os demais (administração) exigem também `admin.access`. */
-export const OPEX_NO_PANEL_GROUPS: ReadonlySet<OpexToolGroup> = new Set<OpexToolGroup>(["context", "files", "businesses", "business-activities", "business-goals", "business-documents", "business-successes", "clients", "orders"])
+export const OPEX_NO_PANEL_GROUPS: ReadonlySet<OpexToolGroup> = new Set<OpexToolGroup>(["context", "files", "businesses", "business-activities", "business-goals", "business-documents", "business-successes", "clients", "orders", "work-columns", "works", "work-time", "work-notes"])
 
 /** As permissões efetivas liberam a ferramenta? (Revalidado no servidor antes de cada execução.) */
 export function canUseOpexTool(meta: Pick<OpexToolMeta, "access" | "group">, permissions: ReadonlySet<string>): boolean {

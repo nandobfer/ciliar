@@ -61,7 +61,7 @@ describe('catálogo e registro de ferramentas', () => {
   })
 
   it('só existem ferramentas de negócios (clientes e pedidos inclusive), usuários, perfis, integrações (tokens e rotinas), plataforma, arquivos e contexto', () => {
-    expect(OPEX_TOOL_GROUPS).toEqual(['context', 'files', 'businesses', 'business-activities', 'business-goals', 'business-documents', 'business-successes', 'clients', 'orders', 'memories', 'users', 'roles', 'integrations', 'api-tokens', 'routines', 'platform'])
+    expect(OPEX_TOOL_GROUPS).toEqual(['context', 'files', 'businesses', 'business-activities', 'business-goals', 'business-documents', 'business-successes', 'clients', 'orders', 'work-columns', 'works', 'work-time', 'work-notes', 'memories', 'users', 'roles', 'integrations', 'api-tokens', 'routines', 'platform'])
     expect(OPEX_TOOLS.some((tool) => tool.name === 'create_business')).toBe(false)
     expect(OPEX_TOOLS.some((tool) => /task|preview|workbench|central|service|finance/.test(tool.name))).toBe(false)
   })
@@ -74,7 +74,14 @@ describe('catálogo e registro de ferramentas', () => {
 
   it('exclusão, credencial, senha, token e mudança de autoridade (perfis, usuários, integrações) são destructive e têm o resumo do card', () => {
     // Editar a ficha e os itens do próprio negócio não é autoridade nem credencial: `write` (M1/M2).
-    const ownBusinessWrites = ['update_business', ...['activity', 'goal', 'document', 'success', 'client', 'order'].flatMap((item) => [`create_${item}`, `update_${item}`])]
+    const ownBusinessWrites = [
+      'update_business',
+      ...['activity', 'goal', 'document', 'success', 'client', 'order', 'work_column', 'time_entry'].flatMap((item) => [`create_${item}`, `update_${item}`]),
+      // Trabalhos (M4): editar dados comerciais, a ordem das colunas e a própria nota.
+      'update_work',
+      'reorder_work_columns',
+      'update_work_note',
+    ]
     const sensitive = OPEX_TOOLS.filter(
       (tool) =>
         // Memórias: criar/editar são `write` (a confirmação é ajustável por ferramenta).
@@ -133,6 +140,17 @@ describe('ferramentas ligadas e permissões', () => {
     expect(names).not.toContain('list_users')
     expect(canUseOpexTool(findOpexTool('get_business')!, new Set(['businesses.view_all']))).toBe(true)
     expect(canUseOpexTool(findOpexTool('update_business')!, new Set(['businesses.view_all']))).toBe(false)
+    // Trabalhos (M4): grupos do prestador, sem painel; o suporte só lê.
+    expect(names).toEqual(expect.arrayContaining(['list_work_columns', 'list_works', 'move_work', 'mark_work_paid', 'create_time_entry', 'add_work_note', 'convert_work_to_success']))
+    expect(canUseOpexTool(findOpexTool('get_work')!, new Set(['businesses.view_all']))).toBe(true)
+    expect(canUseOpexTool(findOpexTool('move_work')!, new Set(['businesses.view_all']))).toBe(false)
+  })
+
+  it('trabalhos: Pago só pelo pagamento; sair de Pago, arquivar e excluir são destrutivas', () => {
+    const move = findOpexTool('move_work')!
+    expect(() => move.authorize!(move.input.parse({ businessId: 'a'.repeat(24), workId: 'b'.repeat(24), column: 'paid' }), accessFixture(['businesses.use']))).toThrow(/mark_work_paid/)
+    expect(['unmark_work_paid', 'archive_work', 'delete_work', 'delete_time_entry', 'delete_work_column', 'delete_work_note'].map((name) => findOpexTool(name)!.risk)).toEqual(Array(6).fill('destructive'))
+    expect(['mark_work_paid', 'update_work', 'restore_work', 'create_time_entry'].map((name) => findOpexTool(name)!.risk)).toEqual(Array(4).fill('write'))
   })
 
   it('integrações: basta ver alguma para listar; editar exige a permissão da integração alvo', () => {
@@ -152,7 +170,7 @@ describe('ferramentas ligadas e permissões', () => {
   })
 
   it('árvore da configuração: um módulo por grupo, folhas por ferramenta e destrutivas como sensíveis', () => {
-    expect(OPEX_TOOL_TREE.map((branch) => branch.label)).toEqual(['Contexto', 'Arquivos do chat', 'Negócios', 'Atividades do negócio', 'Metas do negócio', 'Documentos do negócio', 'Sucessos do negócio', 'Clientes', 'Pedidos', 'Memórias dos agentes', 'Usuários', 'Perfis', 'Integrações', 'Tokens da API interna', 'Rotinas', 'Plataforma'])
+    expect(OPEX_TOOL_TREE.map((branch) => branch.label)).toEqual(['Contexto', 'Arquivos do chat', 'Negócios', 'Atividades do negócio', 'Metas do negócio', 'Documentos do negócio', 'Sucessos do negócio', 'Clientes', 'Pedidos', 'Colunas dos trabalhos', 'Trabalhos', 'Horas dos trabalhos', 'Notas, anexos e sucesso dos trabalhos', 'Memórias dos agentes', 'Usuários', 'Perfis', 'Integrações', 'Tokens da API interna', 'Rotinas', 'Plataforma'])
     expect(opexToolTreeCatalog.keys).toEqual(OPEX_TOOL_CATALOG.map((tool) => tool.name))
     const users = OPEX_TOOL_TREE.find((branch) => branch.id === 'tools_users')!
     expect(users.children).toEqual(expect.arrayContaining([expect.objectContaining({ key: 'delete_user', sensitive: true })]))

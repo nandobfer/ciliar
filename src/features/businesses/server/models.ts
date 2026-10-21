@@ -291,7 +291,7 @@ const businessFileSchema = new Schema<BusinessFileRecord>(
     {
         businessId: { type: String, required: true },
         ownerId: { type: String, required: true },
-        purpose: { type: String, enum: ["document", "success", "logo", "order"], required: true },
+        purpose: { type: String, enum: ["document", "success", "logo", "order", "work"], required: true },
         pending: { type: Boolean, default: true },
         ready: { type: Boolean, default: false },
         itemId: { type: String, default: null },

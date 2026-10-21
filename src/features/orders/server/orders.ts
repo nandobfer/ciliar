@@ -22,6 +22,7 @@ import { orderModels, type OrderAttachmentRecord, type OrderDecisionRecord, type
 import { orderSummaries, orderTotalCents, snapshotOf, toOrderDto, type OrderDoc, type OrderVersionDoc } from "./order-dto"
 import { newQuoteToken, quoteUrl, quoteUrlOf } from "./link"
 import { sendQuoteEmail } from "./notify"
+import { workModels } from "@/features/works/server/models"
 
 /**
  * Pedidos (M3) — SOMENTE servidor. Cada pedido é de um negócio (moeda do negócio, código
@@ -100,7 +101,7 @@ export async function listOrders(access: AccessContext, query: { businessId?: st
  * Itens: os existentes (pelo `id`) mantêm a atividade e o valor/hora congelado; os novos exigem
  * uma atividade ATIVA do negócio e copiam o valor/hora agora.
  */
-async function resolveItems(session: ClientSession, businessId: string, existing: readonly OrderItemRecord[], input: readonly OrderItemInput[]): Promise<OrderItemRecord[]> {
+export async function resolveItems(session: ClientSession, businessId: string, existing: readonly OrderItemRecord[], input: readonly OrderItemInput[]): Promise<OrderItemRecord[]> {
     const activityIds = [...new Set(input.flatMap((item) => (item.activityId ? [item.activityId] : [])))]
     const activities = activityIds.length ? await businessModels().activities.find({ _id: { $in: activityIds }, businessId }).session(session).lean() : []
     return input.map((item) => {
@@ -139,7 +140,7 @@ async function latestVersion(orderId: string, session: ClientSession): Promise<O
     return orderModels().orderVersions.findOne({ orderId }).sort({ number: -1 }).session(session).lean<OrderVersionDoc>()
 }
 
-async function recordVersion(session: ClientSession, current: AccessContext, order: OrderDoc, snapshot: OrderSnapshot, reason: "send" | "edit" | "reopen", published: boolean): Promise<number> {
+export async function recordVersion(session: ClientSession, current: AccessContext, order: OrderDoc, snapshot: OrderSnapshot, reason: "send" | "edit" | "reopen" | "work", published: boolean): Promise<number> {
     const number = (order.versionCount ?? 0) + 1
     await orderModels().orderVersions.create([{ orderId: order._id.toString(), businessId: order.businessId, number, reason, published, snapshot, actorId: current.userId, simulation: current.dto.simulation ?? null }], { session })
     await orderModels().orders.updateOne({ _id: order._id }, { $set: { versionCount: number } }, { session })
@@ -444,10 +445,37 @@ export async function applyDecision(
     const code = doc.code
     await audit(`${ORDER_AUDIT}.${decision.kind}`, { businessId: doc.businessId, code, status: "sent" }, { businessId: doc.businessId, code, status: accepted ? "accepted" : "rejected", by: decision.by, name: decision.name, reason: decision.reason, ip: decision.ip, versionNumber: record.versionNumber })
     if (workId) {
-        await orderModels().works.create(
-            [{ _id: workId, businessId: doc.businessId, ownerId: doc.ownerId, orderId: doc._id.toString(), clientId: doc.clientId, code, column: "opening", estimatedMinutes: totalMinutes(doc.items ?? []), totalCents: orderTotalCents(doc), currency: doc.currency, dueDate: doc.dueDate ?? null, status: "active", archivedAt: null, version: 0, createdBy: decision.actorId ?? `client:link` }],
+        const actorId = decision.actorId ?? "client:link"
+        await workModels().works.create(
+            [
+                {
+                    _id: workId,
+                    businessId: doc.businessId,
+                    ownerId: doc.ownerId,
+                    orderId: doc._id.toString(),
+                    clientId: doc.clientId,
+                    code,
+                    column: "opening",
+                    position: Date.now(),
+                    estimatedMinutes: totalMinutes(doc.items ?? []),
+                    totalCents: orderTotalCents(doc),
+                    currency: doc.currency,
+                    dueDate: doc.dueDate ?? null,
+                    loggedMinutes: 0,
+                    payment: null,
+                    payments: [],
+                    attachments: [],
+                    successId: null,
+                    status: "active",
+                    archivedAt: null,
+                    version: 0,
+                    createdBy: actorId,
+                    updatedBy: null,
+                },
+            ],
             { session },
         )
+        await workModels().moves.create([{ workId: workId.toString(), businessId: doc.businessId, from: null, to: "opening", actorId, simulation: null }], { session })
         await audit("business.work.create", null, { businessId: doc.businessId, orderId: doc._id.toString(), code, column: "opening", by: decision.by })
     }
     return { workId: workId?.toString() ?? null }

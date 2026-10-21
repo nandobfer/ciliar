@@ -25,7 +25,7 @@ telas em `components/space/`; hooks em `hooks/useBusinessSpace.ts`). Base do M1 
 - `businesses` ganhou `theme { primaryColor, mode }` (padrão `#0B57C4`/`dark`), `contactEmail`
   (`null` = e-mail da conta do dono, devolvido em `accountEmail`), `contactPhone`, `deadlineAlertDays`
   (3) e `quoteValidityDays` (15). `PATCH /api/businesses/[id]` (`businessUpdateSchema`) aceita todos.
-- **Moeda**: `currencyLocked(businessId)` (hoje sempre falso; o M3/M4 contam pedidos/trabalhos) → 409
+- **Moeda**: `currencyLocked(businessId)` (verdadeiro com qualquer pedido ou trabalho do negócio, M3/M4) → 409
   `CURRENCY_LOCKED`. Valores não são convertidos: o detalhe traz `valuedItems { activities, goals }` e a
   tela avisa ao trocar.
 - **Logo**: envio `purpose: logo` (só PNG/JPEG/WebP/GIF) e `PUT /api/businesses/[id]/logo { fileId }`;
@@ -112,8 +112,9 @@ antes/depois; atividade com valor/hora anterior e novo).
   desde a criação, até 12; específicas e intervalo com situação `active/upcoming/ended`). **Fuso**: o
   navegador manda `x-ciliar-timezone` (Axios central) → `access.timeZone` (`protectRoute`) e
   `scope.timeZone` no Agente Opex; inválido/ausente = `America/Sao_Paulo` (`lib/timezone.ts`).
-  Faturamento por `measureGoalWindows` (`server/revenue.ts`): zero até o M4 (trabalhos em Pago pela data
-  do pagamento); meta por hora sem horas → indisponível. Metas fora de vigor: janelas só até a última
+  Faturamento por `measureGoalWindows` (`server/revenue.ts`, M4): soma do valor recebido dos trabalhos
+  ativos em Pago pela data do pagamento, horas = apontadas nesses trabalhos (ver [works.md](works.md));
+  meta por hora sem horas → indisponível. Metas fora de vigor: janelas só até a última
   vez em que foram a ativa.
 - **Página de Metas** (`GoalsPage`): sem filtros nem lista. Coluna principal com a atual em destaque
   (`CurrentGoalHighlight`: barra animada, atingido, alvo, falta, dias restantes; Editar = "Salvar nova
@@ -124,7 +125,8 @@ antes/depois; atividade com valor/hora anterior e novo).
 - **Documentos** (`business_documents`): nome, categoria, descrição, `portfolio` (M5) e um arquivo.
   Trocar o arquivo remove o anterior.
 - **Sucessos** (`business_successes`): título, descrição, data, resultado e anexos (até 20);
-  `clientId`/`workId` reservados para o M3/M4.
+  `clientId` (M3) e `workId` (M4, "Converter em Sucesso": `successCreateSchema.workId`, um por trabalho;
+  `SuccessDialog` exportado com `preset`). Excluir o sucesso limpa `successId` do trabalho.
 - **Arquivos** (`business_files`): `POST /api/businesses/[id]/files` (reserva + PUT assinado,
   `businesses/tmp/{id}/…`), `POST …/files/[fid]/complete` (HeadObject, tamanho real, cópia para
   `businesses/{negócio}/files/{id}/{nome}`), `GET …/files/[fid]` (inline só imagem/PDF/texto; SVG e
@@ -158,7 +160,7 @@ antes/depois; atividade com valor/hora anterior e novo).
   valor por hora (8 maiores), evolução do valor/hora (5 maiores, último preço do histórico até cada
   ponto; `null` antes de existir), sucessos no período (pela data do sucesso ou do cadastro) e
   atividades/documentos por categoria ("Sem categoria" agrupada). O de faturamento mostra
-  "Sem faturamento no período" enquanto `hasRevenue` for falso (até o M4, decisão P58). O gráfico
+  "Sem faturamento no período" enquanto `hasRevenue` for falso (sem trabalhos pagos no período, P58). O gráfico
   "Progresso das metas ativas" saiu (uma meta só, já na linha da meta atual; P63).
 
 ## Rotina

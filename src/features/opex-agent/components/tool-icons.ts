@@ -1,4 +1,4 @@
-import { Brain, Briefcase, CalendarClock, Clock, Compass, Contact, FileText, KeyRound, Paperclip, Plug, ReceiptText, ShieldCheck, SlidersHorizontal, Target, Trophy, Users, Wrench, type LucideIcon } from "lucide-react"
+import { Brain, Briefcase, CalendarClock, Clock, Columns3, Compass, Contact, FileText, Hammer, KeyRound, MessageSquare, Paperclip, Plug, ReceiptText, ShieldCheck, SlidersHorizontal, Target, Timer, Trophy, Users, Wrench, type LucideIcon } from "lucide-react"
 import type { OpexToolGroup } from "../constants"
 
 export const OPEX_TOOL_GROUP_ICONS: Record<OpexToolGroup, LucideIcon> = {
@@ -11,6 +11,10 @@ export const OPEX_TOOL_GROUP_ICONS: Record<OpexToolGroup, LucideIcon> = {
     "business-successes": Trophy,
     clients: Contact,
     orders: ReceiptText,
+    "work-columns": Columns3,
+    works: Hammer,
+    "work-time": Timer,
+    "work-notes": MessageSquare,
     memories: Brain,
     users: Users,
     roles: ShieldCheck,

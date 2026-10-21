@@ -3,12 +3,12 @@ import { isIntegrationId } from "@/lib/integrations/catalog"
 
 /**
  * Rotas que não exigem o painel (`admin.access`): a própria conta, sair da simulação, o Pusher
- * (cada canal confere a sua permissão) e as do prestador (Negócios, clientes, pedidos, entrevista e Agente Opex, que
+ * (cada canal confere a sua permissão) e as do prestador (Negócios, clientes, pedidos, trabalhos, entrevista e Agente Opex, que
  * conferem `businesses.use`/`opex.use` e as permissões de cada ferramenta).
  */
 export function requiresPanel(path: string): boolean {
     if (path === "/api/me" || path.startsWith("/api/me/") || path.startsWith("/api/access/view-as") || path === "/api/pusher/auth") return false
-    return !/^\/api\/(?:businesses|interview|opex|clients|orders)(?:\/|$)/.test(path)
+    return !/^\/api\/(?:businesses|interview|opex|clients|orders|works)(?:\/|$)/.test(path)
 }
 
 /** Lista explícita de capacidades. Rotas desconhecidas nunca recebem autorização por padrão. */
@@ -35,6 +35,10 @@ export function routePermissions(path: string, method: string): string[] {
     if (method === "GET" && /^\/api\/businesses\/[a-f\d]{24}\/orders\/[a-f\d]{24}\/versions\/\d+$/i.test(path)) return []
     if (/^\/api\/clients(?:\/[a-f\d]{24}(?:\/(?:archive|restore))?)?$/i.test(path)) return method === "GET" ? [] : ["businesses.use"]
     if (path === "/api/orders") return [] // requireAny no serviço (use ou view_all)
+    // Trabalhos (M4): leitura confere dono/suporte no serviço; alterações só do dono.
+    if (/^\/api\/businesses\/[a-f\d]{24}\/works(?:\/[a-f\d]{24}(?:\/(?:move|payment|unpay|archive|restore|notes|attachments|time-entries)(?:\/[a-f\d]{24})?)?)?$/i.test(path)) return method === "GET" ? [] : ["businesses.use"]
+    if (/^\/api\/businesses\/[a-f\d]{24}\/work-columns(?:\/(?:order|col-[a-z0-9]{6,24}))?$/i.test(path)) return method === "GET" ? [] : ["businesses.use"]
+    if (path === "/api/works" || path === "/api/works/payment-methods") return method === "GET" ? [] : ["businesses.use"] // requireAny no serviço
     if (/^\/api\/interview(?:\/|$)/.test(path)) return ["businesses.use"]
     if (path === "/api/docs" || path === "/api/openapi.json") return ["integrations.internal_api.view"]
     const provider = /^\/api\/ai\/providers\/([^/]+)\/(?:models|usage)$/.exec(path)
