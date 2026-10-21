@@ -16,8 +16,10 @@ import { EmptyState } from "@/components/feedback/EmptyState"
 import { ErrorState } from "@/components/feedback/ErrorState"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { apiErrorMessage } from "@/lib/api"
+import { cn } from "@/lib/utils"
 import { useAppSession } from "@/features/access/components/AccessProvider"
 import { BUSINESS_TYPE_LABELS } from "../constants"
+import { businessThemeStyle } from "../theme"
 import type { BusinessDto } from "../types"
 import { useArchiveBusiness, useBusinesses, useBusinessesRealtime, useDeleteBusiness, useRestoreBusiness } from "../hooks/useBusinesses"
 import { BusinessAvatar } from "./BusinessAvatar"
@@ -46,7 +48,15 @@ export function BusinessesPage() {
 
     const card = (business: BusinessDto, index: number) => (
         <motion.div key={business.id} initial={reduceMotion ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: reduceMotion ? 0 : index * 0.03 }}>
-            <Card className="flex h-full flex-col gap-3 p-4">
+            <Card
+                data-testid={`business-card-${business.id}`}
+                style={businessThemeStyle(business.theme)}
+                className={cn(
+                    "relative flex h-full flex-col gap-3 overflow-hidden border-primary/40 p-4 pt-5 transition-colors hover:border-primary/70",
+                    business.status === "archived" && "opacity-80",
+                )}
+            >
+                <span aria-hidden className="absolute inset-x-0 top-0 h-1 bg-primary" />
                 <div className="flex items-start gap-3">
                     <BusinessAvatar business={business} className="h-11 w-11" />
                     <div className="min-w-0 flex-1">

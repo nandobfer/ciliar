@@ -54,6 +54,11 @@ telas em `components/space/`; hooks em `hooks/useBusinessSpace.ts`). Base do M1 
   claro, troca `.dark` por `.light` no `<html>`. Fora do espaço (telas globais, `/negocios`,
   `/negocios/novo`, administração) volta ao escuro padrão. O `BusinessSpaceLayout` aplica o mesmo tema
   no `style` do contêiner.
+- **Cards de `/negocios`**: cada card recebe `businessThemeStyle(business.theme)` no próprio `style`
+  (só a primária, escopada ao card; a página, a sidebar e os diálogos seguem o padrão; o modo
+  claro/escuro do negócio não é aplicado na lista). Faixa superior e borda na cor primária; botão
+  **Abrir**, iniciais do avatar e foco seguem a cor; cor inválida/sem contraste → `#0B57C4`.
+  Arquivados mantêm a cor do negócio, esmaecidos (`opacity-80`).
 - **Modo claro**: tokens em `html.light` (`globals.css`), copiados do `:root` do crm (o Opex não tem modo
   claro); sidebar neutra (fundo do card, acento/borda dos tokens claros).
 - **Pré-visualização ao vivo**: `theme-preview.ts` (store externo); a ficha publica o rascunho e o limpa ao
