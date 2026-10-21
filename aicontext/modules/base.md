@@ -10,6 +10,8 @@ Dependências e versões resolvidas foram mantidas, inclusive bibliotecas do cat
 O layout raiz usa Inter, pt-BR, tema escuro fixo, primária `#0B57C4` (azul do crm-marketing-campanhas), TanStack Query, sonner,
 Framer Motion. A configuração pública do Pusher fica somente no layout autenticado. Sidebar: 68px no desktop, gaveta expandida no
 mobile, mesmo foco/teclado e animações. O símbolo original continua em `public/opex-mark.png`.
+Única exceção ao tema fixo: o **espaço de um negócio** (`/negocios/[id]/…`, M2) aplica a cor primária e o modo
+claro/escuro do negócio (`html.light` em `globals.css`, `BusinessThemeController`); ver `business-space.md`.
 Marca textual e metadados: Ciliar. Preferências/eventos locais usam namespace `ciliar`.
 
 O header de Visualizar como é a exceção explícita: copiado do Shekinah, fica na coluna de conteúdo
@@ -40,3 +42,12 @@ O MongoDB local tem um usuário `ciliar_app` com papel `readWrite` restrito ao b
 senha nova somente no `.env`. Use credenciais próprias também ao preparar outro ambiente.
 Desenvolvimento: `pnpm dev --port 3101`; `PORT=3101` no ambiente mantém chamadas internas nessa porta.
 Integrações externas começam sem configuração, sem importar banco, credenciais ou logs da origem.
+
+### Migrações de boot
+
+`dbConnect()` (`src/lib/db/index.ts`) roda as migrações de `src/lib/db/migrations/registry.ts` uma
+vez por processo e toda chamada espera que terminem. Por isso **nenhuma migração (nem função que
+ela chame) pode chamar `dbConnect()`**: ela esperaria a si mesma e todas as requisições que usam o
+banco ficariam penduradas (sintoma real: login Google travando até o 504 da Cloudflare). As funções
+usadas por migração assumem a conexão aberta (os testes conectam o Mongoose no `beforeAll`). Cada
+migração registra `[migration] iniciando`/`concluída` com a duração no log.

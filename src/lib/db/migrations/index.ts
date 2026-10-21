@@ -21,8 +21,11 @@ export function registerMigrations(...items: Migration[]): void {
 export async function runMigrations(): Promise<void> {
     await import("./registry")
     for (const migration of MIGRATIONS) {
+        const startedAt = Date.now()
+        logger.info({ migration: migration.name }, "[migration] iniciando")
         try {
             await migration.run()
+            logger.info({ migration: migration.name, ms: Date.now() - startedAt }, "[migration] concluída")
         } catch (error) {
             logger.error({ err: error, migration: migration.name }, "Falha em migração")
             throw error

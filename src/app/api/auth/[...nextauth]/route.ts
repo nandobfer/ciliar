@@ -16,7 +16,9 @@ async function handle(request: NextRequest) {
         const canonical = new NextRequest(target, request)
         canonical.headers.delete("x-forwarded-host")
         canonical.headers.set("host", target.host)
-        const response = await handlers[request.method === "POST" ? "POST" : "GET"](canonical)
+        const result = await handlers[request.method === "POST" ? "POST" : "GET"](canonical)
+        // Redirecionamentos do Auth.js (`Response.redirect`) têm headers imutáveis.
+        const response = new Response(result.body, result)
         response.headers.set("Cache-Control", "no-store")
         return response
     } catch (error) { return accessErrorResponse(error) }

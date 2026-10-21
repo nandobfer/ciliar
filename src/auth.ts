@@ -82,7 +82,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => {
         },
     },
     logger: {
-        error: error => logger.warn({ action: "auth.error", code: "type" in error ? error.type : error.name }, "Falha de autenticação"),
+        error: error => {
+            const cause = (error as { cause?: { err?: unknown } | unknown }).cause
+            const underlying = cause && typeof cause === "object" && "err" in cause ? cause.err : cause
+            logger.warn({ action: "auth.error", code: "type" in error ? error.type : error.name, err: underlying instanceof Error ? underlying : error }, "Falha de autenticação")
+        },
         warn: code => logger.warn({ action: "auth.warning", code }, "Aviso de autenticação"),
         debug: () => undefined,
     },
