@@ -10,6 +10,7 @@ vi.mock("@/lib/storage/s3", async (original) => ({ ...(await original<object>())
 const runner = vi.hoisted(() => ({ assertInterviewerAvailable: vi.fn(async () => ({})), startOpeningTurn: vi.fn(async () => undefined) }))
 vi.mock("@/features/businesses/server/interview/runner", () => runner)
 
+import { BUSINESS_FULL_PERMISSIONS } from "@/features/businesses/permissions"
 import { accessModels } from "@/features/access/server/models"
 import { createRole } from "@/features/access/server/commands"
 import { resolveAccess } from "@/features/access/server/access"
@@ -76,7 +77,7 @@ afterAll(async () => {
 
 describe("entrevista e criação do negócio", () => {
     it("onboarding obrigatório, validação por campo, pular só opcional e criação direta ao responder a última", async () => {
-        const provider = (await role("Prestador", ["businesses.use"], 1)).id
+        const provider = (await role("Prestador", [...BUSINESS_FULL_PERMISSIONS], 1)).id
         const ana = await user("Ana", [provider])
         expect(await onboardingState(ana)).toMatchObject({ required: true, interviewId: null })
         expect(await onboardingState(admin)).toMatchObject({ required: false })
@@ -117,7 +118,7 @@ describe("entrevista e criação do negócio", () => {
     })
 
     it("o roteiro é versionado e a entrevista segue a versão com que começou; nome pulado vira \"Negócio N\"", async () => {
-        const provider = (await role("Prestador", ["businesses.use"])).id
+        const provider = (await role("Prestador", [...BUSINESS_FULL_PERMISSIONS])).id
         const bia = await user("Bia", [provider])
         expect((await currentInterviewScript()).version).toBe(0)
         const questions = [
@@ -140,7 +141,7 @@ describe("entrevista e criação do negócio", () => {
     })
 
     it("descartar só com outro negócio ativo", async () => {
-        const provider = (await role("Prestador", ["businesses.use"])).id
+        const provider = (await role("Prestador", [...BUSINESS_FULL_PERMISSIONS])).id
         const caio = await user("Caio", [provider])
         const first = await startInterview(caio)
         await expect(discardInterview(first.id, caio)).rejects.toMatchObject({ code: "INTERVIEW_REQUIRED" })
@@ -155,8 +156,8 @@ describe("entrevista e criação do negócio", () => {
 
 describe("negócios: limite, arquivamento, isolamento e suporte", () => {
     it("vale o maior limite; arquivados não contam e restaurar exige vaga (também em concorrência)", async () => {
-        const one = (await role("Um", ["businesses.use"], 1)).id
-        const two = (await role("Dois", ["businesses.use"], 2)).id
+        const one = (await role("Um", [...BUSINESS_FULL_PERMISSIONS], 1)).id
+        const two = (await role("Dois", [...BUSINESS_FULL_PERMISSIONS], 2)).id
         const dani = await user("Dani", [one, two])
         expect((await listBusinesses(dani)).capacity).toMatchObject({ limit: 2, active: 0, canCreate: true })
         const unlimited = (await role("Livre", ["admin.access"])).id
@@ -180,7 +181,7 @@ describe("negócios: limite, arquivamento, isolamento e suporte", () => {
     })
 
     it("só o dono altera; suporte lê (auditado) e nunca altera; excluir exige arquivado", async () => {
-        const provider = (await role("Prestador", ["businesses.use"])).id
+        const provider = (await role("Prestador", [...BUSINESS_FULL_PERMISSIONS])).id
         const support = (await role("Suporte", ["businesses.view_all"])).id
         const fabi = await user("Fabi", [provider])
         const gil = await user("Gil", [provider])
@@ -210,7 +211,7 @@ describe("negócios: limite, arquivamento, isolamento e suporte", () => {
     })
 
     it("simulação de usuário: onboarding do alvo, dono = alvo e auditoria com o ator real", async () => {
-        const provider = (await role("Prestador", ["businesses.use"])).id
+        const provider = (await role("Prestador", [...BUSINESS_FULL_PERMISSIONS])).id
         const ivo = await user("Ivo", [provider])
         const simulated = await resolveAccess(admin.userId, viewAsUser(ivo.userId))
         expect(await onboardingState(simulated)).toMatchObject({ required: true })
@@ -226,7 +227,7 @@ describe("negócios: limite, arquivamento, isolamento e suporte", () => {
     })
 
     it("ferramentas do Agente Opex chamam os serviços reais com o acesso do usuário", async () => {
-        const provider = (await role("Prestador", ["businesses.use", "opex.use"])).id
+        const provider = (await role("Prestador", [...BUSINESS_FULL_PERMISSIONS, "opex.use"])).id
         const kai = await user("Kai", [provider])
         const progress = await startInterview(kai)
         await answerAll(tools(kai, progress.id))
@@ -245,7 +246,7 @@ describe("negócios: limite, arquivamento, isolamento e suporte", () => {
     })
 
     it("rotina businesses-purge exclui os arquivados depois do prazo", async () => {
-        const provider = (await role("Prestador", ["businesses.use"])).id
+        const provider = (await role("Prestador", [...BUSINESS_FULL_PERMISSIONS])).id
         const joa = await user("Joa", [provider])
         const old = await business.businesses.create({ ownerId: joa.userId, number: 1, name: "Antigo", status: "archived", archivedAt: new Date(Date.now() - 40 * 86_400_000), logo: { key: "businesses/x/logo/a.png", name: "a.png", mediaType: "image/png", size: 10 }, createdBy: joa.userId, updatedBy: joa.userId })
         await business.businesses.create({ ownerId: joa.userId, number: 2, name: "Recente", status: "archived", archivedAt: new Date(), createdBy: joa.userId, updatedBy: joa.userId })

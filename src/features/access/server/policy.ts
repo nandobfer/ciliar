@@ -26,20 +26,8 @@ export function routePermissions(path: string, method: string): string[] {
     if (path === "/api/ai/features/opex-agent" || path === "/api/ai/features/summary" || path === "/api/ai/features/business-interviewer" || path === "/api/ai/features/business-interviewer/script" || path === "/api/ai/features/order-title") return [method === "GET" ? "integrations.ai.view" : "integrations.ai.edit"]
     // Memórias dos agentes: o agente é conferido no catálogo pelo serviço.
     if (/^\/api\/ai\/agents\/[a-z][a-z-]{0,40}\/memories(?:\/[a-f\d]{24})?$/i.test(path)) return [method === "GET" ? "ai_memories.view" : "ai_memories.edit"]
-    // Negócios (M1) e espaço do negócio (M2): leitura confere dono/suporte no serviço; alterações só do dono (`businesses.use`).
-    if (path === "/api/businesses") return [] // requireAny no handler (use ou view_all)
-    if (path === "/api/businesses/search") return ["businesses.view_all"]
-    if (/^\/api\/businesses\/[a-f\d]{24}(?:\/(?:archive|restore|logo|interview|dashboard|categories)|\/(?:activities|goals|documents|successes|files)(?:\/[a-f\d]{24}(?:\/(?:archive|restore|complete))?)?)?$/i.test(path)) return method === "GET" ? [] : ["businesses.use"]
-    // Clientes e pedidos (M3): leitura confere dono/suporte no serviço; alterações só do dono. O link público (`/api/public/orders`) não usa sessão.
-    if (/^\/api\/businesses\/[a-f\d]{24}\/orders(?:\/[a-f\d]{24}(?:\/(?:send|revoke|accept|reject|reopen|cancel|regenerate-title|link))?)?$/i.test(path)) return method === "GET" ? [] : ["businesses.use"]
-    if (method === "GET" && /^\/api\/businesses\/[a-f\d]{24}\/orders\/[a-f\d]{24}\/versions\/\d+$/i.test(path)) return []
-    if (/^\/api\/clients(?:\/[a-f\d]{24}(?:\/(?:archive|restore))?)?$/i.test(path)) return method === "GET" ? [] : ["businesses.use"]
-    if (path === "/api/orders") return [] // requireAny no serviço (use ou view_all)
-    // Trabalhos (M4): leitura confere dono/suporte no serviço; alterações só do dono.
-    if (/^\/api\/businesses\/[a-f\d]{24}\/works(?:\/[a-f\d]{24}(?:\/(?:move|payment|unpay|archive|restore|notes|attachments|time-entries)(?:\/[a-f\d]{24})?)?)?$/i.test(path)) return method === "GET" ? [] : ["businesses.use"]
-    if (/^\/api\/businesses\/[a-f\d]{24}\/work-columns(?:\/(?:order|col-[a-z0-9]{6,24}))?$/i.test(path)) return method === "GET" ? [] : ["businesses.use"]
-    if (path === "/api/works" || path === "/api/works/payment-methods") return method === "GET" ? [] : ["businesses.use"] // requireAny no serviço
-    if (/^\/api\/interview(?:\/|$)/.test(path)) return ["businesses.use"]
+    const business = businessRoutePermissions(path, method)
+    if (business) return business
     if (path === "/api/docs" || path === "/api/openapi.json") return ["integrations.internal_api.view"]
     const provider = /^\/api\/ai\/providers\/([^/]+)\/(?:models|usage)$/.exec(path)
     if (provider && ["opencode", "gemini", "anthropic", "openai", "deepseek", "jev"].includes(provider[1]!)) return [`integrations.ai_${provider[1]}.view`]
@@ -55,4 +43,66 @@ export function routePermissions(path: string, method: string): string[] {
         if (id === "crons" && /^jobs\/[^/]+\/run$/.test(tail)) return ["integrations.crons.run"]
     }
     throw new DomainError(404, "Rota não encontrada", "NOT_FOUND")
+}
+
+const ID = "[a-f\\d]{24}"
+const SPACE_ITEMS: Record<string, string> = { activities: "activities", goals: "goals", documents: "documents", successes: "successes", "portfolio-items": "portfolio" }
+const ORDER_ACTIONS: Record<string, string> = { send: "orders.send", revoke: "orders.send", accept: "orders.decide", reject: "orders.decide", reopen: "orders.decide", cancel: "orders.decide", "regenerate-title": "orders.edit" }
+const WORK_ACTIONS: Record<string, string> = { payment: "works.payment", unpay: "works.payment" }
+
+/**
+ * Rotas dos Negócios por módulo (permissões em `features/businesses/permissions.ts`). Leituras (`GET`)
+ * conferem dono/suporte e a visualização do módulo no serviço (`[]` aqui); alterações exigem a base
+ * `businesses.use` e a chave do módulo. Os links públicos (`/api/public/**`) não usam sessão.
+ * `null` = não é rota de negócio.
+ */
+export function businessRoutePermissions(path: string, method: string): string[] | null {
+    const read = method === "GET"
+    const write = (...keys: string[]) => (read ? [] : ["businesses.use", ...keys])
+    if (path === "/api/businesses") return [] // requireAny no handler (use ou view_all)
+    if (path === "/api/businesses/search") return ["businesses.view_all"]
+    if (/^\/api\/interview(?:\/|$)/.test(path)) return ["businesses.use", "businesses.create"]
+    if (/^\/api\/clients(?:\/[a-f\d]{24}(?:\/(?:archive|restore))?)?$/i.test(path)) return write(method === "DELETE" ? "clients.delete" : "clients.edit")
+    if (path === "/api/orders" || path === "/api/works" || path === "/api/works/payment-methods") return read ? [] : null // requireModuleRead no serviço
+    const match = new RegExp(`^/api/businesses/(${ID})(?:/(.*))?$`, "i").exec(path)
+    if (!match) return null
+    const tail = match[2] ?? ""
+    // O negócio: ficha (PATCH), exclusão (DELETE), arquivar/restaurar, logo, entrevista, dashboard e categorias.
+    if (!tail) return write(method === "DELETE" ? "businesses.delete" : "businesses.edit")
+    if (tail === "archive" || tail === "restore") return write("businesses.archive")
+    if (tail === "logo") return write("businesses.edit")
+    if (tail === "interview" || tail === "dashboard" || tail === "categories") return read ? [] : null
+    // Arquivos: a finalidade decide a edição exigida (BUSINESS_FILE_PERMISSIONS, no serviço).
+    if (new RegExp(`^files(?:/${ID}(?:/complete)?)?$`, "i").test(tail)) return write()
+    // Itens do espaço (M2) e itens avulsos do portfólio (M5).
+    const item = new RegExp(`^(activities|goals|documents|successes|portfolio-items)(?:/(tags|${ID})(?:/(archive|restore))?)?$`, "i").exec(tail)
+    if (item) {
+        const area = SPACE_ITEMS[item[1]!]!
+        if (item[2] === "tags") return read ? [] : null
+        return write(method === "DELETE" && !item[3] ? (area === "portfolio" ? "portfolio.edit" : `${area}.delete`) : `${area}.edit`)
+    }
+    // Pedidos (M3).
+    const order = new RegExp(`^orders(?:/(${ID})(?:/(send|revoke|accept|reject|reopen|cancel|regenerate-title|link|versions/\\d+))?)?$`, "i").exec(tail)
+    if (order) {
+        const action = order[2]
+        if (action === "link" || action?.startsWith("versions/")) return read ? [] : null
+        return write(action ? ORDER_ACTIONS[action]! : "orders.edit")
+    }
+    // Trabalhos (M4).
+    const work = new RegExp(`^works(?:/(${ID})(?:/(move|payment|unpay|archive|restore|notes|attachments|time-entries)(?:/${ID})?)?)?$`, "i").exec(tail)
+    if (work) {
+        const action = work[2]
+        if (action && WORK_ACTIONS[action]) return write(WORK_ACTIONS[action])
+        return write(!action && method === "DELETE" ? "works.delete" : "works.edit")
+    }
+    if (/^work-columns(?:\/(?:order|col-[a-z0-9]{6,24}))?$/i.test(tail)) return write("works.columns")
+    // Portfólio (M5).
+    // Editor: rascunho, modelo, histórico e mídia com a edição; publicar, endereço e indexação (PATCH) com a publicação.
+    const portfolio = new RegExp(`^portfolio(?:/(publish|unpublish|slug|preview|draft|publish-changes|discard-draft|template|history(?:/\\d+/restore)?|media(?:/${ID})?))?$`, "i").exec(tail)
+    if (portfolio) {
+        const action = portfolio[1]
+        if (!action) return write("portfolio.publish")
+        return write(["publish", "unpublish", "slug", "publish-changes"].includes(action) ? "portfolio.publish" : "portfolio.edit")
+    }
+    return null
 }

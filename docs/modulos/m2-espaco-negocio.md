@@ -146,8 +146,10 @@ Sem página no espaço do negócio (P55): fica disponível pela API (somente lei
 
 ## 9. Permissões
 
-Tudo sob `businesses.use` (próprios negócios) e `businesses.view_all` (suporte, **somente
-leitura**: nunca altera dados de terceiros). Limites e prazos: `integrations.{plataforma}.edit`.
+Desde 22/10/2026 as permissões dos Negócios são por módulo, sobre a base `businesses.use` (catálogo completo em `aicontext/modules/access.md`, "Permissões dos Negócios por módulo").
+Cada item tem `<módulo>.view`, `.edit` (criar, editar, arquivar, restaurar) e `.delete` (excluir
+definitivamente): `activities`, `goals`, `documents`, `successes`; a ficha/logo/tema, `businesses.edit`.
+`businesses.view_all` (suporte, **somente leitura**: nunca altera dados de terceiros). Limites e prazos: `integrations.{plataforma}.edit`.
 
 ## 10. Agente Opex (ferramentas)
 

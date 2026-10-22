@@ -66,6 +66,8 @@ export interface BusinessDetailDto extends BusinessDto {
     goals: BusinessGoalDto[]
     /** O usuário pode editar (dono, negócio ativo); suporte é somente leitura. */
     editable: boolean
+    /** Editar a ficha/logo/tema (`businesses.edit`), arquivar/restaurar e excluir definitivamente (`businesses.archive`/`businesses.delete`). */
+    actions: { edit: boolean; archive: boolean; delete: boolean }
     /** É do dono efetivo (mesmo arquivado); `false` = leitura de suporte. */
     own: boolean
     /** E-mail da conta do dono (padrão do contato comercial). */
@@ -191,6 +193,8 @@ export interface BusinessDashboardDto {
     range: { from: string; to: string }
     /** A meta atual (uma por negócio), com o progresso da janela corrente. */
     goal: GoalItemDto | null
+    /** Blocos que o perfil vê (visualização de cada módulo; `revenue` = Trabalhos). */
+    visible: { activities: boolean; goals: boolean; documents: boolean; successes: boolean; revenue: boolean }
     counts: { activities: number; goals: number; documents: number; successes: number }
     kpis: {
         /** % atingido da meta atual na janela corrente (`null` = sem meta ou indisponível). */
@@ -220,6 +224,9 @@ export interface BusinessCapacityDto {
     limit: number | null
     active: number
     archived: number
+    /** Há vaga no limite de negócios ativos (criar e restaurar). */
+    vacancy: boolean
+    /** Vaga + `businesses.create`. */
     canCreate: boolean
 }
 

@@ -44,7 +44,7 @@ export async function createWorkColumn(access: AccessContext, businessId: string
         await saveLayout(businessId, layout, session)
         await auditBusiness(current, `${WORK_COLUMN_AUDIT}.create`, key, null, { businessId, ...fields, position: layout.indexOf(key) }, session)
         return { result: undefined }
-    })
+    }, ["works.columns"])
     return getWorkBoard(access, businessId)
 }
 
@@ -58,7 +58,7 @@ export async function updateWorkColumn(access: AccessContext, businessId: string
         await workModels().columns.updateOne({ _id: before._id }, { $set: fields }, { session })
         await auditBusiness(current, `${WORK_COLUMN_AUDIT}.update`, key, { businessId, name: before.name, color: before.color, icon: before.icon, description: before.description ?? null }, { businessId, ...fields }, session)
         return { result: undefined }
-    })
+    }, ["works.columns"])
     return getWorkBoard(access, businessId)
 }
 
@@ -83,7 +83,7 @@ export async function deleteWorkColumn(access: AccessContext, businessId: string
         await saveLayout(businessId, board.layout, session)
         await auditBusiness(current, `${WORK_COLUMN_AUDIT}.delete`, key, { businessId, name: column.name, color: column.color, icon: column.icon }, null, session)
         return { result: undefined }
-    })
+    }, ["works.columns"])
     return getWorkBoard(access, businessId)
 }
 
@@ -99,6 +99,6 @@ export async function reorderWorkColumns(access: AccessContext, businessId: stri
         await saveLayout(businessId, order, session)
         await auditBusiness(current, `${WORK_COLUMN_AUDIT}.reorder`, businessId, { businessId, order: board.layout }, { businessId, order }, session)
         return { result: undefined }
-    })
+    }, ["works.columns"])
     return getWorkBoard(access, businessId)
 }

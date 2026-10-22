@@ -7,6 +7,7 @@ import type { AccessContext } from "@/features/access/server/context"
 import type { RoleDto } from "@/features/access/types"
 import { orderModels } from "@/features/orders/server/models"
 import { workModels } from "@/features/works/server/models"
+import { BUSINESS_MODULE_LABELS, viewPermission, type BusinessModule } from "../permissions"
 import { businessModels } from "./models"
 
 /**
@@ -25,6 +26,15 @@ export function businessOwnerOf(access: Pick<AccessContext, "userId" | "dto">): 
 export const canUseBusinesses = (access: Pick<AccessContext, "effective">) => can(access.effective, "businesses.use")
 /** Suporte: ver negócios e entrevistas de outros usuários (somente leitura, auditado). */
 export const canSupportBusinesses = (access: Pick<AccessContext, "effective">) => can(access.effective, "businesses.view_all")
+/** Chave de negócio (a base `businesses.use` junto). */
+export const canBusiness = (access: Pick<AccessContext, "effective">, key: string) => canUseBusinesses(access) && can(access.effective, key)
+/** O dono lê o módulo (base + visualização do módulo). */
+export const canUseModule = (access: Pick<AccessContext, "effective">, module: BusinessModule) => canBusiness(access, viewPermission(module))
+
+/** Leitura de um módulo (dono com a visualização ou suporte); senão 403 com o nome do módulo. */
+export function requireModuleRead(access: AccessContext, module: BusinessModule): void {
+    if (!canUseModule(access, module) && !canSupportBusinesses(access)) throw denied(`Seu perfil não permite ver ${BUSINESS_MODULE_LABELS[module]}.`)
+}
 
 export function requireBusinessUse(access: AccessContext): void {
     if (!canUseBusinesses(access)) throw denied("Seu perfil não permite usar Negócios (businesses.use).")

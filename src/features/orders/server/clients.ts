@@ -5,10 +5,9 @@ import { publishToChannels } from "@/lib/pusher/channels"
 import { businessesChannel } from "@/lib/pusher/channel-names"
 import { parseInput } from "@/features/access/server/commands"
 import { accessModels } from "@/features/access/server/models"
-import { denied } from "@/features/access/server/access"
 import type { AccessContext } from "@/features/access/server/context"
 import { loadPlatformState } from "@/features/platform/server/state"
-import { auditBusiness, businessOwnerOf, businessTransaction, canSupportBusinesses, canUseBusinesses, ensureBusinessCollections } from "@/features/businesses/server/access"
+import { auditBusiness, businessOwnerOf, businessTransaction, canBusiness, canSupportBusinesses, canUseModule, ensureBusinessCollections, requireModuleRead } from "@/features/businesses/server/access"
 import { CLIENT_AUDIT, CLIENTS_UPDATED_EVENT, OPEN_ORDER_STATUSES } from "../constants"
 import { clientCreateSchema, clientUpdateSchema, type ClientCreateInput } from "../schemas"
 import type { ClientDetailDto, ClientDto, ClientListDto, CurrencyTotalsDto } from "../types"
@@ -91,7 +90,7 @@ const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$
 
 /** Clientes do dono efetivo (busca por nome/e-mail/telefone, filtro por negócio e situação). */
 export async function listClients(access: AccessContext, query: { status?: "active" | "archived" | "all"; businessId?: string; q?: string } = {}): Promise<ClientListDto> {
-    if (!canUseBusinesses(access) && !canSupportBusinesses(access)) throw denied("Seu perfil não permite usar Negócios.")
+    requireModuleRead(access, "clients")
     await dbConnect()
     await ensureBusinessCollections()
     const ownerId = businessOwnerOf(access)
@@ -104,7 +103,7 @@ export async function listClients(access: AccessContext, query: { status?: "acti
     const docs = await orderModels().clients.find(filter).sort({ status: 1, name: 1 }).collation({ locale: "pt" }).lean<ClientDoc[]>()
     const [stats, days] = await Promise.all([clientStats(docs.map((doc) => doc._id.toString())), retentionDays()])
     const items = docs.map((doc) => toClientDto(doc, days, stats.get(doc._id.toString()))).filter((client) => !query.businessId || client.businessIds.includes(query.businessId))
-    return { items, editable: canUseBusinesses(access) }
+    return { items, editable: canBusiness(access, "clients.edit") }
 }
 
 /** Cliente visível: o dono efetivo ou o suporte (somente leitura, auditado). Outros casos: 404. */
@@ -114,8 +113,11 @@ export async function loadVisibleClient(access: AccessContext, id: string, optio
     const doc = await orderModels().clients.findById(id).lean<ClientDoc>()
     if (!doc) throw clientNotFound()
     const own = doc.ownerId === businessOwnerOf(access)
-    if (own && canUseBusinesses(access)) return { doc, own }
-    if (!canSupportBusinesses(access)) throw clientNotFound()
+    if (own && canUseModule(access, "clients")) return { doc, own }
+    if (!canSupportBusinesses(access)) {
+        if (own) requireModuleRead(access, "clients")
+        throw clientNotFound()
+    }
     if (options.audit !== false) await auditBusiness(access, "business.support_view", id, null, { ownerId: doc.ownerId, section: "client" })
     return { doc, own: false }
 }
@@ -124,7 +126,7 @@ export async function getClient(access: AccessContext, id: string): Promise<Clie
     const { doc, own } = await loadVisibleClient(access, id)
     const orders = await orderModels().orders.find({ clientId: id }).sort({ createdAt: -1 }).lean<OrderDoc[]>()
     const [stats, days, summaries] = await Promise.all([clientStats([id]), retentionDays(), orderSummaries(orders)])
-    return { ...toClientDto(doc, days, stats.get(id)), orders: summaries, own, editable: own && canUseBusinesses(access) }
+    return { ...toClientDto(doc, days, stats.get(id)), orders: canUseModule(access, "orders") || canSupportBusinesses(access) ? summaries : [], own, editable: own && canBusiness(access, "clients.edit") }
 }
 
 const clean = (value: string | null | undefined) => (value?.trim() ? value.trim() : null)
@@ -150,7 +152,7 @@ export async function loadOwnedClient(ownerId: string, id: string, session: Clie
 
 export async function createClient(access: AccessContext, raw: unknown): Promise<ClientDetailDto> {
     const input = parseInput(clientCreateSchema, raw)
-    const id = await businessTransaction(access, ["businesses.use"], (current, session, ownerId) => insertClient(current, session, ownerId, input))
+    const id = await businessTransaction(access, ["businesses.use", "clients.edit"], (current, session, ownerId) => insertClient(current, session, ownerId, input))
     await publishClientsChanged(businessOwnerOf(access), id)
     return getClient(access, id)
 }
@@ -158,7 +160,7 @@ export async function createClient(access: AccessContext, raw: unknown): Promise
 export async function updateClient(access: AccessContext, id: string, raw: unknown): Promise<ClientDetailDto> {
     const { version, ...patch } = parseInput(clientUpdateSchema, raw)
     if (!Object.keys(patch).length) throw new DomainError(400, "Nada para alterar", "VALIDATION_ERROR")
-    await businessTransaction(access, ["businesses.use"], async (current, session, ownerId) => {
+    await businessTransaction(access, ["businesses.use", "clients.edit"], async (current, session, ownerId) => {
         const doc = await loadOwnedClient(ownerId, id, session)
         if ((doc.version ?? 0) !== version) throw conflict()
         if (doc.status !== "active") throw new DomainError(409, "Restaure o cliente antes de editá-lo.", "CLIENT_ARCHIVED")
@@ -179,7 +181,7 @@ export async function updateClient(access: AccessContext, id: string, raw: unkno
 }
 
 async function setClientStatus(access: AccessContext, id: string, target: "active" | "archived"): Promise<ClientDetailDto> {
-    await businessTransaction(access, ["businesses.use"], async (current, session, ownerId) => {
+    await businessTransaction(access, ["businesses.use", "clients.edit"], async (current, session, ownerId) => {
         const doc = await loadOwnedClient(ownerId, id, session)
         if (doc.status === target) throw new DomainError(409, target === "archived" ? "O cliente já está arquivado." : "O cliente já está ativo.", target === "archived" ? "CLIENT_ARCHIVED" : "CLIENT_ACTIVE")
         await orderModels().clients.updateOne({ _id: doc._id }, { $set: { status: target, archivedAt: target === "archived" ? new Date() : null, updatedBy: current.userId }, $inc: { version: 1 } }, { session })
@@ -196,7 +198,7 @@ const hasOrders = () => new DomainError(409, "O cliente tem pedidos e não pode 
 
 /** Exclusão definitiva manual: só arquivado e sem nenhum pedido (irreversível). */
 export async function deleteClient(access: AccessContext, id: string): Promise<{ id: string }> {
-    await businessTransaction(access, ["businesses.use"], async (current, session, ownerId) => {
+    await businessTransaction(access, ["businesses.use", "clients.delete"], async (current, session, ownerId) => {
         const doc = await loadOwnedClient(ownerId, id, session)
         if (doc.status !== "archived") throw new DomainError(409, "Arquive o cliente antes de excluí-lo definitivamente.", "CLIENT_NOT_ARCHIVED")
         if (await orderModels().orders.exists({ clientId: id }).session(session)) throw hasOrders()

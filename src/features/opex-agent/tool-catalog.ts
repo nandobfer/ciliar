@@ -110,7 +110,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "businesses",
         label: "Editar negócio",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "businesses.edit"] },
         description:
             "Altera a ficha de um negócio ativo do próprio usuário: nome (vazio vira \"Negócio N\"), tipo PF/PJ, subtipo, área/segmento, descrição, links, disponibilidade, moeda (só sem pedidos/trabalhos; valores existentes não são convertidos), tema (cor primária #RRGGBB e modo dark/light), contato comercial (e-mail vazio = e-mail da conta; telefone), antecedência do alerta de prazo e validade padrão do link do orçamento (dias), e remover a logo (removeLogo). Só os campos informados mudam; links e disponibilidade substituem a lista inteira.",
     },
@@ -119,7 +119,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "businesses",
         label: "Arquivar negócio",
         risk: "destructive",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "businesses.archive"] },
         description: "Arquiva um negócio do usuário: some do seletor, deixa de contar no limite e é excluído definitivamente depois do prazo da Plataforma (pode ser restaurado antes).",
     },
     {
@@ -127,7 +127,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "businesses",
         label: "Restaurar negócio",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "businesses.archive"] },
         description: "Restaura um negócio arquivado do usuário (exige vaga no limite de negócios ativos do perfil).",
     },
     {
@@ -135,7 +135,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "businesses",
         label: "Excluir negócio definitivamente",
         risk: "destructive",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "businesses.delete"] },
         description: "Exclui definitivamente um negócio ARQUIVADO do usuário, com atividades, metas, documentos, sucessos, entrevista e arquivos (irreversível).",
     },
     {
@@ -143,7 +143,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "businesses",
         label: "Trocar logo do negócio",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "businesses.edit"] },
         description: "Troca a logo/foto de um negócio ativo do usuário por uma imagem PNG, JPEG, WebP ou GIF enviada no chat (fileId de list_chat_files), dentro do limite de tamanho da Plataforma. A anterior é removida.",
     },
 
@@ -153,7 +153,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "business-activities",
         label: "Listar atividades",
         risk: "read",
-        access: { any: ["businesses.use", "businesses.view_all"] },
+        access: { any: ["activities.view", "businesses.view_all"] },
         description: "Atividades de um negócio (nome, categoria, valor por hora em unidades mínimas da moeda do negócio, ativa, arquivadas com a data da exclusão automática). Suporte (businesses.view_all) lê os de outros usuários, auditado.",
     },
     {
@@ -161,7 +161,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "business-activities",
         label: "Ler atividade",
         risk: "read",
-        access: { any: ["businesses.use", "businesses.view_all"] },
+        access: { any: ["activities.view", "businesses.view_all"] },
         description: "Uma atividade com o histórico do valor por hora (anterior, novo, data e quem alterou).",
     },
     {
@@ -169,7 +169,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "business-activities",
         label: "Criar atividade",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "activities.edit"] },
         description: "Cria uma atividade num negócio ativo do usuário: nome (obrigatório), descrição, categoria (texto livre; prefira as já usadas, vistas em list_activities), valor por hora em unidades mínimas (centavos, inteiro ≥ 0) e ativa.",
     },
     {
@@ -177,7 +177,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "business-activities",
         label: "Editar atividade",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "activities.edit"] },
         description: "Edita uma atividade ativa: só os campos informados mudam. Mudar o valor por hora fica no histórico; pedidos e trabalhos existentes mantêm o valor da época. Inativa não aparece em novos pedidos.",
     },
     {
@@ -185,7 +185,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "business-activities",
         label: "Arquivar atividade",
         risk: "destructive",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "activities.edit"] },
         description: "Arquiva uma atividade (some das listas e de novos pedidos; excluída definitivamente após o prazo de atividades da Plataforma; pode ser restaurada antes).",
     },
     {
@@ -193,7 +193,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "business-activities",
         label: "Restaurar atividade",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "activities.edit"] },
         description: "Restaura uma atividade arquivada.",
     },
     {
@@ -201,7 +201,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "business-activities",
         label: "Excluir atividade definitivamente",
         risk: "destructive",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "activities.delete"] },
         description: "Exclui definitivamente uma atividade ARQUIVADA, com o histórico de preço (irreversível; valores congelados em pedidos/trabalhos permanecem).",
     },
 
@@ -211,7 +211,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "business-goals",
         label: "Listar metas",
         risk: "read",
-        access: { any: ["businesses.use", "businesses.view_all"] },
+        access: { any: ["goals.view", "businesses.view_all"] },
         description: "Metas de faturamento bruto de um negócio: a meta atual (uma por negócio) com o progresso (atingido × alvo) e a linha do tempo das anteriores (substituídas, somente leitura, e arquivadas), com os períodos em que cada uma foi a ativa. Fuso do usuário. Meta por hora sem horas apontadas: progresso indisponível.",
     },
     {
@@ -219,7 +219,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "business-goals",
         label: "Meta atual",
         risk: "read",
-        access: { any: ["businesses.use", "businesses.view_all"] },
+        access: { any: ["goals.view", "businesses.view_all"] },
         description: "A meta ativa do negócio (ou nenhuma) com o progresso da janela corrente e o histórico das janelas das recorrentes.",
     },
     {
@@ -227,7 +227,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "business-goals",
         label: "Progresso da meta",
         risk: "read",
-        access: { any: ["businesses.use", "businesses.view_all"] },
+        access: { any: ["goals.view", "businesses.view_all"] },
         description: "Progresso de uma meta (atual ou da linha do tempo): janela corrente (ou a única, nas específicas/intervalo), situação (ativa, futura ou encerrada) e o histórico das janelas anteriores das recorrentes. Das metas fora de vigor, só até a última vez em que foram a ativa.",
     },
     {
@@ -235,7 +235,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "business-goals",
         label: "Criar meta",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "goals.edit"] },
         description: "Define a NOVA meta atual de faturamento bruto (só uma meta ativa por negócio: a atual vai para a linha do tempo como substituída). Campos: nome opcional, alvo em unidades mínimas (centavos), período month/year (recorrente ou específico com month AAAA-MM / year) ou hour (valor médio por hora, com a janela measure month/year — recorrente ou específica — ou range com from/to). Confirme as escolhas com o usuário; não decida por ele.",
     },
     {
@@ -243,7 +243,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "business-goals",
         label: "Editar meta",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "goals.edit"] },
         description: "Edita a meta ATUAL criando uma nova versão (mesmos campos de create_goal, todos informados); a versão anterior fica na linha do tempo. Sem mudança, nada é gravado. Metas do histórico são somente leitura. Devolve a nova versão (id novo).",
     },
     {
@@ -251,7 +251,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "business-goals",
         label: "Arquivar meta",
         risk: "destructive",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "goals.edit"] },
         description: "Arquiva a meta ATUAL: a substituída mais recente volta a ser a atual (ou o negócio fica sem meta). A arquivada é excluída definitivamente após o prazo de metas da Plataforma; pode ser restaurada antes.",
     },
     {
@@ -259,7 +259,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "business-goals",
         label: "Restaurar meta",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "goals.edit"] },
         description: "Restaura uma meta ARQUIVADA como a meta atual (a atual vai para a linha do tempo). Metas substituídas não podem ser restauradas.",
     },
     {
@@ -267,7 +267,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "business-goals",
         label: "Excluir meta definitivamente",
         risk: "destructive",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "goals.delete"] },
         description: "Exclui definitivamente uma meta ARQUIVADA (irreversível). Metas substituídas ficam para sempre na linha do tempo.",
     },
 
@@ -277,7 +277,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "business-documents",
         label: "Listar documentos",
         risk: "read",
-        access: { any: ["businesses.use", "businesses.view_all"] },
+        access: { any: ["documents.view", "businesses.view_all"] },
         description: "Documentos de um negócio (nome, categoria, descrição, se é usado no portfólio, arquivo e tamanho; arquivados com a data da exclusão automática).",
     },
     {
@@ -285,7 +285,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "business-documents",
         label: "Ler documento",
         risk: "read",
-        access: { any: ["businesses.use", "businesses.view_all"] },
+        access: { any: ["documents.view", "businesses.view_all"] },
         description: "Um documento com os metadados do arquivo.",
     },
     {
@@ -293,7 +293,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "business-documents",
         label: "Criar documento",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "documents.edit"] },
         description: "Cria um documento num negócio ativo do usuário a partir de um arquivo enviado no chat (fileId de list_chat_files): o arquivo é copiado para o negócio, respeitando o tamanho máximo e os tipos permitidos da Plataforma. Nome obrigatório; categoria (prefira as já usadas), descrição e usar no portfólio opcionais.",
     },
     {
@@ -301,7 +301,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "business-documents",
         label: "Editar documento",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "documents.edit"] },
         description: "Edita os metadados de um documento ativo (nome, categoria, descrição, usar no portfólio). Só os campos informados mudam.",
     },
     {
@@ -309,7 +309,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "business-documents",
         label: "Arquivar documento",
         risk: "destructive",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "documents.edit"] },
         description: "Arquiva um documento (excluído definitivamente após o prazo de documentos da Plataforma; pode ser restaurado antes).",
     },
     {
@@ -317,7 +317,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "business-documents",
         label: "Restaurar documento",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "documents.edit"] },
         description: "Restaura um documento arquivado.",
     },
     {
@@ -325,7 +325,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "business-documents",
         label: "Excluir documento definitivamente",
         risk: "destructive",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "documents.delete"] },
         description: "Exclui definitivamente um documento ARQUIVADO e o arquivo no storage (irreversível).",
     },
 
@@ -335,7 +335,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "business-successes",
         label: "Listar sucessos",
         risk: "read",
-        access: { any: ["businesses.use", "businesses.view_all"] },
+        access: { any: ["successes.view", "businesses.view_all"] },
         description: "Sucessos (cases/conquistas) de um negócio: título, descrição, data, resultado/métrica e anexos.",
     },
     {
@@ -343,7 +343,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "business-successes",
         label: "Ler sucesso",
         risk: "read",
-        access: { any: ["businesses.use", "businesses.view_all"] },
+        access: { any: ["successes.view", "businesses.view_all"] },
         description: "Um sucesso com os anexos.",
     },
     {
@@ -351,7 +351,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "business-successes",
         label: "Criar sucesso",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "successes.edit"] },
         description: "Cria um sucesso num negócio ativo do usuário: título (obrigatório), descrição, data (AAAA-MM-DD), resultado/métrica, cliente ligado (clientId de list_clients) e anexos a partir de arquivos enviados no chat (fileIds de list_chat_files; mesmos limites dos documentos).",
     },
     {
@@ -359,7 +359,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "business-successes",
         label: "Editar sucesso",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "successes.edit"] },
         description: "Edita um sucesso ativo: título, descrição, data, resultado e cliente ligado (só os informados mudam); addFileIds anexa arquivos do chat e removeAttachmentIds remove anexos atuais.",
     },
     {
@@ -367,7 +367,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "business-successes",
         label: "Arquivar sucesso",
         risk: "destructive",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "successes.edit"] },
         description: "Arquiva um sucesso (excluído definitivamente após o prazo de sucessos da Plataforma; pode ser restaurado antes).",
     },
     {
@@ -375,7 +375,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "business-successes",
         label: "Restaurar sucesso",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "successes.edit"] },
         description: "Restaura um sucesso arquivado.",
     },
     {
@@ -383,7 +383,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "business-successes",
         label: "Excluir sucesso definitivamente",
         risk: "destructive",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "successes.delete"] },
         description: "Exclui definitivamente um sucesso ARQUIVADO com os anexos (irreversível).",
     },
 
@@ -393,7 +393,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "clients",
         label: "Listar clientes",
         risk: "read",
-        access: { any: ["businesses.use", "businesses.view_all"] },
+        access: { any: ["clients.view", "businesses.view_all"] },
         description: "Clientes do usuário (são do usuário, não do negócio: o mesmo cliente serve a todos os negócios). Filtros: busca por nome/e-mail/telefone, negócio (businessId: clientes com pedidos nele) e situação. Traz a quantidade de pedidos e os totais por moeda.",
     },
     {
@@ -401,7 +401,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "clients",
         label: "Ler cliente",
         risk: "read",
-        access: { any: ["businesses.use", "businesses.view_all"] },
+        access: { any: ["clients.view", "businesses.view_all"] },
         description: "Um cliente com contatos, observações privadas, os pedidos de todos os negócios e os totais por moeda (aceitos e abertos).",
     },
     {
@@ -409,7 +409,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "clients",
         label: "Criar cliente",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "clients.edit"] },
         description: "Cria um cliente: nome (obrigatório, pessoa ou empresa), e-mail e telefone/WhatsApp opcionais (o e-mail é necessário para enviar o orçamento por e-mail) e observações privadas (nunca aparecem no link do cliente).",
     },
     {
@@ -417,7 +417,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "clients",
         label: "Editar cliente",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "clients.edit"] },
         description: "Edita um cliente ativo: nome, e-mail, telefone e observações (só os informados mudam; vazio limpa).",
     },
     {
@@ -425,7 +425,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "clients",
         label: "Arquivar cliente",
         risk: "destructive",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "clients.edit"] },
         description: "Arquiva um cliente (excluído definitivamente após o prazo de clientes da Plataforma, exceto se tiver pedidos: aí fica arquivado; pode ser restaurado).",
     },
     {
@@ -433,7 +433,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "clients",
         label: "Restaurar cliente",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "clients.edit"] },
         description: "Restaura um cliente arquivado.",
     },
     {
@@ -441,7 +441,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "clients",
         label: "Excluir cliente definitivamente",
         risk: "destructive",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "clients.delete"] },
         description: "Exclui definitivamente um cliente ARQUIVADO e SEM pedidos (irreversível). Cliente com pedidos nunca é excluído.",
     },
 
@@ -451,7 +451,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "orders",
         label: "Listar pedidos",
         risk: "read",
-        access: { any: ["businesses.use", "businesses.view_all"] },
+        access: { any: ["orders.view", "businesses.view_all"] },
         description: "Pedidos (orçamentos) do usuário: de um negócio (businessId) ou de todos os negócios, com filtros por cliente e status (draft = Rascunho, sent = Enviado, accepted = Aceito, rejected = Recusado, cancelled = Cancelado). Traz código (PED-0001), título, cliente, valor, horas, prazo e o link (validade).",
     },
     {
@@ -459,7 +459,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "orders",
         label: "Ler pedido",
         risk: "read",
-        access: { any: ["businesses.use", "businesses.view_all"] },
+        access: { any: ["orders.view", "businesses.view_all"] },
         description: "Um pedido com a descrição, título/resumo (e se são manuais), itens (atividade, minutos e valor/hora congelado), total sugerido e ajustado, prazo, anexos (visível ao cliente), versões com o que mudou e as decisões (quem, nome, IP, data). Nunca devolve o token do link.",
     },
     {
@@ -467,7 +467,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "orders",
         label: "Criar pedido",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "orders.edit"] },
         description: "Cria um pedido em Rascunho num negócio ativo: cliente (clientId de list_clients ou newClient para cadastrar junto), necessidade (descrição livre, obrigatória), itens (activityId de uma atividade ATIVA + minutos estimados; o valor/hora é copiado agora), valor total ajustado opcional (unidades mínimas; sem ele, Σ horas × valor/hora), prazo de entrega (AAAA-MM-DD) e anexos de arquivos do chat. Título e resumo são gerados pela IA em segundo plano, salvo se informados.",
     },
     {
@@ -475,7 +475,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "orders",
         label: "Editar pedido",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "orders.edit"] },
         description: "Edita um pedido em Rascunho ou Enviado: cliente, descrição, título/resumo manuais (null devolve à IA), itens (lista COMPLETA: itens atuais pelo id de get_order + novos por activityId), valor ajustado (null volta ao calculado), prazo, anexos do chat a incluir e anexos atuais a remover ou mudar a visibilidade. Depois do primeiro envio, cada alteração gera uma versão; com o link ativo, o cliente vê a versão atual e o histórico.",
     },
     {
@@ -483,7 +483,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "orders",
         label: "Gerar título do pedido",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "orders.edit"] },
         description: "Pede de novo à IA o título e o resumo do pedido (em segundo plano; o que for manual não muda).",
     },
     {
@@ -491,7 +491,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "orders",
         label: "Enviar pedido",
         risk: "destructive",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "orders.send"] },
         description: "Envia o orçamento (Rascunho → Enviado) ou renova a validade de um enviado: gera o link secreto do cliente (sem login; token novo se não houver link válido), validUntil opcional (padrão: a validade do negócio) e, com email: true, manda o e-mail ao cliente (exige e-mail do cliente e SMTP). Só devolve a URL do link com copyLink: true, quando o usuário pediu para copiá-la.",
     },
     {
@@ -499,7 +499,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "orders",
         label: "Revogar link do pedido",
         risk: "destructive",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "orders.send"] },
         description: "Revoga o link de um pedido Enviado (o cliente perde o acesso) e volta o pedido a Rascunho.",
     },
     {
@@ -507,7 +507,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "orders",
         label: "Aceitar pedido",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "orders.decide"] },
         description: "Registra o aceite manual de um pedido Enviado (o cliente fechou fora do link): grava o ator e a cópia da versão e cria o Trabalho na coluna Abertura. Depois do aceite o pedido fica somente leitura.",
     },
     {
@@ -515,7 +515,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "orders",
         label: "Recusar pedido",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "orders.decide"] },
         description: "Registra a recusa manual de um pedido Enviado, com motivo opcional.",
     },
     {
@@ -523,7 +523,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "orders",
         label: "Reabrir pedido",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "orders.decide"] },
         description: "Reabre um pedido Recusado: volta a Rascunho como nova versão (a recusa fica no histórico); para o cliente ver de novo, envie.",
     },
     {
@@ -531,7 +531,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "orders",
         label: "Cancelar pedido",
         risk: "destructive",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "orders.decide"] },
         description: "Cancela um pedido em Rascunho ou Enviado (desistência antes da decisão): revoga o link. Estado final.",
     },
 
@@ -541,7 +541,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "work-columns",
         label: "Listar colunas dos trabalhos",
         risk: "read",
-        access: { any: ["businesses.use", "businesses.view_all"] },
+        access: { any: ["works.view", "businesses.view_all"] },
         description: "Quadro de trabalhos de um negócio: as colunas na ordem (fixas Abertura, Execução, Validação e Pago, que nunca mudam, e as customizadas entre Abertura e Pago, com a chave col-…), a ordem (layout) e quantos trabalhos há em cada uma (arquivados inclusive).",
     },
     {
@@ -549,7 +549,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "work-columns",
         label: "Criar coluna dos trabalhos",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "works.columns"] },
         description: "Cria uma coluna customizada no quadro do negócio: nome, cor (violet, sky, emerald, amber, rose, cyan, orange, pink, lime, zinc), ícone e descrição opcional; afterKey = coluna depois da qual entra (sempre entre Abertura e Pago; sem afterKey, antes de Pago).",
     },
     {
@@ -557,7 +557,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "work-columns",
         label: "Editar coluna dos trabalhos",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "works.columns"] },
         description: "Renomeia ou muda cor, ícone e descrição de uma coluna customizada (as fixas não mudam).",
     },
     {
@@ -565,7 +565,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "work-columns",
         label: "Reordenar colunas dos trabalhos",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "works.columns"] },
         description: "Nova ordem COMPLETA das colunas do quadro (chaves de list_work_columns): Abertura primeiro, Pago por último e Execução antes de Validação; as customizadas ficam em qualquer ponto entre elas.",
     },
     {
@@ -573,7 +573,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "work-columns",
         label: "Excluir coluna dos trabalhos",
         risk: "destructive",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "works.columns"] },
         description: "Exclui uma coluna customizada VAZIA (sem trabalhos, inclusive arquivados). Com trabalhos, mova-os antes.",
     },
 
@@ -583,7 +583,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "works",
         label: "Listar trabalhos",
         risk: "read",
-        access: { any: ["businesses.use", "businesses.view_all"] },
+        access: { any: ["works.view", "businesses.view_all"] },
         description: "Trabalhos (pedidos aceitos) do usuário: de um negócio (businessId) ou de todos, com filtros por cliente e situação (active, archived, all). Traz código do pedido, título, cliente, coluna (chave e nome), valor, prazo, horas estimadas × apontadas e o pagamento.",
     },
     {
@@ -591,7 +591,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "works",
         label: "Ler trabalho",
         risk: "read",
-        access: { any: ["businesses.use", "businesses.view_all"] },
+        access: { any: ["works.view", "businesses.view_all"] },
         description: "Um trabalho com os itens do pedido (itemId, atividade, minutos e valor/hora), valor, prazo, lançamentos de horas, notas, anexos, o pagamento e o histórico (pagamentos, movimentações e versões do pedido).",
     },
     {
@@ -599,7 +599,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "works",
         label: "Mover trabalho",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "works.edit"] },
         description: "Move um trabalho ativo para outra coluna do quadro do negócio (chave de list_work_columns). Nunca para nem de Pago: para entrar em Pago use mark_work_paid; para sair, unmark_work_paid.",
     },
     {
@@ -607,7 +607,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "works",
         label: "Marcar trabalho como pago",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "works.payment"] },
         description: "Move o trabalho para Pago registrando o pagamento: data do pagamento (AAAA-MM-DD; padrão hoje, é a data do faturamento das metas), valor recebido (unidades mínimas; padrão o valor do pedido) e forma de pagamento (texto livre: PIX, transferência…). Num trabalho já pago, corrige o pagamento (o anterior fica no histórico).",
     },
     {
@@ -615,7 +615,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "works",
         label: "Tirar trabalho de Pago",
         risk: "destructive",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "works.payment"] },
         description: "Tira o trabalho de Pago para outra coluna: remove-o do faturamento (metas e dashboard); o registro do pagamento fica no histórico.",
     },
     {
@@ -623,7 +623,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "works",
         label: "Editar trabalho",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "works.edit"] },
         description: "Edita os dados comerciais do trabalho: itens (lista COMPLETA: os atuais pelo itemId de get_work, com os minutos estimados, + novos por activityId de uma atividade ATIVA), valor ajustado (null volta ao calculado) e prazo (AAAA-MM-DD). Altera o pedido aceito com uma versão no histórico; o link do cliente continua mostrando a versão aceita.",
     },
     {
@@ -631,7 +631,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "works",
         label: "Arquivar trabalho",
         risk: "destructive",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "works.edit"] },
         description: "Arquiva um trabalho desistido/cancelado após o aceite (some do Kanban/Tabela; excluído definitivamente após o prazo de Trabalhos da Plataforma). Um trabalho em Pago arquivado SAI do faturamento enquanto estiver arquivado.",
     },
     {
@@ -639,7 +639,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "works",
         label: "Restaurar trabalho",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "works.edit"] },
         description: "Restaura um trabalho arquivado na mesma coluna; se estava em Pago, volta a contar no faturamento com o pagamento registrado.",
     },
     {
@@ -647,7 +647,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "works",
         label: "Excluir trabalho definitivamente",
         risk: "destructive",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "works.delete"] },
         description: "Exclui definitivamente um trabalho ARQUIVADO com horas, notas, anexos e movimentações (irreversível). O pedido continua Aceito como registro e o sucesso ligado perde o vínculo.",
     },
 
@@ -657,7 +657,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "work-time",
         label: "Listar horas do trabalho",
         risk: "read",
-        access: { any: ["businesses.use", "businesses.view_all"] },
+        access: { any: ["works.view", "businesses.view_all"] },
         description: "Lançamentos de horas de um trabalho: item/atividade, valor/hora congelado, data, minutos, descrição e autor.",
     },
     {
@@ -665,7 +665,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "work-time",
         label: "Lançar horas",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "works.edit"] },
         description: "Lança horas realizadas num trabalho ativo (apontamento manual, sem cronômetro): source orderItem + refId = itemId de get_work, ou source activity + refId = id de uma atividade ATIVA do negócio fora do pedido (o valor/hora é congelado agora); data trabalhada (AAAA-MM-DD, não futura), minutos (1 a 1440) e descrição opcional.",
     },
     {
@@ -673,7 +673,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "work-time",
         label: "Editar lançamento de horas",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "works.edit"] },
         description: "Edita um lançamento de horas (só os campos informados mudam; trocar o item/atividade congela o valor/hora novo).",
     },
     {
@@ -681,7 +681,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "work-time",
         label: "Excluir lançamento de horas",
         risk: "destructive",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "works.edit"] },
         description: "Exclui um lançamento de horas do trabalho (irreversível).",
     },
 
@@ -691,7 +691,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "work-notes",
         label: "Adicionar nota ao trabalho",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "works.edit"] },
         description: "Adiciona uma nota/comentário interno ao trabalho (o autor é o usuário; nunca aparece ao cliente).",
     },
     {
@@ -699,7 +699,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "work-notes",
         label: "Editar nota do trabalho",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "works.edit"] },
         description: "Edita uma nota do trabalho — somente uma nota de autoria do próprio usuário.",
     },
     {
@@ -707,7 +707,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "work-notes",
         label: "Excluir nota do trabalho",
         risk: "destructive",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "works.edit"] },
         description: "Exclui uma nota do trabalho — somente uma nota de autoria do próprio usuário.",
     },
     {
@@ -715,7 +715,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "work-notes",
         label: "Anexar arquivo ao trabalho",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "works.edit"] },
         description: "Anexa ao trabalho (entregáveis) arquivos enviados no chat (fileIds de list_chat_files; mesmos limites dos documentos).",
     },
     {
@@ -723,8 +723,188 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         group: "work-notes",
         label: "Converter trabalho em sucesso",
         risk: "write",
-        access: { all: ["businesses.use"] },
+        access: { all: ["businesses.use", "works.edit", "successes.edit"] },
         description: "Cria um Sucesso do negócio ligado ao trabalho e ao cliente (um por trabalho): título (padrão: o título do pedido), descrição, data (padrão: a do pagamento ou hoje) e resultado/métrica.",
+    },
+
+    // ── Portfólio (M5) ────────────────────────────────────────────────────────
+    {
+        name: "get_portfolio_page",
+        group: "portfolio",
+        label: "Ler página do portfólio",
+        risk: "read",
+        access: { any: ["portfolio.view", "businesses.view_all"] },
+        description:
+            "Página do portfólio público de um negócio (editor de blocos): endereço (slug e URL), página publicada ou não, indexação, os blocos do RASCUNHO (id, tipo e propriedades, inclusive os de dentro das colunas), se há alterações não publicadas e os problemas que impedem publicar, o conteúdo disponível (sucessos, serviços, documentos e itens avulsos com id), a mídia e o histórico de publicações. Cabeçalho e contato são fixos (Ficha do negócio).",
+    },
+    {
+        name: "add_portfolio_block",
+        group: "portfolio",
+        label: "Adicionar bloco ao portfólio",
+        risk: "write",
+        access: { all: ["businesses.use", "portfolio.edit"] },
+        description:
+            "Adiciona um bloco ao rascunho da página: heading (text, level 2|3), text (markdown: negrito, itálico, links e listas), image (mediaId da mídia, alt obrigatório para publicar, caption, width contained|full), gallery (mediaIds, layout grid|carousel, columns 2-4), button (label, action whatsapp|email|phone|link, url para link, variant solid|outline), testimonial (quote, author, role, photoId), separator (variant line|space, size sm|md|lg), columns (ratio 50-50|33-67|67-33|33-33-33), section (source services|successes|documents|items, title, mode picked|all, picks [{id, showClient}], sort manual|newest|oldest|name, limit, layout grid|list|carousel, columns 2|3, showClient) e featured (source, refId, showClient). Estilo em style {background none|subtle|primary, spacing sm|md|lg, align left|center}. parentId+column põe dentro de um bloco Colunas (só blocos simples: sem colunas nem seções). Só muda o rascunho.",
+    },
+    {
+        name: "update_portfolio_block",
+        group: "portfolio",
+        label: "Editar bloco do portfólio",
+        risk: "write",
+        access: { all: ["businesses.use", "portfolio.edit"] },
+        description: "Altera as propriedades de um bloco do rascunho (só as informadas mudam; o tipo não muda). Em colunas, ratio reorganiza as colunas.",
+    },
+    {
+        name: "move_portfolio_block",
+        group: "portfolio",
+        label: "Mover bloco do portfólio",
+        risk: "write",
+        access: { all: ["businesses.use", "portfolio.edit"] },
+        description: "Move um bloco do rascunho: para cima/baixo (delta -1|1) ou para uma posição (index na página, ou parentId+column+index dentro de um bloco Colunas).",
+    },
+    {
+        name: "remove_portfolio_block",
+        group: "portfolio",
+        label: "Remover bloco do portfólio",
+        risk: "destructive",
+        access: { all: ["businesses.use", "portfolio.edit"] },
+        description: "Remove um bloco do rascunho (um bloco Colunas sai com os blocos de dentro). A página publicada só muda ao publicar as alterações.",
+    },
+    {
+        name: "apply_portfolio_template",
+        group: "portfolio",
+        label: "Aplicar modelo ao portfólio",
+        risk: "destructive",
+        access: { all: ["businesses.use", "portfolio.edit"] },
+        description: "Substitui os blocos do rascunho por um modelo pronto montado com o conteúdo disponível: classic (Clássico), showcase (Vitrine), minimal (Minimalista) ou blank (em branco).",
+    },
+    {
+        name: "discard_portfolio_draft",
+        group: "portfolio",
+        label: "Descartar rascunho do portfólio",
+        risk: "destructive",
+        access: { all: ["businesses.use", "portfolio.edit"] },
+        description: "Descarta as alterações não publicadas: o rascunho volta a ser igual à página publicada.",
+    },
+    {
+        name: "restore_portfolio_publication",
+        group: "portfolio",
+        label: "Restaurar publicação do portfólio",
+        risk: "destructive",
+        access: { all: ["businesses.use", "portfolio.edit"] },
+        description: "Restaura uma publicação antiga (number do histórico de get_portfolio_page) como rascunho, substituindo os blocos atuais do rascunho. A página publicada só muda ao publicar.",
+    },
+    {
+        name: "publish_portfolio_changes",
+        group: "portfolio",
+        label: "Publicar alterações do portfólio",
+        risk: "destructive",
+        access: { all: ["businesses.use", "portfolio.publish"] },
+        description: "Publica o rascunho: os blocos passam a ser a página pública (entra no histórico). Com publishPage true também liga a página, se estiver desligada. Recusado se houver problemas (ex.: imagem sem texto alternativo). Devolve a URL.",
+    },
+    {
+        name: "list_portfolio_media",
+        group: "portfolio",
+        label: "Listar mídia do portfólio",
+        risk: "read",
+        access: { any: ["portfolio.view", "businesses.view_all"] },
+        description: "Imagens da mídia do portfólio (id, nome, tipo), usadas nos blocos Imagem, Galeria e Depoimento.",
+    },
+    {
+        name: "add_portfolio_media",
+        group: "portfolio",
+        label: "Adicionar mídia ao portfólio",
+        risk: "write",
+        access: { all: ["businesses.use", "portfolio.edit"] },
+        description: "Copia imagens enviadas no chat (fileIds de list_chat_files; PNG, JPEG, WebP ou GIF) para a mídia do portfólio. Devolve os ids para usar nos blocos.",
+    },
+    {
+        name: "delete_portfolio_media",
+        group: "portfolio",
+        label: "Excluir mídia do portfólio",
+        risk: "destructive",
+        access: { all: ["businesses.use", "portfolio.edit"] },
+        description: "Exclui definitivamente uma imagem da mídia (recusado se estiver em uso no rascunho ou na página publicada).",
+    },
+    {
+        name: "update_portfolio_settings",
+        group: "portfolio",
+        label: "Configurar portfólio",
+        risk: "write",
+        access: { all: ["businesses.use", "portfolio.publish"] },
+        description: "Permite ou não a indexação da página pelos buscadores (padrão: noindex).",
+    },
+    {
+        name: "publish_portfolio",
+        group: "portfolio",
+        label: "Publicar portfólio",
+        risk: "destructive",
+        access: { all: ["businesses.use", "portfolio.publish"] },
+        description: "Liga a página /p/[slug] (pública, sem login) com a última versão publicada dos blocos. Para publicar o rascunho use publish_portfolio_changes. Devolve a URL.",
+    },
+    {
+        name: "unpublish_portfolio",
+        group: "portfolio",
+        label: "Despublicar portfólio",
+        risk: "destructive",
+        access: { all: ["businesses.use", "portfolio.publish"] },
+        description: "Desliga a página: o endereço passa a responder 404 (os blocos, o rascunho e o endereço ficam guardados).",
+    },
+    {
+        name: "update_portfolio_slug",
+        group: "portfolio",
+        label: "Trocar endereço do portfólio",
+        risk: "destructive",
+        access: { all: ["businesses.use", "portfolio.publish"] },
+        description: "Troca o endereço (slug) do portfólio: único na plataforma, minúsculas, números e hífen, sem palavras reservadas. O endereço antigo deixa de funcionar na hora (sem redirecionamento).",
+    },
+    {
+        name: "list_portfolio_items",
+        group: "portfolio-items",
+        label: "Listar itens avulsos",
+        risk: "read",
+        access: { any: ["portfolio.view", "businesses.view_all"] },
+        description: "Itens avulsos do portfólio de um negócio (projetos só para o portfólio): título, descrição, imagens, link, data e categorias/tags; arquivados com a data da exclusão automática.",
+    },
+    {
+        name: "create_portfolio_item",
+        group: "portfolio-items",
+        label: "Criar item avulso",
+        risk: "write",
+        access: { all: ["businesses.use", "portfolio.edit"] },
+        description: "Cria um item avulso no portfólio de um negócio ativo: título (obrigatório), descrição, link externo, data (AAAA-MM-DD), categorias/tags (prefira as já usadas) e imagens a partir de arquivos do chat (fileIds de list_chat_files; PNG, JPEG, WebP ou GIF, até 20).",
+    },
+    {
+        name: "update_portfolio_item",
+        group: "portfolio-items",
+        label: "Editar item avulso",
+        risk: "write",
+        access: { all: ["businesses.use", "portfolio.edit"] },
+        description: "Edita um item avulso ativo (só os campos informados mudam); addFileIds acrescenta imagens do chat e removeImageIds remove imagens atuais.",
+    },
+    {
+        name: "archive_portfolio_item",
+        group: "portfolio-items",
+        label: "Arquivar item avulso",
+        risk: "destructive",
+        access: { all: ["businesses.use", "portfolio.edit"] },
+        description: "Arquiva um item avulso: sai do portfólio público e é excluído definitivamente após o prazo dos itens avulsos da Plataforma (pode ser restaurado antes).",
+    },
+    {
+        name: "restore_portfolio_item",
+        group: "portfolio-items",
+        label: "Restaurar item avulso",
+        risk: "write",
+        access: { all: ["businesses.use", "portfolio.edit"] },
+        description: "Restaura um item avulso arquivado (volta ao portfólio).",
+    },
+    {
+        name: "delete_portfolio_item",
+        group: "portfolio-items",
+        label: "Excluir item avulso definitivamente",
+        risk: "destructive",
+        access: { all: ["businesses.use", "portfolio.edit"] },
+        description: "Exclui definitivamente um item avulso ARQUIVADO com as imagens (irreversível).",
     },
 
     // ── Memórias dos agentes ──────────────────────────────────────────────────
@@ -1026,7 +1206,7 @@ export const OPEX_ALWAYS_ON_TOOLS = new Set(OPEX_TOOL_CATALOG.filter((tool) => t
 const has = (permissions: ReadonlySet<string>, key: string) => permissions.has("*") || permissions.has(key)
 
 /** Grupos do prestador: não exigem o painel. Os demais (administração) exigem também `admin.access`. */
-export const OPEX_NO_PANEL_GROUPS: ReadonlySet<OpexToolGroup> = new Set<OpexToolGroup>(["context", "files", "businesses", "business-activities", "business-goals", "business-documents", "business-successes", "clients", "orders", "work-columns", "works", "work-time", "work-notes"])
+export const OPEX_NO_PANEL_GROUPS: ReadonlySet<OpexToolGroup> = new Set<OpexToolGroup>(["context", "files", "businesses", "business-activities", "business-goals", "business-documents", "business-successes", "clients", "orders", "work-columns", "works", "work-time", "work-notes", "portfolio", "portfolio-items"])
 
 /** As permissões efetivas liberam a ferramenta? (Revalidado no servidor antes de cada execução.) */
 export function canUseOpexTool(meta: Pick<OpexToolMeta, "access" | "group">, permissions: ReadonlySet<string>): boolean {

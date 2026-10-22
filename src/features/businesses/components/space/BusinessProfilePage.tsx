@@ -108,7 +108,9 @@ function Section({ title, description, className, children }: { title: string; d
 
 /** Ficha do negócio (formulário) com o tema e a pré-visualização ao vivo. */
 export function BusinessProfilePage() {
-    const { business, editable } = useBusinessSpace()
+    const { business } = useBusinessSpace()
+    // Ficha, logo e tema: `businesses.edit` (os demais módulos têm a própria edição).
+    const editable = business.actions.edit
     const save = useUpdateBusiness(business.id)
     const logo = useBusinessLogo(business.id)
     const logoUploads = useBusinessUploads(business.id, "logo")

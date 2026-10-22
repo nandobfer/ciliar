@@ -10,6 +10,7 @@ import { businessSuccessTools } from "./business-successes"
 import { clientTools } from "./clients"
 import { orderTools } from "./orders"
 import { workColumnTools, workNoteTools, workTimeTools, workTools } from "./works"
+import { portfolioItemTools, portfolioTools } from "./portfolio"
 import { contextTools } from "./context"
 import { fileTools } from "./files"
 import { memoryTools } from "./memories"
@@ -33,6 +34,8 @@ export const OPEX_TOOLS: readonly OpexTool[] = [
     ...workTools,
     ...workTimeTools,
     ...workNoteTools,
+    ...portfolioTools,
+    ...portfolioItemTools,
     ...memoryTools,
     ...userTools,
     ...roleTools,

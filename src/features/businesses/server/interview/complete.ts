@@ -39,7 +39,7 @@ export async function completeInterview(interviewId: string, access: AccessConte
     }
     let name = ""
     try {
-        await businessTransaction(access, ["businesses.use"], async (current, session, ownerId) => {
+        await businessTransaction(access, ["businesses.use", "businesses.create"], async (current, session, ownerId) => {
             const fresh = await businessModels().interviews.findOne({ _id: doc._id, ownerId, status: "in_progress" }).session(session).lean<InterviewDoc>()
             if (!fresh) throw new DomainError(409, "A entrevista já foi concluída ou descartada.", "INTERVIEW_COMPLETED")
             if (!isInterviewDone(fresh)) throw new DomainError(409, "Ainda há perguntas pendentes.", "INTERVIEW_PENDING")

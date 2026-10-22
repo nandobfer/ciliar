@@ -98,10 +98,12 @@ export function BusinessSwitcher({ collapsed, onNavigate }: { collapsed: boolean
                                         ))}
                                     </ul>
                                     <div className="mt-1.5 space-y-0.5 border-t pt-1.5">
-                                        <button type="button" disabled={!capacity?.canCreate} onClick={() => go("/negocios/novo")} className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60">
-                                            <Plus className="h-4 w-4 text-primary" aria-hidden /> Novo negócio
-                                        </button>
-                                        {capacity && !capacity.canCreate && <p className="px-2 pb-1 text-[11px] text-warning">Limite de negócios ativos do seu perfil atingido: arquive um para criar outro.</p>}
+                                        {capacity?.canCreate !== false || capacity.vacancy === false ? (
+                                            <button type="button" disabled={!capacity?.canCreate} onClick={() => go("/negocios/novo")} className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60">
+                                                <Plus className="h-4 w-4 text-primary" aria-hidden /> Novo negócio
+                                            </button>
+                                        ) : null}
+                                        {capacity?.canCreate === false && !capacity.vacancy && <p className="px-2 pb-1 text-[11px] text-warning">Limite de negócios ativos do seu perfil atingido: arquive um para criar outro.</p>}
                                         <Link href="/negocios" onClick={() => { setOpen(false); onNavigate?.() }} className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-sm hover:bg-muted">
                                             <LayoutGrid className="h-4 w-4 text-muted-foreground" aria-hidden /> Gerenciar negócios
                                         </Link>

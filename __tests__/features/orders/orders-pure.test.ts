@@ -159,15 +159,18 @@ describe("entradas, token e rotas", () => {
         expect(hashQuoteToken("ped_x")).toHaveLength(64)
     })
 
-    it("rotas: prestador sem painel; leitura confere no serviço; alteração exige businesses.use", () => {
+    it("rotas: prestador sem painel; leitura confere no serviço; alteração exige a chave do módulo", () => {
         for (const path of ["/api/clients", "/api/orders", `/api/businesses/${"a".repeat(24)}/orders`]) expect(requiresPanel(path)).toBe(false)
         const order = `/api/businesses/${"a".repeat(24)}/orders/${"b".repeat(24)}`
         expect(routePermissions(order, "GET")).toEqual([])
-        expect(routePermissions(order, "PATCH")).toEqual(["businesses.use"])
-        expect(routePermissions(`${order}/send`, "POST")).toEqual(["businesses.use"])
+        expect(routePermissions(order, "PATCH")).toEqual(["businesses.use", "orders.edit"])
+        expect(routePermissions(`${order}/send`, "POST")).toEqual(["businesses.use", "orders.send"])
+        expect(routePermissions(`${order}/revoke`, "POST")).toEqual(["businesses.use", "orders.send"])
+        for (const action of ["accept", "reject", "reopen", "cancel"]) expect(routePermissions(`${order}/${action}`, "POST")).toEqual(["businesses.use", "orders.decide"])
         expect(routePermissions(`${order}/link`, "GET")).toEqual([])
         expect(routePermissions(`${order}/versions/1`, "GET")).toEqual([])
-        expect(routePermissions(`/api/clients/${"c".repeat(24)}/archive`, "POST")).toEqual(["businesses.use"])
+        expect(routePermissions(`/api/clients/${"c".repeat(24)}/archive`, "POST")).toEqual(["businesses.use", "clients.edit"])
+        expect(routePermissions(`/api/clients/${"c".repeat(24)}`, "DELETE")).toEqual(["businesses.use", "clients.delete"])
         expect(routePermissions("/api/clients", "GET")).toEqual([])
         expect(routePermissions("/api/ai/features/order-title", "PUT")).toEqual(["integrations.ai.edit"])
         expect(() => routePermissions(`${order}/destroy`, "POST")).toThrow()
@@ -175,6 +178,6 @@ describe("entradas, token e rotas", () => {
 
     it("o espaço do negócio ganha Pedidos (M3) e Trabalhos (M4) na barra lateral", () => {
         expect(BUSINESS_SPACE_SECTIONS.map((section) => section.slug)).toContain("pedidos")
-        expect(businessSpaceNavSection("abc").items.slice(-2)).toEqual([expect.objectContaining({ href: "/negocios/abc/pedidos", label: "Pedidos" }), expect.objectContaining({ href: "/negocios/abc/trabalhos", label: "Trabalhos" })])
+        expect(businessSpaceNavSection("abc").items.slice(-3, -1)).toEqual([expect.objectContaining({ href: "/negocios/abc/pedidos", label: "Pedidos" }), expect.objectContaining({ href: "/negocios/abc/trabalhos", label: "Trabalhos" })])
     })
 })

@@ -5,7 +5,7 @@ import { Search, Zap } from "lucide-react"
 import { filterPermissionNodes, isPermissionLeaf, toggleNode, type Catalog, type PermissionBranchDef, type PermissionNodeDef } from "@nandobfer/perfix"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
-import { catalog as accessCatalog, PERMISSION_TREE } from "../../catalog"
+import { catalog as accessCatalog, normalizeRolePermissions, PERMISSION_TREE } from "../../catalog"
 import { WILDCARD } from "@nandobfer/perfix"
 import { PermissionModuleCard } from "./PermissionModuleCard"
 
@@ -64,7 +64,9 @@ export function PermissionTree({
 
     const handleToggle = (node: PermissionNodeDef, next: boolean) => {
         if (locked) return
-        const updated = toggleNode(catalog, node, selected, next)
+        let updated = toggleNode(catalog, node, selected, next)
+        // Perfis: as dependências entre grupos dos Negócios (ex.: Pedidos › Visualizar marca Clientes › Visualizar).
+        if (catalog === accessCatalog) updated = new Set(normalizeRolePermissions(updated))
         lockedKeys?.forEach((key) => updated.add(key))
         onChange(updated)
     }

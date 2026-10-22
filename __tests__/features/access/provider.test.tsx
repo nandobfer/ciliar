@@ -71,6 +71,17 @@ describe("fronteira de sessão e dados", () => {
         await screen.findByText("Entrevista onboarding")
         expect(screen.queryByText("Conteúdo protegido")).toBeNull()
     })
+    it("regressão: prestador sem o painel abre /clientes com Clientes › Visualizar e fica sem acesso sem ela", async () => {
+        state.pathname = "/clientes"
+        state.session!.access.permissions = ["businesses.use", "clients.view"]
+        state.session!.onboarding = { required: false, interviewId: null, archived: 0 }
+        const first = mount(new QueryClient())
+        await screen.findByText("Conteúdo protegido")
+        first.unmount()
+        state.session!.access.permissions = ["businesses.use"]
+        mount(new QueryClient())
+        await screen.findByRole("heading", { name: "Sem acesso" })
+    })
     it("prestador sem o painel acessa Negócios", async () => {
         state.pathname = "/negocios"
         state.session!.access.permissions = ["businesses.use"]

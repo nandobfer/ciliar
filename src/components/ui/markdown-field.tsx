@@ -60,23 +60,28 @@ interface MarkdownFieldProps {
     tablistLabel?: string
     /** Rótulo da lista de mídias em envio exibida abaixo do campo (padrão: descrição). */
     uploadsLabel?: string
+    /** Ferramentas da barra (padrão: todas). Ex.: texto restrito do portfólio. */
+    tools?: readonly MarkdownTool[]
 }
 
+export type MarkdownTool = "bold" | "italic" | "heading" | "link" | "image" | "list" | "quote" | "code"
+
 interface ToolAction {
+    key: MarkdownTool
     icon: typeof Bold
     label: string
     apply: (selected: string) => { before: string; after: string; placeholder: string }
 }
 
 const TOOLS: ToolAction[] = [
-    { icon: Bold, label: "Negrito", apply: (s) => ({ before: "**", after: "**", placeholder: s || "texto" }) },
-    { icon: Italic, label: "Itálico", apply: (s) => ({ before: "_", after: "_", placeholder: s || "texto" }) },
-    { icon: Heading2, label: "Cabeçalho", apply: (s) => ({ before: "## ", after: "", placeholder: s || "Título" }) },
-    { icon: Link2, label: "Link", apply: (s) => ({ before: "[", after: "](https://)", placeholder: s || "texto do link" }) },
-    { icon: ImageIcon, label: "Imagem", apply: (s) => ({ before: "![", after: "](https://)", placeholder: s || "descrição" }) },
-    { icon: List, label: "Lista", apply: (s) => ({ before: "- ", after: "", placeholder: s || "item" }) },
-    { icon: Quote, label: "Citação", apply: (s) => ({ before: "> ", after: "", placeholder: s || "citação" }) },
-    { icon: Code2, label: "Código", apply: (s) => ({ before: "`", after: "`", placeholder: s || "código" }) },
+    { key: "bold", icon: Bold, label: "Negrito", apply: (s) => ({ before: "**", after: "**", placeholder: s || "texto" }) },
+    { key: "italic", icon: Italic, label: "Itálico", apply: (s) => ({ before: "_", after: "_", placeholder: s || "texto" }) },
+    { key: "heading", icon: Heading2, label: "Cabeçalho", apply: (s) => ({ before: "## ", after: "", placeholder: s || "Título" }) },
+    { key: "link", icon: Link2, label: "Link", apply: (s) => ({ before: "[", after: "](https://)", placeholder: s || "texto do link" }) },
+    { key: "image", icon: ImageIcon, label: "Imagem", apply: (s) => ({ before: "![", after: "](https://)", placeholder: s || "descrição" }) },
+    { key: "list", icon: List, label: "Lista", apply: (s) => ({ before: "- ", after: "", placeholder: s || "item" }) },
+    { key: "quote", icon: Quote, label: "Citação", apply: (s) => ({ before: "> ", after: "", placeholder: s || "citação" }) },
+    { key: "code", icon: Code2, label: "Código", apply: (s) => ({ before: "`", after: "`", placeholder: s || "código" }) },
 ]
 
 /**
@@ -101,6 +106,7 @@ export const MarkdownField = forwardRef<MarkdownFieldHandle, MarkdownFieldProps>
         ariaLabel,
         tablistLabel = "Editar ou visualizar a descrição",
         uploadsLabel = "Mídias enviadas pela descrição",
+        tools,
     },
     ref,
 ) {
@@ -235,7 +241,7 @@ export const MarkdownField = forwardRef<MarkdownFieldHandle, MarkdownFieldProps>
                     {tab === "write" ? (
                         <div className="rounded-md border focus-within:ring-2 focus-within:ring-ring">
                             <div className="flex flex-wrap gap-0.5 border-b p-1" role="toolbar" aria-label="Formatação">
-                                {TOOLS.map((tool) => (
+                                {TOOLS.filter((tool) => !tools || tools.includes(tool.key)).map((tool) => (
                                     <Button key={tool.label} type="button" variant="ghost" size="icon" className="h-7 w-7" title={tool.label} aria-label={tool.label} onMouseDown={(event) => event.preventDefault()} onClick={() => apply(tool)}>
                                         <tool.icon className="h-3.5 w-3.5" aria-hidden />
                                     </Button>

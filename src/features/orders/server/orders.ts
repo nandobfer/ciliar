@@ -8,7 +8,7 @@ import { parseInput } from "@/features/access/server/commands"
 import { denied } from "@/features/access/server/access"
 import { accessModels } from "@/features/access/server/models"
 import type { AccessContext } from "@/features/access/server/context"
-import { auditBusiness, businessOwnerOf, canSupportBusinesses, canUseBusinesses, ensureBusinessCollections } from "@/features/businesses/server/access"
+import { auditBusiness, businessOwnerOf, canBusiness, ensureBusinessCollections, requireModuleRead } from "@/features/businesses/server/access"
 import { businessModels } from "@/features/businesses/server/models"
 import { claimBusinessFiles, refOfFile, releaseBusinessFiles } from "@/features/businesses/server/files"
 import { readBusiness, writeItem, type BusinessDoc } from "@/features/businesses/server/items"
@@ -66,10 +66,15 @@ async function loadOrder(businessId: string, orderId: string, session: ClientSes
 
 const editableStatuses: readonly OrderStatus[] = ["draft", "sent"]
 
+/** Chave exigida por cada ação do pedido. */
+export const ORDER_ACTION_PERMISSIONS: Record<OrderAction, string> = { edit: "orders.edit", send: "orders.send", revoke: "orders.send", accept: "orders.decide", reject: "orders.decide", reopen: "orders.decide", cancel: "orders.decide" }
+
 export async function getOrder(access: AccessContext, businessId: string, orderId: string): Promise<OrderDto> {
-    const { editable } = await readBusiness(access, businessId, "orders")
+    const { editable, own, business } = await readBusiness(access, businessId, "orders")
     const doc = await loadOrder(businessId, orderId, null)
-    return toOrderDto(doc, { editable: editable && editableStatuses.includes(doc.status), actions: editable ? allowedOrderActions(doc.status) : [] })
+    const writable = own && business.status === "active"
+    const actions = writable ? allowedOrderActions(doc.status).filter((action) => canBusiness(access, ORDER_ACTION_PERMISSIONS[action])) : []
+    return toOrderDto(doc, { editable: editable && editableStatuses.includes(doc.status), actions })
 }
 
 /** Pedidos de um negócio (dono ou suporte). */
@@ -84,7 +89,7 @@ export async function listBusinessOrders(access: AccessContext, businessId: stri
 
 /** Visão global (`/pedidos`): todos os pedidos dos negócios do dono efetivo, com filtros. */
 export async function listOrders(access: AccessContext, query: { businessId?: string; clientId?: string; status?: OrderStatus } = {}): Promise<OrderListDto> {
-    if (!canUseBusinesses(access) && !canSupportBusinesses(access)) throw denied("Seu perfil não permite usar Negócios.")
+    requireModuleRead(access, "orders")
     await dbConnect()
     await ensureBusinessCollections()
     const filter: Record<string, unknown> = { ownerId: businessOwnerOf(access) }
@@ -92,7 +97,7 @@ export async function listOrders(access: AccessContext, query: { businessId?: st
     if (query.clientId) filter.clientId = query.clientId
     if (query.status) filter.status = query.status
     const docs = await orderModels().orders.find(filter).sort({ createdAt: -1 }).lean<OrderDoc[]>()
-    return { items: await orderSummaries(docs), editable: canUseBusinesses(access) }
+    return { items: await orderSummaries(docs), editable: canBusiness(access, "orders.edit") }
 }
 
 // ── Itens e anexos ─────────────────────────────────────────────────────────
@@ -171,6 +176,7 @@ export async function createOrder(access: AccessContext, businessId: string, raw
     let clientId = ""
     const id = await writeItem(access, businessId, "orders", async ({ current, session, business, ownerId: owner }) => {
         ownerId = owner
+        if (input.newClient && !canBusiness(current, "clients.edit")) throw denied("Cadastrar um cliente novo exige Clientes › Criar (clients.edit).")
         if (input.newClient) clientId = await insertClient(current, session, owner, input.newClient)
         else {
             const client = await loadOwnedClient(owner, input.clientId!, session)
@@ -239,6 +245,7 @@ export async function updateOrder(access: AccessContext, businessId: string, ord
         if (!canOrderTransition(doc.status, "edit")) throw invalidTransition(doc.status, "edit")
         const next: Partial<OrderRecord> = {}
         let removeKeys: string[] = []
+        if (patch.newClient && !canBusiness(current, "clients.edit")) throw denied("Cadastrar um cliente novo exige Clientes › Criar (clients.edit).")
         if (patch.newClient) next.clientId = await insertClient(current, session, owner, patch.newClient)
         else if (patch.clientId && patch.clientId !== doc.clientId) {
             const client = await loadOwnedClient(owner, patch.clientId, session)
@@ -356,7 +363,7 @@ export async function sendOrder(access: AccessContext, businessId: string, order
         } else await recordVersion(session, current, doc, snapshot, "send", true)
         await auditBusiness(current, `${ORDER_AUDIT}.send`, orderId, { businessId, code: doc.code, status: doc.status, validUntil: doc.link?.validUntil ?? null }, { businessId, code: doc.code, status: "sent", validUntil, newToken: !reuse, email: input.email }, session)
         return { result: undefined }
-    })
+    }, ["orders.send"])
     const pendingMail = mail as Omit<Parameters<typeof sendQuoteEmail>[0], "url"> | null
     if (pendingMail) {
         const result = await sendQuoteEmail({ ...pendingMail, url })
@@ -371,7 +378,7 @@ export async function sendOrder(access: AccessContext, businessId: string, order
 /** "Copiar link": decifra o token enquanto o link estiver válido (só o dono). */
 export async function orderLinkUrl(access: AccessContext, businessId: string, orderId: string): Promise<OrderLinkUrlDto> {
     const { own } = await readBusiness(access, businessId, "orders")
-    if (!own || !canUseBusinesses(access)) throw orderNotFound()
+    if (!own || !canBusiness(access, "orders.send")) throw orderNotFound()
     const doc = await loadOrder(businessId, orderId, null)
     if (!doc.link) throw new DomainError(409, "O pedido não tem link ativo: envie o pedido para gerar o link.", "ORDER_WITHOUT_LINK")
     if (doc.status === "sent" && doc.link.validUntil < todayKeyIn(doc.link.timeZone)) throw new DomainError(409, "O link expirou: reenvie o pedido para gerar um novo.", "ORDER_LINK_EXPIRED")
@@ -406,7 +413,7 @@ async function transition(
         if (action === "reopen") await recordVersion(session, current, doc, snapshotOf(doc), "reopen", false)
         await auditBusiness(current, `${ORDER_AUDIT}.${action === "revoke" ? "revoke" : action}`, orderId, { businessId, code: doc.code, status: doc.status, link: Boolean(doc.link) }, { businessId, code: doc.code, status: set.status, link: false }, session)
         return { result: undefined }
-    })
+    }, [action === "revoke" ? "orders.send" : "orders.decide"])
     await afterWrite(ownerId, businessId, [clientId])
     return getOrder(access, businessId, orderId)
 }

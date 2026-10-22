@@ -33,6 +33,9 @@ export function BusinessesPage() {
     const { session } = useAppSession()
     const { can } = usePermissions()
     const canUse = can("businesses.use")
+    const canArchive = canUse && can("businesses.archive")
+    const canDelete = canUse && can("businesses.delete")
+    const canCreate = canUse && can("businesses.create")
     const query = useBusinesses()
     useBusinessesRealtime(session?.user.id ?? null, !session?.access.simulation)
     const archive = useArchiveBusiness()
@@ -75,7 +78,7 @@ export function BusinessesPage() {
                 <div className="mt-auto flex flex-wrap justify-end gap-2">
                     {business.status === "active" ? (
                         <>
-                            {canUse && (
+                            {canArchive && (
                                 <Button size="sm" variant="ghost" className="gap-1.5" onClick={() => setPending({ kind: "archive", business })}>
                                     <Archive className="h-4 w-4" aria-hidden /> Arquivar
                                 </Button>
@@ -87,16 +90,18 @@ export function BusinessesPage() {
                             </Button>
                         </>
                     ) : (
-                        canUse && (
-                            <>
+                        <>
+                            {canDelete && (
                                 <Button size="sm" variant="ghost" className="gap-1.5 text-destructive hover:text-destructive" onClick={() => { setUnderstood(false); setPending({ kind: "delete", business }) }}>
                                     <Trash2 className="h-4 w-4" aria-hidden /> Excluir definitivamente
                                 </Button>
-                                <Button size="sm" variant="outline" className="gap-1.5" disabled={restore.isPending || capacity?.canCreate === false} title={capacity?.canCreate === false ? "Sem vaga no limite de negócios ativos" : undefined} onClick={() => restore.mutate(business.id)}>
+                            )}
+                            {canArchive && (
+                                <Button size="sm" variant="outline" className="gap-1.5" disabled={restore.isPending || capacity?.vacancy === false} title={capacity?.vacancy === false ? "Sem vaga no limite de negócios ativos" : undefined} onClick={() => restore.mutate(business.id)}>
                                     <ArchiveRestore className="h-4 w-4" aria-hidden /> Restaurar
                                 </Button>
-                            </>
-                        )
+                            )}
+                        </>
                     )}
                 </div>
             </Card>
@@ -106,9 +111,9 @@ export function BusinessesPage() {
     return (
         <div className="flex flex-col gap-6">
             <CadastroHeader title="Negócios" description={limitText ? `Seus negócios · ${limitText}` : "Seus negócios"}>
-                {canUse && (
+                {canCreate && (
                     <div className="flex flex-wrap items-center justify-end gap-3">
-                        {capacity && !capacity.canCreate && <p className="text-sm text-warning">Você atingiu o limite de negócios ativos do seu perfil: arquive um para criar outro.</p>}
+                        {capacity && !capacity.vacancy && <p className="text-sm text-warning">Você atingiu o limite de negócios ativos do seu perfil: arquive um para criar outro.</p>}
                         <Button className="h-9 gap-2 px-4" disabled={!capacity?.canCreate} onClick={() => router.push("/negocios/novo")}>
                             <Plus className="h-4 w-4" aria-hidden /> Novo negócio
                         </Button>
@@ -124,7 +129,7 @@ export function BusinessesPage() {
                     {active.length ? (
                         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{active.map(card)}</div>
                     ) : (
-                        <EmptyState icon={Briefcase} title="Nenhum negócio ativo" description="Crie um negócio pela entrevista do Agente Entrevistador." actionLabel={canUse && capacity?.canCreate ? "Novo negócio" : undefined} onAction={canUse && capacity?.canCreate ? () => router.push("/negocios/novo") : undefined} />
+                        <EmptyState icon={Briefcase} title="Nenhum negócio ativo" description="Crie um negócio pela entrevista do Agente Entrevistador." actionLabel={capacity?.canCreate ? "Novo negócio" : undefined} onAction={capacity?.canCreate ? () => router.push("/negocios/novo") : undefined} />
                     )}
                     {archived.length > 0 && (
                         <section className="space-y-3">

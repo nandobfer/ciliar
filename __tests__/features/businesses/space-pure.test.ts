@@ -1,3 +1,4 @@
+import { BUSINESS_FULL_PERMISSIONS } from "@/features/businesses/permissions"
 import { describe, expect, it } from "vitest"
 import { routePermissions } from "@/features/access/server/policy"
 import { businessThemeCss, businessThemeStyle, contrastRatio, readableForeground, resolveTheme } from "@/features/businesses/theme"
@@ -113,16 +114,17 @@ describe("entradas do espaço", () => {
 })
 
 describe("rotas, navegação e ferramentas do espaço", () => {
-    it("leitura confere dono/suporte no serviço; alterações exigem businesses.use; rota desconhecida falha fechado", () => {
+    it("leitura confere dono/suporte no serviço; alterações exigem a base e a chave do módulo; rota desconhecida falha fechado", () => {
         const id = "a".repeat(24)
         const item = "b".repeat(24)
         expect(routePermissions(`/api/businesses/${id}/activities`, "GET")).toEqual([])
-        expect(routePermissions(`/api/businesses/${id}/activities`, "POST")).toEqual(["businesses.use"])
-        expect(routePermissions(`/api/businesses/${id}/goals/${item}/archive`, "POST")).toEqual(["businesses.use"])
-        expect(routePermissions(`/api/businesses/${id}/documents/${item}`, "DELETE")).toEqual(["businesses.use"])
+        expect(routePermissions(`/api/businesses/${id}/activities`, "POST")).toEqual(["businesses.use", "activities.edit"])
+        expect(routePermissions(`/api/businesses/${id}/goals/${item}/archive`, "POST")).toEqual(["businesses.use", "goals.edit"])
+        expect(routePermissions(`/api/businesses/${id}/documents/${item}`, "DELETE")).toEqual(["businesses.use", "documents.delete"])
+        expect(routePermissions(`/api/businesses/${id}/successes/${item}`, "PATCH")).toEqual(["businesses.use", "successes.edit"])
         expect(routePermissions(`/api/businesses/${id}/files/${item}/complete`, "POST")).toEqual(["businesses.use"])
         expect(routePermissions(`/api/businesses/${id}/files/${item}`, "GET")).toEqual([])
-        expect(routePermissions(`/api/businesses/${id}/logo`, "PUT")).toEqual(["businesses.use"])
+        expect(routePermissions(`/api/businesses/${id}/logo`, "PUT")).toEqual(["businesses.use", "businesses.edit"])
         expect(routePermissions(`/api/businesses/${id}/dashboard`, "GET")).toEqual([])
         expect(() => routePermissions(`/api/businesses/${id}/clientes`, "GET")).toThrow()
         expect(() => routePermissions(`/api/businesses/${id}/activities/${item}/purge`, "POST")).toThrow()
@@ -130,12 +132,12 @@ describe("rotas, navegação e ferramentas do espaço", () => {
 
     it("barra lateral: as seis páginas do espaço (sem Entrevista), sem o Next rolar até o segmento", () => {
         const section = businessSpaceNavSection("c".repeat(24))
-        expect(section.items.map((entry) => entry.href)).toEqual(["", "/ficha", "/atividades", "/metas", "/documentos", "/sucessos", "/pedidos", "/trabalhos"].map((slug) => `/negocios/${"c".repeat(24)}${slug}`))
+        expect(section.items.map((entry) => entry.href)).toEqual(["", "/ficha", "/atividades", "/metas", "/documentos", "/sucessos", "/pedidos", "/trabalhos", "/portfolio"].map((slug) => `/negocios/${"c".repeat(24)}${slug}`))
         expect(section.items.every((entry) => entry.scroll === false)).toBe(true)
     })
 
     it("ferramentas do espaço: prestador sem o painel usa; suporte só as de leitura", () => {
-        const provider = new Set(["businesses.use", "opex.use"])
+        const provider = new Set([...BUSINESS_FULL_PERMISSIONS, "opex.use"])
         const support = new Set(["businesses.view_all", "opex.use"])
         for (const name of ["create_activity", "create_goal", "create_document", "update_success", "set_business_logo"]) expect(canUseOpexTool(opexToolMeta(name)!, provider)).toBe(true)
         for (const name of ["list_activities", "get_activity", "list_goals", "get_goal_progress", "list_documents", "get_document", "list_successes", "get_success"]) expect(canUseOpexTool(opexToolMeta(name)!, support)).toBe(true)

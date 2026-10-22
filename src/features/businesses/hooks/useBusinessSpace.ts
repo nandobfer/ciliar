@@ -8,7 +8,8 @@ import { api, apiErrorMessage, unwrapApi } from "@/lib/api"
 import type { ApiResponse } from "@/lib/types/api"
 import { acquireChannel, isPusherClientAvailable, releaseChannel } from "@/lib/pusher/client"
 import { BUSINESS_SPACE_UPDATED_EVENT, businessesChannel } from "@/lib/pusher/channel-names"
-import type { BusinessFilePurpose, BusinessItemKind } from "../constants"
+import { BUSINESS_ITEM_PATHS, type BusinessFilePurpose, type BusinessItemKind } from "../constants"
+import type { PortfolioItemDto } from "@/features/portfolio/types"
 import { BUSINESS_DASHBOARD_PERIOD_STORAGE_KEY, businessDashboardPeriodSchema, DEFAULT_BUSINESS_DASHBOARD_PERIOD, type BusinessDashboardPeriod } from "../dashboard-period"
 import { usePersistentState } from "@/hooks/usePersistentState"
 import type { ActivityDetailDto, ActivityDto, BusinessDashboardDto, BusinessDetailDto, BusinessFileDto, BusinessFileReservationDto, DocumentDto, GoalArchiveResultDto, GoalItemDto, GoalsOverviewDto, ItemListDto, SuccessDto } from "../types"
@@ -17,7 +18,7 @@ import { BUSINESSES_KEY } from "./useBusinesses"
 /** Consultas e mutações do espaço do negócio (M2), pelo Axios central (`baseURL: /api`). */
 
 export const SPACE_KEY = "business-space"
-export const spaceKey = (businessId: string, kind: BusinessItemKind | "dashboard" | "categories", ...rest: string[]) => [SPACE_KEY, businessId, kind, ...rest] as const
+export const spaceKey = (businessId: string, kind: BusinessItemKind | "dashboard" | "categories" | "portfolio", ...rest: string[]) => [SPACE_KEY, businessId, kind, ...rest] as const
 
 const get = async <T,>(path: string) => unwrapApi((await api.get<ApiResponse<T>>(path)).data)
 const base = (businessId: string) => `/businesses/${businessId}`
@@ -27,10 +28,11 @@ export interface ItemTypes {
     goals: GoalItemDto
     documents: DocumentDto
     successes: SuccessDto
+    portfolioItems: PortfolioItemDto
 }
 
 export const useItemList = <K extends BusinessItemKind>(businessId: string, kind: K) =>
-    useQuery({ queryKey: spaceKey(businessId, kind, "list"), queryFn: () => get<ItemListDto<ItemTypes[K]>>(`${base(businessId)}/${kind}?status=all`), staleTime: 10_000 })
+    useQuery({ queryKey: spaceKey(businessId, kind, "list"), queryFn: () => get<ItemListDto<ItemTypes[K]>>(`${base(businessId)}/${BUSINESS_ITEM_PATHS[kind]}?status=all`), staleTime: 10_000 })
 
 /** Metas: a atual e a linha do tempo. */
 export const useGoals = (businessId: string) => useQuery({ queryKey: spaceKey(businessId, "goals", "overview"), queryFn: () => get<GoalsOverviewDto>(`${base(businessId)}/goals`), staleTime: 10_000 })
@@ -58,6 +60,8 @@ function useInvalidateSpace(businessId: string) {
                 queryClient.invalidateQueries({ queryKey: kind ? [SPACE_KEY, businessId, kind] : [SPACE_KEY, businessId] }),
                 queryClient.invalidateQueries({ queryKey: [SPACE_KEY, businessId, "dashboard"] }),
                 queryClient.invalidateQueries({ queryKey: [SPACE_KEY, businessId, "categories"] }),
+                // O portfólio (M5) mostra sucessos, documentos, atividades e itens avulsos.
+                queryClient.invalidateQueries({ queryKey: [SPACE_KEY, businessId, "portfolio"] }),
                 queryClient.invalidateQueries({ queryKey: [BUSINESSES_KEY, "detail", businessId] }),
             ])
         },
@@ -70,7 +74,7 @@ export function useSaveItem<K extends BusinessItemKind>(businessId: string, kind
     const invalidate = useInvalidateSpace(businessId)
     return useMutation({
         mutationFn: async ({ id, data }: { id?: string; data: Record<string, unknown> }) =>
-            unwrapApi((id ? await api.patch<ApiResponse<ItemTypes[K]>>(`${base(businessId)}/${kind}/${id}`, data) : await api.post<ApiResponse<ItemTypes[K]>>(`${base(businessId)}/${kind}`, data)).data),
+            unwrapApi((id ? await api.patch<ApiResponse<ItemTypes[K]>>(`${base(businessId)}/${BUSINESS_ITEM_PATHS[kind]}/${id}`, data) : await api.post<ApiResponse<ItemTypes[K]>>(`${base(businessId)}/${BUSINESS_ITEM_PATHS[kind]}`, data)).data),
         onSuccess: async () => invalidate(kind),
         onError: (error) => toast.error(apiErrorMessage(error, "Não foi possível salvar")),
     })
@@ -83,7 +87,7 @@ export function useItemAction(businessId: string, kind: BusinessItemKind, label:
     const invalidate = useInvalidateSpace(businessId)
     return useMutation({
         mutationFn: async ({ id, action }: { id: string; action: "archive" | "restore" | "delete" }) =>
-            action === "delete" ? unwrapApi((await api.delete<ApiResponse<{ id: string }>>(`${base(businessId)}/${kind}/${id}`)).data) : unwrapApi((await api.post<ApiResponse<unknown>>(`${base(businessId)}/${kind}/${id}/${action}`, {})).data),
+            action === "delete" ? unwrapApi((await api.delete<ApiResponse<{ id: string }>>(`${base(businessId)}/${BUSINESS_ITEM_PATHS[kind]}/${id}`)).data) : unwrapApi((await api.post<ApiResponse<unknown>>(`${base(businessId)}/${BUSINESS_ITEM_PATHS[kind]}/${id}/${action}`, {})).data),
         onSuccess: async (_data, { action }) => {
             await invalidate(kind)
             toast.success(`${label} ${ACTION_MESSAGES[action]}`)

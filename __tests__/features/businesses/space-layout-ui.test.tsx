@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import { framerMotionMock } from "../../helpers/framer-motion"
 
 vi.mock("framer-motion", () => framerMotionMock())
+vi.mock("@nandobfer/perfix/react", () => ({ usePermissions: () => ({ can: () => true, canAny: () => true }) }))
 const state = vi.hoisted(() => ({ period: "month", setPeriod: vi.fn() }))
 const business = vi.hoisted(() => ({
     id: "a".repeat(24),
@@ -64,13 +65,14 @@ const dashboard = {
     granularity: "day",
     range: { from: "2026-10-01", to: "2026-10-21" },
     goal: null as unknown,
+    visible: { activities: true, goals: true, documents: true, successes: true, revenue: true },
     counts: { activities: 4, goals: 0, documents: 2, successes: 1 },
     kpis: { currentGoalPercent: null, revenueCents: 0, activeActivities: 4, averageRateCents: 15000, documents: 2, successesInPeriod: 0 },
     charts: { activityRates: [], activitiesByCategory: [], documentsByCategory: [], successes: [], rateTrend: { activities: [], rows: [] }, revenue: [], hasRevenue: false },
 }
 const editable = vi.hoisted(() => ({ value: true }))
 const upload = vi.hoisted(() => vi.fn(async () => ({ file: null, error: "Falhou" })))
-vi.mock("@/features/businesses/components/space/BusinessSpaceLayout", () => ({ useBusinessSpace: () => ({ business: { ...business, editable: editable.value }, editable: editable.value }), businessSubtitle: () => "Pessoa jurídica" }))
+vi.mock("@/features/businesses/components/space/BusinessSpaceLayout", () => ({ useBusinessSpace: () => ({ business: { ...business, editable: editable.value, actions: { edit: editable.value, archive: editable.value, delete: editable.value } }, editable: editable.value }), businessSubtitle: () => "Pessoa jurídica" }))
 vi.mock("@/features/businesses/hooks/useBusinessSpace", () => ({
     useBusinessDashboardPeriod: () => ({ period: state.period, setPeriod: state.setPeriod, ready: true }),
     useBusinessDashboard: () => ({ data: dashboard, isPending: false, isError: false, isFetching: false, refetch: vi.fn() }),

@@ -16,6 +16,7 @@ vi.mock("@/lib/storage/s3", async (original) => ({ ...(await original<object>())
 const chat = vi.hoisted(() => ({ loadSessionFile: vi.fn() }))
 vi.mock("@/features/opex-agent/server/files", async (original) => ({ ...(await original<object>()), loadSessionFile: chat.loadSessionFile }))
 
+import { BUSINESS_FULL_PERMISSIONS } from "@/features/businesses/permissions"
 import { accessModels } from "@/features/access/server/models"
 import { createRole } from "@/features/access/server/commands"
 import { resolveAccess } from "@/features/access/server/access"
@@ -82,7 +83,7 @@ afterAll(async () => {
 
 describe("ficha, tema e logo", () => {
     it("edita tema, contato e prazos; e-mail vazio usa o da conta; moeda avisa os valores não convertidos", async () => {
-        const provider = (await role("Prestador", ["businesses.use"])).id
+        const provider = (await role("Prestador", [...BUSINESS_FULL_PERMISSIONS])).id
         const ana = await user("Ana", [provider])
         const id = await businessOf(ana)
         const detail = await getBusinessDetail(ana, id)
@@ -97,7 +98,7 @@ describe("ficha, tema e logo", () => {
     })
 
     it("troca e remove a logo (só imagem; a anterior sai do storage)", async () => {
-        const provider = (await role("Prestador", ["businesses.use"])).id
+        const provider = (await role("Prestador", [...BUSINESS_FULL_PERMISSIONS])).id
         const bia = await user("Bia", [provider])
         const id = await businessOf(bia)
         await expect(reserveBusinessFile(bia, id, { purpose: "logo", name: "logo.pdf", size: 10, mediaType: "application/pdf" })).rejects.toMatchObject({ code: "BUSINESS_FILE_TYPE" })
@@ -114,7 +115,7 @@ describe("ficha, tema e logo", () => {
 
 describe("atividades", () => {
     it("CRUD com histórico do valor/hora, versão otimista, categorias e arquivamento", async () => {
-        const provider = (await role("Prestador", ["businesses.use"])).id
+        const provider = (await role("Prestador", [...BUSINESS_FULL_PERMISSIONS])).id
         const caio = await user("Caio", [provider])
         const id = await businessOf(caio)
         const created = await createActivity(caio, id, { name: "Fotografia", category: "Eventos", hourlyRateCents: 20000 })
@@ -150,7 +151,7 @@ describe("atividades", () => {
     })
 
     it("isolamento, suporte somente leitura (auditado), negócio arquivado e simulação de usuário", async () => {
-        const provider = (await role("Prestador", ["businesses.use"])).id
+        const provider = (await role("Prestador", [...BUSINESS_FULL_PERMISSIONS])).id
         const support = (await role("Suporte", ["businesses.view_all"])).id
         const dani = await user("Dani", [provider])
         const edu = await user("Edu", [provider])
@@ -180,7 +181,7 @@ describe("atividades", () => {
 
 describe("metas: uma ativa por negócio, linha do tempo e dashboard", () => {
     it("criar substitui a atual; editar cria nova versão (sem mudança, nada grava); histórico é somente leitura", async () => {
-        const provider = (await role("Prestador", ["businesses.use"])).id
+        const provider = (await role("Prestador", [...BUSINESS_FULL_PERMISSIONS])).id
         const fabi = await user("Fabi", [provider])
         const id = await businessOf(fabi)
         const monthly = await createGoal(fabi, id, { name: "Mensal", targetCents: 800000, period: "month", mode: "recurring" }, "America/Sao_Paulo")
@@ -222,7 +223,7 @@ describe("metas: uma ativa por negócio, linha do tempo e dashboard", () => {
     })
 
     it("arquivar a atual reativa a anterior (em cadeia, até ficar sem meta); restaurar torna a arquivada a atual", async () => {
-        const provider = (await role("Prestador", ["businesses.use"])).id
+        const provider = (await role("Prestador", [...BUSINESS_FULL_PERMISSIONS])).id
         const gil = await user("Gil", [provider])
         const id = await businessOf(gil)
         const a = await createGoal(gil, id, { name: "A", targetCents: 100, period: "month", mode: "recurring" })
@@ -254,7 +255,7 @@ describe("metas: uma ativa por negócio, linha do tempo e dashboard", () => {
     })
 
     it("índice único: no máximo uma meta ativa por negócio; a migração normaliza os dados antigos", async () => {
-        const provider = (await role("Prestador", ["businesses.use"])).id
+        const provider = (await role("Prestador", [...BUSINESS_FULL_PERMISSIONS])).id
         const hugo = await user("Hugo", [provider])
         const id = await businessOf(hugo)
         await createGoal(hugo, id, { targetCents: 100, period: "month", mode: "recurring" })
@@ -311,7 +312,7 @@ describe("metas: uma ativa por negócio, linha do tempo e dashboard", () => {
 
 describe("documentos, sucessos e arquivos", () => {
     it("envio com limites da Plataforma, documento com troca de arquivo e exclusão que limpa o storage", async () => {
-        const provider = (await role("Prestador", ["businesses.use"])).id
+        const provider = (await role("Prestador", [...BUSINESS_FULL_PERMISSIONS])).id
         const gil = await user("Gil", [provider])
         const id = await businessOf(gil)
         await platform.settings.create({ _id: "global", defaultRoleId: null, retentionDays: { businesses: 30, activities: 30, goals: 30, documents: 30, successes: 30, clients: 30, jobs: 30, portfolioItems: 30 }, documents: { maxFileSizeMb: 1, allowedTypes: ["pdf"] }, version: 1 })
@@ -341,7 +342,7 @@ describe("documentos, sucessos e arquivos", () => {
     })
 
     it("sucesso: anexos adicionados e removidos; excluir o negócio leva todos os itens e arquivos", async () => {
-        const provider = (await role("Prestador", ["businesses.use"])).id
+        const provider = (await role("Prestador", [...BUSINESS_FULL_PERMISSIONS])).id
         const ivo = await user("Ivo", [provider])
         const id = await businessOf(ivo)
         const first = await uploaded(ivo, id, "success", "antes.pdf")
@@ -366,7 +367,7 @@ describe("documentos, sucessos e arquivos", () => {
 
 describe("gráficos do dashboard", () => {
     it("agrega categorias, ranking e evolução do valor/hora, sucessos por ponto e faturamento × meta mensal", async () => {
-        const provider = (await role("Prestador", ["businesses.use"])).id
+        const provider = (await role("Prestador", [...BUSINESS_FULL_PERMISSIONS])).id
         const lia = await user("Lia", [provider])
         const id = await businessOf(lia)
         const photo = await createActivity(lia, id, { name: "Fotografia", category: "Eventos", hourlyRateCents: 20000 })
@@ -398,7 +399,7 @@ describe("gráficos do dashboard", () => {
 
 describe("rotina businesses-purge (itens)", () => {
     it("exclui cada tipo pelo próprio prazo e limpa os envios pendentes de mais de 24 h", async () => {
-        const provider = (await role("Prestador", ["businesses.use"])).id
+        const provider = (await role("Prestador", [...BUSINESS_FULL_PERMISSIONS])).id
         const joa = await user("Joa", [provider])
         const id = await businessOf(joa)
         await platform.settings.create({ _id: "global", defaultRoleId: null, retentionDays: { businesses: 30, activities: 5, goals: 60, documents: 30, successes: 30, clients: 30, jobs: 30, portfolioItems: 30 }, documents: { maxFileSizeMb: 25, allowedTypes: ["pdf", "images", "office", "text"] }, version: 1 })
@@ -424,7 +425,7 @@ describe("rotina businesses-purge (itens)", () => {
 
 describe("ferramentas do Agente Opex", () => {
     it("atividades, metas, documentos e sucessos chamam os serviços reais (arquivos do chat copiados)", async () => {
-        const provider = (await role("Prestador", ["businesses.use", "opex.use"])).id
+        const provider = (await role("Prestador", [...BUSINESS_FULL_PERMISSIONS, "opex.use"])).id
         const kai = await user("Kai", [provider])
         const id = await businessOf(kai)
         const scope = { ...scopeOfAccess(kai), timeZone: "Europe/Lisbon" }

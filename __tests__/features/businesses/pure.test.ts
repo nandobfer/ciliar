@@ -28,18 +28,20 @@ describe("permissões e rotas do prestador", () => {
         const id = "a".repeat(24)
         expect(routePermissions("/api/businesses", "GET")).toEqual([])
         expect(routePermissions(`/api/businesses/${id}`, "GET")).toEqual([])
-        expect(routePermissions(`/api/businesses/${id}`, "PATCH")).toEqual(["businesses.use"])
-        expect(routePermissions(`/api/businesses/${id}`, "DELETE")).toEqual(["businesses.use"])
-        expect(routePermissions(`/api/businesses/${id}/restore`, "POST")).toEqual(["businesses.use"])
+        expect(routePermissions(`/api/businesses/${id}`, "PATCH")).toEqual(["businesses.use", "businesses.edit"])
+        expect(routePermissions(`/api/businesses/${id}`, "DELETE")).toEqual(["businesses.use", "businesses.delete"])
+        expect(routePermissions(`/api/businesses/${id}/restore`, "POST")).toEqual(["businesses.use", "businesses.archive"])
         expect(routePermissions(`/api/businesses/${id}/interview`, "GET")).toEqual([])
         expect(routePermissions("/api/businesses/search", "GET")).toEqual(["businesses.view_all"])
-        expect(routePermissions(`/api/interview/sessions/${id}/messages`, "POST")).toEqual(["businesses.use"])
+        expect(routePermissions(`/api/interview/sessions/${id}/messages`, "POST")).toEqual(["businesses.use", "businesses.create"])
         expect(routePermissions("/api/ai/features/business-interviewer/script", "PUT")).toEqual(["integrations.ai.edit"])
         expect(() => routePermissions(`/api/businesses/${id}/desconhecida`, "GET")).toThrow()
     })
 
-    it("onboarding: só businesses.use sem wildcard; rotas liberadas até concluir", () => {
-        expect(mayRequireOnboarding(accessFixture(["businesses.use"]))).toBe(true)
+    it("onboarding: businesses.use + businesses.create sem wildcard; rotas liberadas até concluir", () => {
+        expect(mayRequireOnboarding(accessFixture(["businesses.use", "businesses.create"]))).toBe(true)
+        // Sem poder criar, não há como sair da entrevista: não força o onboarding.
+        expect(mayRequireOnboarding(accessFixture(["businesses.use"]))).toBe(false)
         expect(mayRequireOnboarding(accessFixture(["*"]))).toBe(false)
         expect(mayRequireOnboarding(accessFixture(["businesses.view_all"]))).toBe(false)
         const id = "b".repeat(24)

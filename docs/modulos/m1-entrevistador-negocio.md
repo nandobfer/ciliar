@@ -120,7 +120,9 @@ período **hora**, **mês** ou **ano**. Meta por hora = **valor médio faturado 
 
 | Permissão | Uso |
 |---|---|
-| `businesses.use` | Criar (via entrevista), ver e editar os **próprios** negócios |
+| `businesses.use` | Ver os **próprios** negócios e o painel (base de todos os módulos) |
+| `businesses.create` | Criar negócios pela entrevista (o onboarding obrigatório só vale com ela) |
+| `businesses.edit` · `businesses.archive` · `businesses.delete` | Editar a ficha; arquivar/restaurar; excluir definitivamente |
 | `businesses.view_all` | Suporte: ver negócios/entrevistas de outros usuários (auditado) |
 | `integrations.ai.view/edit` | Configuração do Entrevistador e roteiro |
 | `roles.edit` | Limite de negócios no perfil de acesso |

@@ -19,7 +19,8 @@ e de comportamento: Tarefas do `~/code/opex` (`TaskBoard`, `TaskColumn`, `TaskCa
 - Movimento livre por arrastar (dnd-kit: mouse, toque e **teclado** — espaço pega, setas movem,
   espaço solta) e por "Mover para…" (tabela e detalhe). Otimista nas listas; volta se o servidor
   recusar.
-- `businesses.use` escreve nos próprios negócios; `businesses.view_all` só lê (auditado pela
+- Permissões `works.view/edit/columns/payment/delete` sobre `businesses.use` (ver "Permissões dos Negócios por módulo" em [access.md](access.md); entrar/sair de Pago
+  exige `works.payment`, converter em sucesso também `successes.edit`); `businesses.view_all` só lê (auditado pela
   seção `works`). Simulação de usuário age sobre o alvo (`businessOwnerOf`) com o ator real na
   auditoria. APIs sem painel (`requiresPanel`), rotas explícitas em `access/server/policy.ts`.
 

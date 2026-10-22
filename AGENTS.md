@@ -9,9 +9,9 @@ Leia `aicontext/README.md` e o guia do módulo antes de desenvolver.
   sonner, date-fns e Framer Motion (respeitando movimento reduzido).
 - Escopo atual: Integrações, Usuários, Perfis, Visualizar como, o Agente Opex (chat com
   ferramentas), a Plataforma (M0), Negócios + Agente Entrevistador (M1), o Espaço do negócio (M2),
-  Clientes + Pedidos (M3) e Trabalhos (M4), por solicitação do usuário. Exceção ao tema fixo: o espaço do negócio
-  e seu orçamento público usam a cor e o modo do negócio (`aicontext/modules/business-space.md`
-  e `aicontext/modules/orders.md`).
+  Clientes + Pedidos (M3), Trabalhos (M4) e Portfólio (M5), por solicitação do usuário. Exceção ao tema fixo: o espaço do negócio,
+  seu orçamento público e o portfólio público usam a cor e o modo do negócio (`aicontext/modules/business-space.md`,
+  `aicontext/modules/orders.md` e `aicontext/modules/portfolio.md`).
 - Auth.js nativo no Next, **somente Google** (sem e-mail/senha). Cadastro público com o perfil
   padrão da Plataforma, convite (pré-cadastro do e-mail) e vínculo automático por e-mail verificado.
   Aceite versionado dos termos/política é conferido no servidor. Toda API administrativa exige
@@ -44,10 +44,14 @@ Leia `aicontext/README.md` e o guia do módulo antes de desenvolver.
   2. implemente em `server/tools/<grupo>.ts` com `defineTool(nome, { input, execute })` e inclua no
      `registry.ts`; chame o serviço/comando real com `context.access` (nunca HTTP), e use `authorize`
      para permissões que dependem da entrada;
-  3. risco `destructive` para excluir, desativar, revogar, mexer em credencial/senha/token ou em
+  3. use a chave do módulo do Negócio (`<módulo>.view` para ler, com `businesses.view_all`; escrita
+     `businesses.use` + a chave da ação; ver `src/features/businesses/permissions.ts`). Módulo novo de
+     Negócio ganha subgrupo próprio no catálogo, entrada em `BUSINESS_MODULES`, rotas em
+     `businessRoutePermissions` e a página em `businessRouteAccess`;
+  4. risco `destructive` para excluir, desativar, revogar, mexer em credencial/senha/token ou em
      autoridade (perfis, permissões, atribuições); `summarize` para todo `write`/`destructive`;
      `redact` para entradas com segredo; nunca devolva hash, senha ou segredo de integração;
-  4. atualize a tabela em `aicontext/modules/opex-agent.md` e os testes de
+  5. atualize a tabela em `aicontext/modules/opex-agent.md` e os testes de
      `__tests__/features/opex-agent/` (o teste do catálogo falha se faltar implementação).
 - O agente age sempre como o usuário real: o acesso é revalidado antes de cada ferramenta, respeita
   "Visualizar como" e nunca amplia permissões. Não crie ferramenta que altere a configuração do

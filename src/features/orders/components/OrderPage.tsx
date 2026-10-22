@@ -1,5 +1,6 @@
 "use client"
 
+import { usePermissions } from "@nandobfer/perfix/react"
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -29,14 +30,16 @@ import { dateKeyLabel, DeadlineBadge, OrderStatusPill } from "./OrderBadges"
 import { OrderForm } from "./OrderForm"
 import { orderHref } from "./OrdersPage"
 import { workHref } from "@/features/works/constants"
+import { canReadModule } from "@/features/businesses/permissions"
 
 /** Novo pedido (`/negocios/[id]/pedidos/novo`). */
 export function NewOrderPage() {
     const router = useRouter()
     const { business, editable } = useBusinessSpace()
+    const { can } = usePermissions()
     const save = useSaveOrder(business.id)
     const back = businessSpaceHref(business.id, "pedidos")
-    if (!editable) return <ErrorState title="Somente leitura" description="Este negócio não aceita novos pedidos agora (arquivado ou aberto pelo suporte)." />
+    if (!editable || !can("orders.edit")) return <ErrorState title="Somente leitura" description="Este negócio não aceita novos pedidos agora (arquivado ou aberto pelo suporte)." />
     return (
         <section className="space-y-6">
             <PageHeader back={back} title="Novo pedido" subtitle={`Rascunho em ${business.currency}: envie quando estiver pronto.`} />
@@ -123,6 +126,8 @@ const CONFIRMS: Record<Exclude<OrderStatusAction, "reject">, Omit<NonNullable<Co
 
 function OrderActionsCard({ order }: { order: OrderDto }) {
     const { editable: spaceEditable } = useBusinessSpace()
+    const permissions = usePermissions()
+    const canSend = permissions.can("orders.send")
     const action = useOrderAction(order.businessId, order.id)
     const copy = useCopyOrderLink(order.businessId, order.id)
     const [sending, setSending] = useState(false)
@@ -156,7 +161,7 @@ function OrderActionsCard({ order }: { order: OrderDto }) {
                             <Send className="h-4 w-4" aria-hidden /> {order.status === "draft" ? "Enviar orçamento" : order.link?.expired ? "Reenviar (novo link)" : "Prorrogar / reenviar"}
                         </Button>
                     )}
-                    {linkUsable && spaceEditable && (
+                    {linkUsable && spaceEditable && canSend && (
                         <Button variant="outline" className="gap-1.5" disabled={copy.isPending} onClick={() => copy.mutate()}>
                             {copy.isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Copy className="h-4 w-4" aria-hidden />} Copiar link
                         </Button>
@@ -187,7 +192,7 @@ function OrderActionsCard({ order }: { order: OrderDto }) {
                         </Button>
                     )}
                 </div>
-                {order.workId && (
+                {order.workId && canReadModule(permissions.can, "works") && (
                     <Button asChild variant="outline" className="w-full gap-1.5">
                         <Link href={workHref(order.businessId, order.workId)}>
                             <Hammer className="h-4 w-4" aria-hidden /> Abrir trabalho

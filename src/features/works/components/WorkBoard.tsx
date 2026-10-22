@@ -1,5 +1,6 @@
 "use client"
 
+import { usePermissions } from "@nandobfer/perfix/react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import {
@@ -59,6 +60,7 @@ const SETTLE_MS = 1500
  * colunas, por mouse, toque ou teclado (espaço para pegar, setas para mover, espaço para soltar).
  */
 export function WorkBoard({ works, columns, rawCounts, sort, overview, editable, movingId, actions, onMove, onReorderColumns, onOpen }: WorkBoardProps) {
+    const { can } = usePermissions()
     const [activeWork, setActiveWork] = useState<WorkSummaryDto | null>(null)
     const [activeColumn, setActiveColumn] = useState<BoardColumnView | null>(null)
     const [dragItems, setDragItems] = useState<ColumnItems | null>(null)
@@ -208,7 +210,7 @@ export function WorkBoard({ works, columns, rawCounts, sort, overview, editable,
                                 />
                             ))}
                         </AnimatePresence>
-                        {editable && !overview && (
+                        {editable && can("works.columns") && !overview && (
                             <motion.button
                                 type="button"
                                 layout="position"

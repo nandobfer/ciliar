@@ -13,7 +13,7 @@ import { businessModels, type BusinessLogo } from "./models"
 /** Troca a logo por uma imagem já enviada (`purpose: logo`); a anterior sai do storage. */
 export async function setBusinessLogo(access: AccessContext, businessId: string, raw: unknown): Promise<BusinessDetailDto> {
     const { fileId } = parseInput(setBusinessLogoSchema, raw)
-    const removeKeys = await businessTransaction(access, ["businesses.use"], async (current, session, ownerId) => {
+    const removeKeys = await businessTransaction(access, ["businesses.use", "businesses.edit"], async (current, session, ownerId) => {
         const business = await loadOwnedForWrite(ownerId, businessId, session)
         if (business.status !== "active") throw new DomainError(409, "O negócio está arquivado: restaure-o para alterar.", "BUSINESS_ARCHIVED")
         const [file] = await claimBusinessFiles(session, businessId, "logo", businessId, [fileId])
@@ -30,7 +30,7 @@ export async function setBusinessLogo(access: AccessContext, businessId: string,
 }
 
 export async function removeBusinessLogo(access: AccessContext, businessId: string): Promise<BusinessDetailDto> {
-    const removeKeys = await businessTransaction(access, ["businesses.use"], async (current, session, ownerId) => {
+    const removeKeys = await businessTransaction(access, ["businesses.use", "businesses.edit"], async (current, session, ownerId) => {
         const business = await loadOwnedForWrite(ownerId, businessId, session)
         if (business.status !== "active") throw new DomainError(409, "O negócio está arquivado: restaure-o para alterar.", "BUSINESS_ARCHIVED")
         if (!business.logo) throw new DomainError(404, "O negócio não tem logo", "BUSINESS_LOGO_NOT_FOUND")

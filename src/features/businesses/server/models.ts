@@ -291,7 +291,7 @@ const businessFileSchema = new Schema<BusinessFileRecord>(
     {
         businessId: { type: String, required: true },
         ownerId: { type: String, required: true },
-        purpose: { type: String, enum: ["document", "success", "logo", "order", "work"], required: true },
+        purpose: { type: String, enum: ["document", "success", "logo", "order", "work", "portfolio", "media"], required: true },
         pending: { type: Boolean, default: true },
         ready: { type: Boolean, default: false },
         itemId: { type: String, default: null },
@@ -306,6 +306,109 @@ const businessFileSchema = new Schema<BusinessFileRecord>(
 )
 businessFileSchema.index({ businessId: 1, itemId: 1 })
 businessFileSchema.index({ pending: 1, createdAt: 1 })
+
+// ── Portfólio (M5) ────────────────────────────────────────────────────────────────────────────
+
+/** Blocos do editor (validados por `portfolioBlocksSchema` em `portfolio/blocks.ts`; guardados como dados livres). */
+export type StoredPortfolioBlock = Record<string, unknown>
+
+/**
+ * Portfólio público do negócio (um por negócio). O estado de publicação é independente do status
+ * do negócio: arquivado responde 404 e, ao restaurar, volta como estava. A página é uma lista de
+ * blocos: o rascunho (salvo sozinho pelo editor) e o publicado (`live`), trocado em "Publicar
+ * alterações". `version` cobre a configuração/publicação; `draft.version`, o rascunho.
+ */
+export interface BusinessPortfolioRecord {
+    businessId: string
+    ownerId: string
+    /** Único em toda a plataforma (`/p/[slug]`). */
+    slug: string
+    published: boolean
+    publishedAt: Date | null
+    /** Indexação pelos buscadores (`noindex` por padrão). */
+    indexable: boolean
+    draft: { blocks: StoredPortfolioBlock[]; version: number; updatedAt: Date | null; updatedBy: string | null }
+    live: { blocks: StoredPortfolioBlock[]; number: number; publishedAt: Date | null; publishedBy: string | null }
+    /** O modelo inicial já foi escolhido (ou o rascunho já foi editado). */
+    started: boolean
+    version: number
+    createdBy: string
+    updatedBy: string
+    createdAt: Date
+    updatedAt: Date
+}
+const portfolioSchema = new Schema<BusinessPortfolioRecord>(
+    {
+        businessId: { type: String, required: true },
+        ownerId: { type: String, required: true },
+        slug: { type: String, required: true },
+        published: { type: Boolean, default: false },
+        publishedAt: { type: Date, default: null },
+        indexable: { type: Boolean, default: false },
+        draft: {
+            type: new Schema({ blocks: { type: [Schema.Types.Mixed], default: [] }, version: { type: Number, default: 0 }, updatedAt: { type: Date, default: null }, updatedBy: { type: String, default: null } }, { _id: false, minimize: false }),
+            default: () => ({ blocks: [], version: 0, updatedAt: null, updatedBy: null }),
+        },
+        live: {
+            type: new Schema({ blocks: { type: [Schema.Types.Mixed], default: [] }, number: { type: Number, default: 0 }, publishedAt: { type: Date, default: null }, publishedBy: { type: String, default: null } }, { _id: false, minimize: false }),
+            default: () => ({ blocks: [], number: 0, publishedAt: null, publishedBy: null }),
+        },
+        started: { type: Boolean, default: false },
+        version: { type: Number, default: 0 },
+        createdBy: { type: String, required: true },
+        updatedBy: { type: String, required: true },
+    },
+    { collection: "business_portfolios", timestamps: true, versionKey: false, minimize: false },
+)
+portfolioSchema.index({ businessId: 1 }, { unique: true })
+portfolioSchema.index({ slug: 1 }, { unique: true })
+
+/** Histórico das publicações (as últimas `PORTFOLIO_PUBLICATIONS_KEEP`), para restaurar como rascunho. */
+export interface BusinessPortfolioPublicationRecord {
+    businessId: string
+    ownerId: string
+    number: number
+    blocks: StoredPortfolioBlock[]
+    publishedAt: Date
+    publishedBy: string
+}
+const portfolioPublicationSchema = new Schema<BusinessPortfolioPublicationRecord>(
+    {
+        businessId: { type: String, required: true },
+        ownerId: { type: String, required: true },
+        number: { type: Number, required: true },
+        blocks: { type: Schema.Types.Mixed, default: () => [] },
+        publishedAt: { type: Date, required: true },
+        publishedBy: { type: String, required: true },
+    },
+    { collection: "business_portfolio_publications", versionKey: false, minimize: false },
+)
+portfolioPublicationSchema.index({ businessId: 1, number: -1 }, { unique: true })
+
+/** Item avulso do portfólio: projeto só para o portfólio, com galeria de imagens. */
+export interface BusinessPortfolioItemRecord extends ItemBase {
+    title: string
+    description: string | null
+    images: BusinessFileRef[]
+    url: string | null
+    /** `AAAA-MM-DD`. */
+    date: string | null
+    tags: string[]
+}
+const portfolioItemSchema = new Schema<BusinessPortfolioItemRecord>(
+    {
+        ...itemBase,
+        title: { type: String, required: true },
+        description: { type: String, default: null },
+        images: { type: [fileRefSchema], default: [] },
+        url: { type: String, default: null },
+        date: { type: String, default: null },
+        tags: { type: [String], default: [] },
+    },
+    { collection: "business_portfolio_items", timestamps: true, versionKey: false },
+)
+portfolioItemSchema.index({ businessId: 1, status: 1, createdAt: -1 })
+portfolioItemSchema.index({ status: 1, archivedAt: 1 })
 
 /** Estado por dono: fence das transações (limite de vagas) e o contador do "Negócio N". */
 export interface BusinessOwnerStateRecord { _id: string; fence: number; seq: number }
@@ -475,6 +578,9 @@ export function businessModels(connection: Connection = mongoose.connection) {
         documents: modelOf(connection, "BusinessDocument", documentSchema),
         successes: modelOf(connection, "BusinessSuccess", successSchema),
         files: modelOf(connection, "BusinessFile", businessFileSchema),
+        portfolios: modelOf(connection, "BusinessPortfolio", portfolioSchema),
+        portfolioPublications: modelOf(connection, "BusinessPortfolioPublication", portfolioPublicationSchema),
+        portfolioItems: modelOf(connection, "BusinessPortfolioItem", portfolioItemSchema),
         ownerStates: modelOf(connection, "BusinessOwnerState", ownerStateSchema),
         scripts: modelOf(connection, "InterviewScript", scriptSchema),
         interviews: modelOf(connection, "BusinessInterview", interviewSchema),

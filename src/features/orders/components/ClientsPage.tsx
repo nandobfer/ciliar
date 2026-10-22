@@ -1,5 +1,6 @@
 "use client"
 
+import { usePermissions } from "@nandobfer/perfix/react"
 import { useState, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import { motion, useReducedMotion } from "framer-motion"
@@ -115,6 +116,8 @@ type Pending = { kind: "archive" | "delete"; client: ClientDto } | null
 
 export function useClientRowActions() {
     const action = useClientAction()
+    const { can } = usePermissions()
+    const canDelete = can("businesses.use") && can("clients.delete")
     const [pending, setPending] = useState<Pending>(null)
     const [understood, setUnderstood] = useState(false)
     const actions = (client: ClientDto, options: { editable: boolean; onView?: () => void; onEdit?: () => void }): ReactNode => (
@@ -123,7 +126,7 @@ export function useClientRowActions() {
             {options.editable && client.status === "active" && options.onEdit && <TableAction type="edit" onClick={options.onEdit} />}
             {options.editable && client.status === "active" && <IconAction icon={Archive} label="Arquivar" busy={action.isPending} onClick={() => setPending({ kind: "archive", client })} />}
             {options.editable && client.status === "archived" && <IconAction icon={ArchiveRestore} label="Restaurar" busy={action.isPending} onClick={() => action.mutate({ id: client.id, action: "restore" })} />}
-            {options.editable && client.status === "archived" && client.orderCount === 0 && (
+            {options.editable && canDelete && client.status === "archived" && client.orderCount === 0 && (
                 <TableAction
                     type="delete"
                     disabled={action.isPending}

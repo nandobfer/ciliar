@@ -14,6 +14,7 @@ import { AccessLoadingScreen } from "./AccessLoadingScreen"
 import { ViewAsControls } from "./ViewAsControls"
 import { HOME_HREF } from "@/features/layout/navigation"
 import { InterviewScreen } from "@/features/businesses/components/InterviewScreen"
+import { businessRouteAccess, canSeeBusinesses } from "@/features/businesses/permissions"
 
 const SessionContext = createContext<{ session: SessionDto | null; logout: () => void }>({ session: null, logout: () => {} })
 const subscribeHydration = () => () => {}
@@ -74,9 +75,9 @@ function SessionBoundary({ children }: { children: ReactNode }) {
     if (session.user.legalAcceptanceRequired) return <LegalAcceptance onDone={() => void query.refetch()} onLogout={() => void leave()} />
     const can = (key: string) => session.access.permissions.includes("*") || session.access.permissions.includes(key)
     const routeKey = pathname.startsWith("/usuarios") ? "users.view" : pathname.startsWith("/perfis") ? "roles.view" : null
-    // Negócios são do prestador: não exigem o painel (`admin.access`).
-    const businessRoute = pathname === "/negocios" || pathname.startsWith("/negocios/")
-    const permitted = businessRoute ? can("businesses.use") || can("businesses.view_all") : can("admin.access") && (!routeKey || can(routeKey))
+    // Telas do prestador (negócios, clientes, pedidos, trabalhos e o espaço): a permissão do módulo, sem o painel (`admin.access`).
+    const businessRoute = businessRouteAccess(pathname)
+    const permitted = businessRoute ? businessRoute(can) : can("admin.access") && (!routeKey || can(routeKey))
     const home = homeHrefOf(can)
     // Onboarding obrigatório (M1): sem negócio ativo, só a entrevista em tela cheia (sem sidebar), sair da simulação ou sair.
     const onboarding = session.onboarding?.required === true
@@ -98,7 +99,7 @@ function SessionBoundary({ children }: { children: ReactNode }) {
 
 /** Início conforme o acesso: o prestador (sem o painel) vai para os Negócios; a administração, para Integrações. */
 export function homeHrefOf(can: (key: string) => boolean): string {
-    if (!can("admin.access") && (can("businesses.use") || can("businesses.view_all"))) return "/negocios"
+    if (!can("admin.access") && canSeeBusinesses(can)) return "/negocios"
     return HOME_HREF
 }
 

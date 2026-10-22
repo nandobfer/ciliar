@@ -130,10 +130,11 @@ export const uploadFile = async (key: string, body: Buffer | Uint8Array | Blob |
 }
 
 /**
- * URL assinada de GET. `downloadName` força o download com esse nome (Content-Disposition).
- * `audience` padrão `browser`; use `server` quando quem baixa é outro serviço do servidor.
+ * URL assinada de GET. `downloadName` força o download com esse nome (Content-Disposition);
+ * `contentType` fixa o tipo da resposta (Content-Type). `audience` padrão `browser`; use `server`
+ * quando quem baixa é outro serviço do servidor.
  */
-export const getFileUrl = async (key: string, options: { downloadName?: string; audience?: SignedUrlAudience; expiresIn?: number } = {}) => {
+export const getFileUrl = async (key: string, options: { downloadName?: string; contentType?: string; audience?: SignedUrlAudience; expiresIn?: number } = {}) => {
     const audience = options.audience ?? "browser"
     const storage = await getStorage(audience)
     const { client, bucket, prefix } = storage
@@ -143,6 +144,7 @@ export const getFileUrl = async (key: string, options: { downloadName?: string; 
         Bucket: bucket,
         Key: key,
         ...(options.downloadName ? { ResponseContentDisposition: `attachment; filename*=UTF-8''${encodeURIComponent(options.downloadName)}` } : {}),
+        ...(options.contentType ? { ResponseContentType: options.contentType } : {}),
     })
     return withPublicPrefix(await getSignedUrl(client, command, { expiresIn }), prefix)
 }

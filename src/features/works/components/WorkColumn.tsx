@@ -1,5 +1,6 @@
 "use client"
 
+import { usePermissions } from "@nandobfer/perfix/react"
 import { useRef, type HTMLAttributes } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { useDroppable } from "@dnd-kit/core"
@@ -55,10 +56,13 @@ interface WorkColumnProps {
  */
 export function WorkColumn(props: WorkColumnProps) {
     const { column, works, dragActive, movingId, editable, overview, actions, onOpen } = props
+    const { can } = usePermissions()
+    // Renomear, reordenar e excluir colunas: `works.columns`.
+    const columnsEditable = editable && can("works.columns")
     const model = column.column
     const custom = !model.fixed
     const others = column.key === WORK_OTHERS_COLUMN
-    const sortable = useSortable({ id: columnSortableId(column.key), data: { type: "column", key: column.key }, disabled: { draggable: !custom || !editable || overview, droppable: false } })
+    const sortable = useSortable({ id: columnSortableId(column.key), data: { type: "column", key: column.key }, disabled: { draggable: !custom || !columnsEditable || overview, droppable: false } })
     const { setNodeRef: setDropRef, isOver } = useDroppable({ id: columnDropId(column.key), data: { type: "zone", key: column.key }, disabled: others || !editable })
     const scrollRef = useRef<HTMLDivElement>(null)
     const virtualize = works.length > VIRTUALIZE_ABOVE
@@ -87,7 +91,7 @@ export function WorkColumn(props: WorkColumnProps) {
                 <header className="group/col mb-2 flex flex-col gap-1.5 border-b px-1 pb-2">
                     <div className="flex items-center justify-between gap-2">
                         <div className="flex min-w-0 items-center gap-1.5">
-                            {custom && editable && !overview ? (
+                            {custom && columnsEditable && !overview ? (
                                 <button
                                     type="button"
                                     {...(sortable.attributes as HTMLAttributes<HTMLButtonElement>)}
@@ -115,7 +119,7 @@ export function WorkColumn(props: WorkColumnProps) {
                             <span className="flex items-baseline rounded-sm border bg-background px-1.5 py-0.5 font-mono text-xs font-semibold tabular-nums">
                                 <AnimatedNumber value={works.length} />
                             </span>
-                            {custom && editable && !overview && <ColumnMenu {...props} model={model} />}
+                            {custom && columnsEditable && !overview && <ColumnMenu {...props} model={model} />}
                         </div>
                     </div>
                     <div className="flex h-7 items-center gap-2 rounded-md border border-border/60 bg-muted/60 px-1.5" data-testid={`column-meta-${column.key}`}>

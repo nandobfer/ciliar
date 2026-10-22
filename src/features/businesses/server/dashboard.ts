@@ -6,6 +6,8 @@ import type { GoalWindow } from "../goal-progress"
 import type { BusinessDashboardDto, DashboardCategorySlice } from "../types"
 import { goalsProgress, periodsOf, toGoalItemDto } from "./goals"
 import { readBusiness, retentionDaysOf } from "./items"
+import { canUseModule } from "./access"
+import type { BusinessModule } from "../permissions"
 import { businessModels, type ActivityPriceRecord, type BusinessActivityRecord, type BusinessGoalRecord } from "./models"
 import { measureGoalWindows } from "./revenue"
 
@@ -67,17 +69,20 @@ export function monthlyTargetOf(goal: Pick<BusinessGoalRecord, "period" | "mode"
 }
 
 export async function getBusinessDashboard(access: AccessContext, businessId: string, options: { period?: BusinessDashboardPeriod; timeZone?: string } = {}): Promise<BusinessDashboardDto> {
-    const { business } = await readBusiness(access, businessId, "dashboard")
+    const { business, own } = await readBusiness(access, businessId, "dashboard")
+    // Só os blocos dos módulos que o perfil vê (o suporte vê todos).
+    const sees = (module: BusinessModule) => !own || canUseModule(access, module)
+    const visible = { activities: sees("activities"), goals: sees("goals"), documents: sees("documents"), successes: sees("successes"), revenue: sees("works") }
     const zone = normalizeTimeZone(options.timeZone ?? access.timeZone)
     const period = options.period ?? DEFAULT_BUSINESS_DASHBOARD_PERIOD
     const range = dashboardBuckets(period, todayKeyIn(zone))
     const models = businessModels()
     const [goals, days, activities, documents, successes] = await Promise.all([
-        models.goals.find({ businessId }).lean<Lean<BusinessGoalRecord>[]>(),
+        visible.goals ? models.goals.find({ businessId }).lean<Lean<BusinessGoalRecord>[]>() : [],
         retentionDaysOf("goals"),
-        models.activities.find({ businessId, status: "active" }).sort({ name: 1 }).lean<Lean<BusinessActivityRecord>[]>(),
-        models.documents.find({ businessId, status: "active" }, { category: 1 }).lean<{ category: string | null }[]>(),
-        models.successes.find({ businessId, status: "active" }, { date: 1, createdAt: 1 }).lean<{ date: string | null; createdAt: Date }[]>(),
+        visible.activities ? models.activities.find({ businessId, status: "active" }).sort({ name: 1 }).lean<Lean<BusinessActivityRecord>[]>() : [],
+        visible.documents ? models.documents.find({ businessId, status: "active" }, { category: 1 }).lean<{ category: string | null }[]>() : [],
+        visible.successes ? models.successes.find({ businessId, status: "active" }, { date: 1, createdAt: 1 }).lean<{ date: string | null; createdAt: Date }[]>() : [],
     ])
     const currentGoal = goals.find((goal) => goal.status === "active") ?? null
     const progress = currentGoal ? await goalsProgress(businessId, [currentGoal], zone) : new Map()
@@ -96,7 +101,7 @@ export async function getBusinessDashboard(access: AccessContext, businessId: st
     const priceDays = prices.map((price) => ({ activityId: price.activityId, toCents: price.toCents, day: todayKeyIn(zone, price.createdAt) }))
 
     // Faturamento bruto × meta mensal (por mês do período) e o total do período.
-    const measured = await measureGoalWindows(businessId, [...range.months, { key: "period", label: "", from: range.from, to: range.to }])
+    const measured = visible.revenue ? await measureGoalWindows(businessId, [...range.months, { key: "period", label: "", from: range.from, to: range.to }]) : new Map<string, { revenueCents: number }>()
     const revenueRows = range.months.map((month) => {
         const goal = goalActiveIn(goals, month, zone)
         return { bucket: month.key, revenueCents: measured.get(month.key)?.revenueCents ?? 0, targetCents: goal ? monthlyTargetOf(goal, month.key) : 0 }
@@ -111,6 +116,7 @@ export async function getBusinessDashboard(access: AccessContext, businessId: st
         granularity: range.granularity,
         range: { from: range.from, to: range.to },
         goal: goalItem,
+        visible,
         counts: { activities: activities.length, goals: goalItem ? 1 : 0, documents: documents.length, successes: successes.length },
         kpis: {
             currentGoalPercent: goalItem?.progress.current?.available ? (goalItem.progress.current.percent ?? 0) : null,

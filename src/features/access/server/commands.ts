@@ -3,7 +3,7 @@ import { canManageRole, canManageUser, evaluateRoleAssignment, getUngrantableKey
 import { z } from "zod"
 import { DomainError } from "@/lib/api/route"
 import { assertNotDefaultRole } from "@/features/platform/server/state"
-import { catalog } from "../catalog"
+import { catalog, normalizeRolePermissions } from "../catalog"
 import type { InviteResult } from "../types"
 import { createUserSchema, updateUserSchema, roleSchema, roleUpdateSchema, reorderSchema } from "../schemas"
 import { accessModels } from "./models"
@@ -112,7 +112,7 @@ export async function createRole(context: AccessContext, raw: unknown) {
         const models = accessModels()
         if (await models.roles.exists({ slug }).session(session)) throw new DomainError(409, "Já existe um perfil com esse nome")
         const rows = await roleRows(session)
-        const [role] = await models.roles.create([{ ...data, slug, permissoes: catalog.normalizePermissionDependencies(data.permissoes), createdBy: current.userId }], { session })
+        const [role] = await models.roles.create([{ ...data, slug, permissoes: normalizeRolePermissions(data.permissoes), createdBy: current.userId }], { session })
         await models.states.updateOne({ _id: "global" }, { $set: { ordem: [...rows.map(row => row.id), role!.id as string] }, $inc: { version: 1 } }, { session })
         await auditAccess(current, "role.create", role!.id as string, null, data, session)
         return { id: role!.id as string }
@@ -132,7 +132,7 @@ export async function updateRole(context: AccessContext, id: string, raw: unknow
         if (data.ativo === false && role.ativo) await assertNotDefaultRole(id, session, "inativar")
         const before = { nome: role.nome, descricao: role.descricao, cor: role.cor, permissoes: [...role.permissoes], ativo: role.ativo, limiteNegocios: role.limiteNegocios ?? null }
         Object.assign(role, data, { updatedBy: current.userId, version: version + 1 })
-        if (data.permissoes) role.permissoes = catalog.normalizePermissionDependencies(data.permissoes)
+        if (data.permissoes) role.permissoes = normalizeRolePermissions(data.permissoes)
         await role.save({ session })
         if (membros) {
             const targets = await users.find({ $or: [{ roles: id }, { _id: { $in: membros } }] }).session(session)

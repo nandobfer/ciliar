@@ -5,9 +5,11 @@ import { accessModels } from "@/features/access/server/models"
 import type { AccessContext } from "@/features/access/server/context"
 import { loadPlatformState } from "@/features/platform/server/state"
 import { BUSINESS_ITEM_AUDIT, BUSINESS_ITEM_KINDS, BUSINESS_ITEM_LABELS, type BusinessItemKind, type BusinessSpaceKind } from "../constants"
-import { auditBusiness, businessTransaction, canUseBusinesses, ensureBusinessCollections } from "./access"
+import { auditBusiness, businessTransaction, canBusiness, canUseBusinesses, ensureBusinessCollections } from "./access"
+import { editPermission, itemDeletePermission, moduleOfSection } from "../permissions"
 import { loadOwnedForWrite, loadVisibleBusiness, publishSpaceChanged, removeObjectsQuietly } from "./businesses"
 import { workModels } from "@/features/works/server/models"
+import { pruneContentRef, type PortfolioBlock } from "@/features/portfolio/blocks"
 import { businessModels, type BusinessRecord } from "./models"
 
 /**
@@ -31,7 +33,7 @@ interface ItemRecord {
 }
 type ItemFields = ItemRecord & { _id: Types.ObjectId }
 
-const NOT_FOUND: Record<BusinessItemKind, string> = { activities: "Atividade não encontrada", goals: "Meta não encontrada", documents: "Documento não encontrado", successes: "Sucesso não encontrado" }
+const NOT_FOUND: Record<BusinessItemKind, string> = { activities: "Atividade não encontrada", goals: "Meta não encontrada", documents: "Documento não encontrado", successes: "Sucesso não encontrado", portfolioItems: "Item do portfólio não encontrado" }
 export const itemNotFound = (kind: BusinessItemKind) => new DomainError(404, NOT_FOUND[kind], "BUSINESS_ITEM_NOT_FOUND")
 export const itemConflict = () => new DomainError(409, "O item foi alterado por outra ação. Recarregue e revise antes de salvar.", "VERSION_CONFLICT")
 export const itemArchived = () => new DomainError(409, "Restaure o item antes de editá-lo.", "ITEM_ARCHIVED")
@@ -63,10 +65,25 @@ export function assertItemId(kind: BusinessItemKind, id: string): void {
 }
 
 /** Leitura: negócio visível (dono ou suporte auditado com a seção) e se a tela pode editar. */
-export async function readBusiness(access: AccessContext, businessId: string, section: string): Promise<{ business: BusinessDoc; own: boolean; editable: boolean }> {
+/**
+ * Leitura: negócio visível (dono ou suporte auditado com a seção) e se a tela pode editar. O módulo
+ * vem da seção (`works.columns` → Trabalhos): o dono precisa da visualização dele e `editable` reflete a
+ * edição do módulo (ou `editPermission` informada).
+ */
+export async function readBusiness(access: AccessContext, businessId: string, section: string, options: { editPermission?: string } = {}): Promise<{ business: BusinessDoc; own: boolean; editable: boolean }> {
     await ensureBusinessCollections()
-    const { doc, own } = await loadVisibleBusiness(access, businessId, { section })
-    return { business: doc, own, editable: own && canUseBusinesses(access) && doc.status === "active" }
+    const area = moduleOfSection(section)
+    const { doc, own } = await loadVisibleBusiness(access, businessId, { section, module: area })
+    const edit = options.editPermission ?? (area ? editPermission(area) : null)
+    return { business: doc, own, editable: own && doc.status === "active" && (edit ? canBusiness(access, edit) : canUseBusinesses(access)) }
+}
+
+/** Chave de escrita padrão do tipo (edição do módulo). */
+
+export function writePermissionOf(kind: BusinessSpaceKind): string {
+    const area = moduleOfSection(kind)
+    if (!area) throw new Error(`Tipo sem módulo: ${kind}`)
+    return editPermission(area)
 }
 
 /**
@@ -78,9 +95,11 @@ export async function writeItem<T>(
     businessId: string,
     kind: BusinessSpaceKind,
     action: (context: { current: AccessContext; session: ClientSession; business: BusinessDoc; ownerId: string }) => Promise<{ result: T; removeKeys?: string[] }>,
+    /** Chaves exigidas além de `businesses.use` (padrão: a edição do módulo do tipo). */
+    permissions: readonly string[] = [writePermissionOf(kind)],
 ): Promise<T> {
     let ownerId = ""
-    const outcome = await businessTransaction(access, ["businesses.use"], async (current, session, owner) => {
+    const outcome = await businessTransaction(access, ["businesses.use", ...permissions], async (current, session, owner) => {
         ownerId = owner
         const business = await loadOwnedForWrite(owner, businessId, session)
         if (business.status !== "active") throw new DomainError(409, "O negócio está arquivado: restaure-o para alterar.", "BUSINESS_ARCHIVED")
@@ -141,18 +160,31 @@ export async function deleteItem<T extends ItemRecord>(
         await model.deleteOne({ _id: doc._id }, { session })
         await auditBusiness(current, auditAction(kind, "delete"), itemId, { businessId, ...summary(doc) }, null, session)
         return { result: { id: itemId }, removeKeys }
-    })
+    }, [itemDeletePermission(kind)])
 }
 
-/** Dados ligados a cada tipo de item (exclusão manual e rotina): histórico de preço, arquivos. */
+/** Dados ligados a cada tipo de item (exclusão manual e rotina): histórico de preço, arquivos e a seleção do portfólio. */
 export async function itemCleanup(kind: BusinessItemKind, doc: { _id: Types.ObjectId; businessId: string }, session: ClientSession): Promise<string[]> {
     const models = businessModels()
     const id = doc._id.toString()
+    // Portfólio (M5): o conteúdo excluído sai dos blocos do rascunho e do publicado (destaques e escolhidos).
+    const source = ({ activities: "services", documents: "documents", successes: "successes", portfolioItems: "items", goals: null } as const)[kind]
+    if (source) {
+        const portfolio = await models.portfolios.findOne({ businessId: doc.businessId }).session(session).lean()
+        if (portfolio) {
+            const draft = pruneContentRef((portfolio.draft?.blocks ?? []) as unknown as PortfolioBlock[], source, id)
+            const live = pruneContentRef((portfolio.live?.blocks ?? []) as unknown as PortfolioBlock[], source, id)
+            const draftChanged = JSON.stringify(draft) !== JSON.stringify(portfolio.draft?.blocks ?? [])
+            if (draftChanged || JSON.stringify(live) !== JSON.stringify(portfolio.live?.blocks ?? [])) {
+                await models.portfolios.updateOne({ _id: portfolio._id }, { $set: { "draft.blocks": draft, "live.blocks": live }, ...(draftChanged ? { $inc: { "draft.version": 1 } } : {}) }, { session })
+            }
+        }
+    }
     if (kind === "activities") {
         await models.activityPrices.deleteMany({ activityId: id }, { session })
         return []
     }
-    if (kind === "documents" || kind === "successes") {
+    if (kind === "documents" || kind === "successes" || kind === "portfolioItems") {
         // Sucesso convertido de um trabalho: o trabalho volta a poder ser convertido.
         if (kind === "successes") await workModels().works.updateMany({ businessId: doc.businessId, successId: id }, { $set: { successId: null } }, { session })
         const files = await models.files.find({ businessId: doc.businessId, itemId: id }).select({ key: 1, uploadKey: 1 }).session(session).lean()
@@ -164,7 +196,7 @@ export async function itemCleanup(kind: BusinessItemKind, doc: { _id: Types.Obje
 
 export function itemModel(kind: BusinessItemKind): Model<ItemRecord & Record<string, unknown>> {
     const models = businessModels()
-    const map = { activities: models.activities, goals: models.goals, documents: models.documents, successes: models.successes }
+    const map = { activities: models.activities, goals: models.goals, documents: models.documents, successes: models.successes, portfolioItems: models.portfolioItems }
     return map[kind] as unknown as Model<ItemRecord & Record<string, unknown>>
 }
 

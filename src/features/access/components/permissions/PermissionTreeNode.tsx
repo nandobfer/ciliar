@@ -5,6 +5,7 @@ import { countNodeLeaves, getNodeState, isPermissionLeaf, type Catalog, type Per
 import { cn } from "@/lib/utils"
 import { catalog as accessCatalog } from "../../catalog"
 import { PermissionCheckbox } from "./PermissionCheckbox"
+import { businessPermissionRequiredBy } from "@/features/businesses/permissions"
 
 interface PermissionTreeNodeProps {
     node: PermissionNodeDef
@@ -25,7 +26,8 @@ interface PermissionTreeNodeProps {
  * Uma linha da árvore — folha ou subgrupo, recursivamente (copiado do Smart Desk).
  *
  * A folha `view` exigida por uma ação marcada fica travada (`isRequiredView`): desmarcá-la
- * deixaria a ação sem a visualização do próprio grupo.
+ * deixaria a ação sem a visualização do próprio grupo. Nos perfis, também a chave exigida por outra
+ * marcada (dependências entre grupos dos Negócios).
  */
 export function PermissionTreeNode({ node, selected, onToggle, depth = 0, readOnly = false, catalog = accessCatalog, lockedKeys, renderLeafMeta }: PermissionTreeNodeProps) {
     const state = getNodeState(catalog, node, selected)
@@ -35,7 +37,7 @@ export function PermissionTreeNode({ node, selected, onToggle, depth = 0, readOn
     const indent = { paddingLeft: depth * 16 }
 
     if (isPermissionLeaf(node)) {
-        const requiredByAction = catalog.isRequiredView(node.key, selected) || Boolean(lockedKeys?.has(node.key))
+        const requiredByAction = catalog.isRequiredView(node.key, selected) || Boolean(lockedKeys?.has(node.key)) || (catalog === accessCatalog && businessPermissionRequiredBy(node.key, selected).length > 0)
 
         return (
             <div className="flex items-start gap-2 py-1" style={indent}>

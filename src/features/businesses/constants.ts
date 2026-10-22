@@ -73,17 +73,20 @@ export const MAX_BUSINESS_DAYS_SETTING = 365
 export const BUSINESS_PHONE_MAX = 30
 
 /** Itens do espaço com arquivamento e prazo próprio de exclusão (mesmas chaves de `retentionDays`). */
-export const BUSINESS_ITEM_KINDS = ["activities", "goals", "documents", "successes"] as const
+export const BUSINESS_ITEM_KINDS = ["activities", "goals", "documents", "successes", "portfolioItems"] as const
 export type BusinessItemKind = (typeof BUSINESS_ITEM_KINDS)[number]
 /** Nome do item na auditoria (`business.<item>.<ação>`). */
-export const BUSINESS_ITEM_AUDIT: Record<BusinessItemKind, string> = { activities: "activity", goals: "goal", documents: "document", successes: "success" }
-/** Invalidações do espaço (`business-space-updated`): os itens do M2, os pedidos (M3) e os trabalhos (M4). */
-export type BusinessSpaceKind = BusinessItemKind | "orders" | "works"
+export const BUSINESS_ITEM_AUDIT: Record<BusinessItemKind, string> = { activities: "activity", goals: "goal", documents: "document", successes: "success", portfolioItems: "portfolio_item" }
+/** Segmento da API de cada tipo (`/api/businesses/[id]/<segmento>`). */
+export const BUSINESS_ITEM_PATHS: Record<BusinessItemKind, string> = { activities: "activities", goals: "goals", documents: "documents", successes: "successes", portfolioItems: "portfolio-items" }
+/** Invalidações do espaço (`business-space-updated`): os itens do M2, os pedidos (M3), os trabalhos (M4) e o portfólio (M5). */
+export type BusinessSpaceKind = BusinessItemKind | "orders" | "works" | "portfolio"
 export const BUSINESS_ITEM_LABELS: Record<BusinessItemKind, { one: string; many: string }> = {
     activities: { one: "Atividade", many: "Atividades" },
     goals: { one: "Meta", many: "Metas" },
     documents: { one: "Documento", many: "Documentos" },
     successes: { one: "Sucesso", many: "Sucessos" },
+    portfolioItems: { one: "Item avulso", many: "Itens avulsos do portfólio" },
 }
 
 export const CATEGORY_MAX = 60
@@ -96,8 +99,8 @@ export const SUCCESS_ATTACHMENTS_MAX = 20
 /** Valor/hora máximo (unidades mínimas). */
 export const HOURLY_RATE_MAX_CENTS = 100_000_000_00
 
-/** Arquivos enviados no espaço: documento, anexo de sucesso, logo, anexo de pedido (M3) ou entregável do trabalho (M4). Pendentes somem em 24 h. */
-export const BUSINESS_FILE_PURPOSES = ["document", "success", "logo", "order", "work"] as const
+/** Arquivos enviados no espaço: documento, anexo de sucesso, logo, anexo de pedido (M3), entregável do trabalho (M4), imagem de item avulso do portfólio ou da mídia do editor do portfólio (M5). Pendentes somem em 24 h. */
+export const BUSINESS_FILE_PURPOSES = ["document", "success", "logo", "order", "work", "portfolio", "media"] as const
 export type BusinessFilePurpose = (typeof BUSINESS_FILE_PURPOSES)[number]
 export const BUSINESS_FILE_PENDING_TTL_MS = 24 * 60 * 60 * 1000
 export const BUSINESS_FILE_UPLOAD_URL_TTL_SECONDS = 15 * 60
@@ -113,6 +116,7 @@ export const BUSINESS_SPACE_SECTIONS = [
     { slug: "sucessos", label: "Sucessos" },
     { slug: "pedidos", label: "Pedidos" },
     { slug: "trabalhos", label: "Trabalhos" },
+    { slug: "portfolio", label: "Portfólio" },
 ] as const
 export type BusinessSpaceSlug = (typeof BUSINESS_SPACE_SECTIONS)[number]["slug"]
 export const businessSpaceHref = (id: string, slug: BusinessSpaceSlug = "") => (slug ? `/negocios/${id}/${slug}` : `/negocios/${id}`)

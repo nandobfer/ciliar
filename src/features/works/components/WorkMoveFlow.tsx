@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input"
 import { MoneyInput } from "@/components/ui/money-input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
+import { usePermissions } from "@nandobfer/perfix/react"
 import { browserTimeZone, todayKeyIn } from "@/lib/timezone"
 import { formatMoney } from "@/features/businesses/format"
 import { currencySymbol } from "@/features/businesses/components/interview/InterviewAnswerControl"
@@ -30,18 +32,22 @@ type Pending = { kind: "pay"; work: WorkSummaryDto; position?: number } | { kind
  */
 export function useWorkMoveFlow(columns: readonly BoardColumnView[]) {
     const mutation = useMoveWork()
+    const { can } = usePermissions()
+    const canPay = can("works.payment")
     const [pending, setPending] = useState<Pending>(null)
     const nameOf = useCallback((key: string) => columns.find((column) => column.key === key)?.label ?? key, [columns])
 
     const move = useCallback(
         (work: WorkSummaryDto, column: string, position?: number) => {
             const flow = moveFlowOf(work.column, column)
+            // Entrar em Pago ou sair dele exige `works.payment`.
+            if ((flow === "pay" || flow === "unpay") && !canPay) return void toast.error("Seu perfil não permite marcar ou desmarcar o pagamento (Trabalhos › Pagamento).")
             if (flow === "pay") return setPending({ kind: "pay", work, position })
             if (flow === "unpay") return setPending({ kind: "unpay", work, column, position })
             if (flow === "none" && position === undefined) return
             mutation.mutate({ kind: "move", work, column, columnName: nameOf(column), position })
         },
-        [mutation, nameOf],
+        [mutation, nameOf, canPay],
     )
     /** "Editar pagamento" de um trabalho já pago (W4). */
     const editPayment = useCallback((work: WorkSummaryDto) => setPending({ kind: "pay", work }), [])
@@ -72,7 +78,7 @@ export function useWorkMoveFlow(columns: readonly BoardColumnView[]) {
         </>
     )
     const movingId = mutation.isPending ? (mutation.variables?.work.id ?? null) : null
-    return { move, editPayment, unpay, movingId, dialogs }
+    return { move, editPayment, unpay, movingId, dialogs, canPay }
 }
 
 function PaymentDialog({ work, pending, onClose, onConfirm }: { work: WorkSummaryDto; pending: boolean; onClose: () => void; onConfirm: (payment: { paidOn: string; receivedCents: number; method: string | null }) => void }) {

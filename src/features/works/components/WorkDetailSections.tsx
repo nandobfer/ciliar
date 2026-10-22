@@ -1,5 +1,6 @@
 "use client"
 
+import { usePermissions } from "@nandobfer/perfix/react"
 import { useMemo, useState, type ReactNode } from "react"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import { CheckCircle2, History, Loader2, MessageSquare, Paperclip, Pencil, Plus, Send, Timer, Trash2, Undo2, X } from "lucide-react"
@@ -564,6 +565,8 @@ export function MovesSection({ work }: SectionProps) {
 
 export function PaymentSection({ work, onEditPayment, onPay, onUnpay }: SectionProps) {
     const paid = work.column === "paid" && work.payment
+    const { can } = usePermissions()
+    const canPay = work.editable && can("works.payment")
     return (
         <div className="space-y-4">
             {paid ? (
@@ -576,7 +579,7 @@ export function PaymentSection({ work, onEditPayment, onPay, onUnpay }: SectionP
                         {work.payment!.method ? ` · ${work.payment!.method}` : ""}
                     </p>
                     {work.status === "archived" && <p className="text-xs text-warning">Arquivado: fora do faturamento enquanto estiver arquivado.</p>}
-                    {work.editable && (
+                    {canPay && (
                         <div className="flex flex-wrap gap-2 pt-1">
                             <Button type="button" size="sm" variant="outline" className="gap-1.5" onClick={onEditPayment}>
                                 <Pencil className="h-3.5 w-3.5" aria-hidden /> Editar pagamento
@@ -590,7 +593,7 @@ export function PaymentSection({ work, onEditPayment, onPay, onUnpay }: SectionP
             ) : (
                 <div className="space-y-2 rounded-lg border bg-muted/20 p-3 text-sm">
                     <p className="text-muted-foreground">Ainda não pago. Ao mover para Pago, informe a data, o valor recebido e a forma de pagamento.</p>
-                    {work.editable && (
+                    {canPay && (
                         <Button type="button" size="sm" className="gap-1.5" onClick={onPay}>
                             <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> Mover para Pago
                         </Button>

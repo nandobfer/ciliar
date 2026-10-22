@@ -12,6 +12,8 @@ import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import type { BusinessItemKind } from "../../constants"
 import { useItemAction } from "../../hooks/useBusinessSpace"
+import { itemDeletePermission } from "../../permissions"
+import { usePermissions } from "@nandobfer/perfix/react"
 
 /** Peças comuns às listas do espaço (atividades, metas, documentos e sucessos). */
 
@@ -73,6 +75,8 @@ type Pending = { kind: "archive" | "delete"; id: string; name: string } | null
  */
 export function useItemRowActions(businessId: string, kind: BusinessItemKind, label: string, archiveHint: string) {
     const action = useItemAction(businessId, kind, label)
+    const { can } = usePermissions()
+    const canDelete = can("businesses.use") && can(itemDeletePermission(kind))
     const [pending, setPending] = useState<Pending>(null)
     const [understood, setUnderstood] = useState(false)
 
@@ -82,7 +86,7 @@ export function useItemRowActions(businessId: string, kind: BusinessItemKind, la
             {options.editable && item.status === "active" && options.onEdit && <TableAction type="edit" onClick={options.onEdit} />}
             {options.editable && item.status === "active" && <IconAction icon={Archive} label="Arquivar" busy={action.isPending} onClick={() => setPending({ kind: "archive", id: item.id, name: item.name })} />}
             {options.editable && item.status === "archived" && <IconAction icon={ArchiveRestore} label="Restaurar" busy={action.isPending} onClick={() => action.mutate({ id: item.id, action: "restore" })} />}
-            {options.editable && item.status === "archived" && (
+            {options.editable && canDelete && item.status === "archived" && (
                 <TableAction
                     type="delete"
                     disabled={action.isPending}

@@ -189,6 +189,54 @@ Usa `MONGODB_URI` do `.env`; somente banco `ciliar` fora dos testes. Fora do Doc
 Se o `.env` usa o alias `mongobd`, configure `SCRIPT_MONGODB_HOST=mongobd`. Em container não reescreve
 a URI. Para alterar uma conexão de servidor, corrija o ambiente; não use esse helper no aplicativo.
 
+## Permissões dos Negócios por módulo (22/10/2026)
+
+O ramo **Negócios** do catálogo (`src/features/access/catalog.ts`) tem um subgrupo por módulo, cada um
+com a própria visualização como `viewKey`. Chaves, ações, dependências e o mapa de telas ficam no módulo
+puro `src/features/businesses/permissions.ts` (servidor e navegador).
+
+| Subgrupo | Chaves |
+|---|---|
+| Meus negócios | `businesses.use` (base: ver os próprios negócios e o painel) · `businesses.create` (entrevista) · `businesses.edit` (ficha, logo, tema) · `businesses.archive` · `businesses.delete`* |
+| Atividades, Metas, Documentos, Sucessos, Clientes | `<módulo>.view` · `.edit` (criar, editar, arquivar, restaurar) · `.delete`* |
+| Pedidos | `orders.view` · `orders.edit` (rascunho, título IA) · `orders.send`* (enviar, copiar, revogar o link) · `orders.decide` (aceitar, recusar, reabrir, cancelar) |
+| Trabalhos | `works.view` · `works.edit` (mover, editar, horas, notas, anexos, arquivar) · `works.columns` · `works.payment`* · `works.delete`* |
+| Portfólio | `portfolio.view` · `portfolio.edit` (conteúdo, indexação, itens avulsos, inclusive excluir) · `portfolio.publish`* (publicar, despublicar, endereço) |
+| Suporte | `businesses.view_all`* (lê todos os módulos de outros usuários; sem `viewKey`: não ganha `businesses.use`) |
+
+\* sensível.
+
+- **Dependências entre grupos** (`BUSINESS_PERMISSION_REQUIRES`): toda chave exige `businesses.use`;
+  `orders.view` → `clients.view` + `activities.view`; `orders.decide` → `works.view`; `works.view` →
+  `orders.view`. `normalizeRolePermissions` (Perfix `viewKey` + essas dependências, até estabilizar)
+  roda ao salvar o perfil (`createRole`/`updateRole`), ao resolver o acesso (`roleRows`) e no editor
+  (`PermissionTree`), que trava a chave exigida por outra marcada (`businessPermissionRequiredBy`).
+- **Servidor**: `routePermissions` delega a `businessRoutePermissions` (escrita = base + chave do
+  módulo; leitura `[]`, conferida no serviço). `readBusiness(access, id, seção)` deriva o módulo da seção
+  (`moduleOfSection`): o dono sem a visualização recebe 403 (`requireModuleRead`) e `editable` reflete a
+  edição do módulo. `writeItem(…, permissions)` exige por padrão a edição do módulo do tipo; ações
+  especiais passam a chave (enviar/revogar `orders.send`, decisões `orders.decide`, pagamento
+  `works.payment`, colunas `works.columns`, exclusão `works.delete`/`<módulo>.delete`, publicar
+  `portfolio.publish`). Arquivos: `BUSINESS_FILE_PERMISSIONS` pela finalidade. Novo cliente dentro do
+  pedido exige `clients.edit`. As visões globais (`/api/clients|orders|works`) exigem a visualização.
+- **Onboarding** só com `businesses.use` + `businesses.create` (sem criar não há como sair da entrevista);
+  a entrevista (`/api/interview/**`) exige `businesses.create`.
+- **Cliente**: `businessRouteAccess(pathname)` decide as telas do prestador no `AccessProvider` (sem o
+  painel): `/clientes`, `/pedidos`, `/trabalhos`, `/negocios/[id]/<página>` e `/negocios/novo`. O menu, a
+  barra do espaço (`businessSpaceNavSection(id, can)`), os atalhos e os blocos do dashboard
+  (`BusinessDashboardDto.visible`) seguem o módulo; os botões de excluir, enviar, pagar, colunas e
+  publicar conferem a chave (`usePermissions`), e o servidor recusa do mesmo jeito.
+- **Agente Opex**: cada ferramenta usa a chave do módulo (leitura `any: [<módulo>.view, view_all]`,
+  escrita `all: [businesses.use, <chave>]`).
+- **Migração** `expand-business-permissions` (`src/lib/db/migrations/expand-business-permissions.ts`):
+  uma única vez (marcador em `app_migrations`), todo perfil com `businesses.use` (exceto `*`) ganha todas
+  as chaves novas, com `version + 1` e auditoria `role.permissions_migrated` (ator `system`). Ninguém perde
+  acesso; depois o administrador reduz o que quiser (a migração não roda de novo).
+- Regressão corrigida: o `AccessProvider` tratava como tela do prestador só `/negocios/*`, então
+  `/clientes`, `/pedidos` e `/trabalhos` exigiam `admin.access` ("Sem acesso" no perfil sem o painel).
+- Testes: `__tests__/features/businesses/permissions-pure.test.ts` e `permissions.test.ts`
+  (MongoMemoryReplSet: perfis parciais, dashboard, onboarding e a migração).
+
 ## Validação
 
 Testes selecionados em `__tests__/features/{auth,access,platform}`; persistência usa MongoMemoryReplSet

@@ -6,12 +6,12 @@ import { businessModels } from "./models"
 
 /**
  * Onboarding obrigatório (M1): quem tem `businesses.use` (nas permissões efetivas — inclusive as
- * simuladas) e nenhum negócio ativo fica preso à entrevista até concluí-la. O wildcard (`*`) não
+ * simuladas) e `businesses.create` (sem ela não há como sair da entrevista) e nenhum negócio ativo fica preso à entrevista até concluí-la. O wildcard (`*`) não
  * conta como "ter o escopo Negócios": administradores nunca são forçados. Só o suporte
  * (`businesses.view_all` sem `use`) também não.
  */
 export function mayRequireOnboarding(access: Pick<AccessContext, "effective">): boolean {
-    return !access.effective.has("*") && access.effective.has("businesses.use")
+    return !access.effective.has("*") && access.effective.has("businesses.use") && access.effective.has("businesses.create")
 }
 
 export async function onboardingState(access: AccessContext): Promise<OnboardingDto> {

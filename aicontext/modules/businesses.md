@@ -9,8 +9,9 @@ Regras de produto em `docs/modulos/m1-entrevistador-negocio.md`. Código em `src
 
 ## Permissões e dono efetivo
 
-- Ramo **Negócios** no catálogo Perfix (sem `viewKey`): `businesses.use` (criar pela entrevista, ver e
-  editar os próprios) e `businesses.view_all` (suporte: ver negócios/entrevistas de outros usuários,
+- Ramo **Negócios** no catálogo Perfix, um subgrupo por módulo (ver "Permissões dos Negócios por módulo" em [access.md](access.md)): "Meus negócios" =
+  `businesses.use` (base), `businesses.create` (entrevista), `businesses.edit` (ficha), `businesses.archive`
+  e `businesses.delete`; "Suporte" = `businesses.view_all` (suporte: ver negócios/entrevistas de outros usuários,
   **somente leitura**, auditado com `business.support_view/list/search`).
 - **Não exigem o painel** (`admin.access`): `/api/businesses*`, `/api/interview*`, `/api/opex*`, `/api/me*`,
   `/api/access/view-as` e `/api/pusher/auth` (`requiresPanel` em `access/server/policy.ts`). As ferramentas
@@ -33,7 +34,7 @@ na transação, sem `admin.access`). Recusa: 409 `BUSINESS_LIMIT_REACHED`.
 
 ## Onboarding obrigatório
 
-`mayRequireOnboarding`: `businesses.use` nas permissões efetivas (inclusive simuladas) e **sem** `*`
+`mayRequireOnboarding`: `businesses.use` **e** `businesses.create` nas permissões efetivas (inclusive simuladas) e **sem** `*`
 (administradores nunca são forçados; só `view_all` também não). Sem negócio ativo, `/api/me` devolve
 `onboarding.required` e o `protectRoute` responde 403 `ONBOARDING_REQUIRED` a tudo, exceto
 `isOnboardingRoute` (própria conta, termos, view-as, Pusher, entrevista, listar/restaurar arquivados e a

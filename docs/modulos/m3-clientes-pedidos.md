@@ -109,7 +109,10 @@ pela API) e **e-mail** ao prestador (SMTP, se configurado).
 
 ## 8. Permissões
 
-`businesses.use` cobre clientes e pedidos do próprio usuário; `businesses.view_all` só leitura.
+Desde 22/10/2026 as permissões dos Negócios são por módulo, sobre a base `businesses.use` (catálogo completo em `aicontext/modules/access.md`, "Permissões dos Negócios por módulo").
+Clientes: `clients.view/edit/delete`. Pedidos: `orders.view` (também vê clientes e atividades),
+`orders.edit` (rascunho, título IA), `orders.send` (enviar, copiar, revogar o link) e `orders.decide`
+(aceitar, recusar, reabrir, cancelar; também vê trabalhos). `businesses.view_all` só leitura.
 A rota pública do link não usa sessão: autoriza somente pelo token, restrita àquele pedido.
 
 ## 9. Agente Opex (ferramentas)

@@ -18,7 +18,7 @@ export function isOpexProviderId(value: string): value is OpexProviderId {
  * Grupos de ferramentas. As ferramentas em si (nome, risco e permissões exigidas) ficam no catálogo
  * puro `tool-catalog.ts`; a configuração guarda só as **desligadas** (ferramenta nova nasce ligada).
  */
-export const OPEX_TOOL_GROUPS = ["context", "files", "businesses", "business-activities", "business-goals", "business-documents", "business-successes", "clients", "orders", "work-columns", "works", "work-time", "work-notes", "memories", "users", "roles", "integrations", "api-tokens", "routines", "platform"] as const
+export const OPEX_TOOL_GROUPS = ["context", "files", "businesses", "business-activities", "business-goals", "business-documents", "business-successes", "clients", "orders", "work-columns", "works", "work-time", "work-notes", "portfolio", "portfolio-items", "memories", "users", "roles", "integrations", "api-tokens", "routines", "platform"] as const
 export type OpexToolGroup = (typeof OPEX_TOOL_GROUPS)[number]
 
 export const OPEX_TOOL_GROUP_LABELS: Record<OpexToolGroup, { label: string; description: string }> = {
@@ -35,6 +35,8 @@ export const OPEX_TOOL_GROUP_LABELS: Record<OpexToolGroup, { label: string; desc
     works: { label: "Trabalhos", description: "Listar, ler (com horas, notas e histórico), mover entre colunas, marcar e corrigir o pagamento (Pago), sair de Pago, editar itens/horas/valor/prazo, arquivar, restaurar e excluir definitivamente os trabalhos" },
     "work-time": { label: "Horas dos trabalhos", description: "Listar, lançar, editar e excluir os apontamentos manuais de horas dos trabalhos" },
     "work-notes": { label: "Notas, anexos e sucesso dos trabalhos", description: "Notas internas (só o autor edita/exclui), anexos de arquivos do chat e converter o trabalho em sucesso" },
+    portfolio: { label: "Portfólio", description: "Ler a configuração e o endereço, escolher e ordenar seções, sucessos, documentos e serviços, cliente confidencial, indexação, publicar, despublicar e trocar o endereço do portfólio público" },
+    "portfolio-items": { label: "Itens avulsos do portfólio", description: "Listar, criar (imagens do chat), editar, arquivar, restaurar e excluir definitivamente os itens avulsos do portfólio" },
     memories: { label: "Memórias dos agentes", description: "Listar, ler, criar, editar e excluir as memórias (instruções permanentes) dos agentes de IA, inclusive as do próprio Agente Opex" },
     users: { label: "Usuários", description: "Listar, ler, convidar (pré-cadastro), reenviar convite, editar, ativar/desativar, atribuir perfis e excluir usuários" },
     roles: { label: "Perfis", description: "Listar, ler, criar, editar permissões, reordenar e excluir perfis" },

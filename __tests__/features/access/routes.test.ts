@@ -85,6 +85,8 @@ describe("cobertura estrutural das APIs existentes", () => {
             if (name.startsWith("auth/")) { expect(source).toContain("assertMutationOrigin"); continue }
             if (name.startsWith("v1/")) { expect(source).toContain("requireApiToken"); continue }
             if (name.startsWith("routines/")) { expect(source).toContain("verifySchedulerTickToken"); continue }
+            // Links públicos (orçamento e portfólio): sem sessão, com limite por IP.
+            if (name.startsWith("public/")) { expect(source, name).toContain("checkRateLimit"); continue }
             expect(source, name).toContain("@/features/access/server/protect-route")
             expect(source, name).toMatch(/(?:withProtectedRoute|protectRoute|withRoute)(?:<[^>]+>)?\(/)
         }

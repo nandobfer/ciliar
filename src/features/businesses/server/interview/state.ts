@@ -1,7 +1,7 @@
 import { Types } from "mongoose"
 import { DomainError } from "@/lib/api/route"
 import { dbConnect } from "@/lib/db"
-import { resolveAccess } from "@/features/access/server/access"
+import { denied, resolveAccess } from "@/features/access/server/access"
 import type { AccessContext } from "@/features/access/server/context"
 import type { OpexFileDto, OpexMessageDto, OpexSessionDetailDto, OpexSessionDto } from "@/features/opex-agent/types"
 import { opexFileKind } from "@/features/opex-agent/files"
@@ -29,6 +29,7 @@ export async function resolveInterviewAccess(scope: InterviewScope): Promise<Acc
     const access = await resolveAccess(scope.userId, scope.viewAsHeader, null, scope.sessionVersion)
     if (access.legalAcceptanceRequired) throw new DomainError(403, "Aceite os termos de uso e a política de privacidade para continuar", "TERMS_ACCEPTANCE_REQUIRED")
     requireBusinessUse(access)
+    if (!access.effective.has("*") && !access.effective.has("businesses.create")) throw denied("Seu perfil não permite criar negócios (businesses.create).")
     return access
 }
 

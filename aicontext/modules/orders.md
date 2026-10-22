@@ -9,7 +9,9 @@ Implementação em `src/features/orders/`, conforme `docs/modulos/m3-clientes-pe
   privadas, pedidos de todos os negócios e totais **separados por moeda**.
 - `/pedidos`: visão global com busca, filtros por negócio, cliente e status. Novo pedido escolhe
   um negócio ativo. Dentro do espaço: `/negocios/[id]/pedidos`, `/novo` e `/[orderId]`.
-- `businesses.use` permite escrita do dono efetivo; `businesses.view_all` só leitura de detalhes
+- Permissões `clients.view/edit/delete` e `orders.view/edit/send/decide` sobre `businesses.use` (ver "Permissões dos Negócios por módulo" em [access.md](access.md);
+  novo cliente dentro do pedido exige `clients.edit`; as ações do `OrderDto` já vêm filtradas pelas chaves);
+  `businesses.view_all` só leitura de detalhes
   alheios, auditada. Listas globais são do dono efetivo, não um dump de outros usuários.
 - Simulação de usuário segue `businessOwnerOf`: alvo como dono e ator real na auditoria.
 - APIs autenticadas passam por `withProtectedRoute`; clientes/pedidos não exigem `admin.access`.

@@ -70,7 +70,10 @@ M3) e **horas estimadas × apontadas** (barra de progresso).
 
 ## 8. Permissões
 
-`businesses.use` (próprios negócios) e `businesses.view_all` (somente leitura).
+Desde 22/10/2026 as permissões dos Negócios são por módulo, sobre a base `businesses.use` (catálogo completo em `aicontext/modules/access.md`, "Permissões dos Negócios por módulo").
+`works.view` (também vê pedidos), `works.edit` (mover, editar, horas, notas, anexos, arquivar),
+`works.columns`, `works.payment` (entrar/sair de Pago e editar o pagamento) e `works.delete`.
+`businesses.view_all` (somente leitura).
 
 ## 9. Agente Opex (ferramentas)
 

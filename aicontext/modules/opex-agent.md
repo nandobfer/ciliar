@@ -7,9 +7,17 @@ no Ciliar o agente age sempre como o **usuário real autenticado**, com as permi
 
 ## Onde fica e como abre
 
+### Permissões das ferramentas de Negócios
+
+Cada ferramenta usa a chave do módulo (ver "Permissões dos Negócios por módulo" em [access.md](access.md)):
+leitura `any: [<módulo>.view, businesses.view_all]`; escrita `all: [businesses.use, <chave>]` — ex.:
+`send_order`/`revoke_order_link` = `orders.send`, decisões = `orders.decide`, `mark_work_paid`/`unmark_work_paid` =
+`works.payment`, colunas = `works.columns`, `publish_portfolio_changes`/`publish_portfolio`/`unpublish_portfolio`/
+`update_portfolio_slug`/`update_portfolio_settings` = `portfolio.publish` (os blocos e a mídia = `portfolio.edit`), `convert_work_to_success` = `works.edit` + `successes.edit`.
+
 ### Ferramentas M3: Clientes e Pedidos
 
-Grupos sem painel (`businesses.use`; leituras também com `businesses.view_all`), implementados
+Grupos sem painel (chaves `clients.*`/`orders.*` sobre `businesses.use`; leituras também com `businesses.view_all`), implementados
 em `server/tools/clients.ts` e `server/tools/orders.ts`. Regras em [orders.md](orders.md).
 
 | Grupo | Ferramentas | Risco |
@@ -28,7 +36,7 @@ demais leituras não expõem token. Anexos vêm de arquivos do chat e podem ser 
 
 ### Ferramentas M4: Trabalhos
 
-Grupos sem painel (`work-columns`, `works`, `work-time`, `work-notes`; `businesses.use`, leituras
+Grupos sem painel (`work-columns`, `works`, `work-time`, `work-notes`; chaves `works.*` sobre `businesses.use`, leituras
 também com `businesses.view_all`), em `server/tools/works.ts`. Regras em [works.md](works.md).
 
 | Grupo | Ferramentas | Risco |
@@ -47,6 +55,20 @@ também com `businesses.view_all`), em `server/tools/works.ts`. Regras em [works
 
 `update_work_note`/`delete_work_note` cobrem o que a tela permite (P26). As versões (`version`)
 são lidas pelo próprio executor antes de cada escrita.
+
+### Ferramentas M5: Portfólio
+
+Grupos sem painel (`portfolio`, `portfolio-items`; chaves `portfolio.*` sobre `businesses.use`, leituras também com
+`businesses.view_all`), em `server/tools/portfolio.ts`. Regras em [portfolio.md](portfolio.md).
+
+| Grupo | Ferramentas | Risco |
+|---|---|---|
+| Portfólio | `get_portfolio_page` (endereço/URL, página publicada, indexação, blocos do rascunho, alterações não publicadas e problemas, conteúdo disponível, mídia, histórico), `list_portfolio_media` | read |
+| Portfólio | `add_portfolio_block` (tipo + propriedades; `parentId`/`column` para dentro de Colunas), `update_portfolio_block`, `move_portfolio_block` (`delta` ou destino), `add_portfolio_media` (imagens do chat), `update_portfolio_settings` (indexação) | write |
+| Portfólio | `remove_portfolio_block`, `apply_portfolio_template`, `discard_portfolio_draft`, `restore_portfolio_publication`, `publish_portfolio_changes` (`publishPage`; devolve a URL), `publish_portfolio`, `unpublish_portfolio`, `update_portfolio_slug`, `delete_portfolio_media` | destructive |
+| Itens avulsos do portfólio | `list_portfolio_items` | read |
+| Itens avulsos do portfólio | `create_portfolio_item`, `update_portfolio_item` (imagens do chat: `fileIds`/`addFileIds`, `removeImageIds`), `restore_portfolio_item` | write |
+| Itens avulsos do portfólio | `archive_portfolio_item`, `delete_portfolio_item` | destructive |
 
 - Item **"Agente Opex"** (ícone `Bot`) no rodapé da barra lateral (`AppLayoutShell` passa
   `sidebarFooterItems` ao `AppShell`), **só com a permissão `opex.use`** (ramo "Agente Opex" do catálogo).

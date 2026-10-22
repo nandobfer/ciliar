@@ -25,8 +25,8 @@ definidas em entrevista com o produto. Detalhes de implementação ficam em `aic
 | M1 | Agente Entrevistador + criação do Negócio | [modulos/m1-entrevistador-negocio.md](modulos/m1-entrevistador-negocio.md) | Implementado |
 | M2 | Espaço do negócio (CRUD, metas, atividades, documentos, sucessos) | [modulos/m2-espaco-negocio.md](modulos/m2-espaco-negocio.md) | Implementado |
 | M3 | Clientes + Pedidos | [modulos/m3-clientes-pedidos.md](modulos/m3-clientes-pedidos.md) | Implementado |
-| M4 | Trabalhos (Kanban + horas) | [modulos/m4-trabalhos.md](modulos/m4-trabalhos.md) | Definido |
-| M5 | Portfólio | [modulos/m5-portfolio.md](modulos/m5-portfolio.md) | Definido |
+| M4 | Trabalhos (Kanban + horas) | [modulos/m4-trabalhos.md](modulos/m4-trabalhos.md) | Implementado |
+| M5 | Portfólio | [modulos/m5-portfolio.md](modulos/m5-portfolio.md) | Implementado |
 
 Decisões pendentes de todos os módulos: [pendencias.md](pendencias.md).
 

@@ -64,11 +64,11 @@ export interface BusinessFileLimits {
     allowedLabel: string
 }
 
-/** Limites da Plataforma para a finalidade (a logo aceita só imagens rasterizadas). */
+/** Limites da Plataforma para a finalidade (a logo e as imagens do portfólio aceitam só imagens rasterizadas). */
 export async function businessFileLimits(purpose: BusinessFilePurpose): Promise<BusinessFileLimits> {
     const { documents } = (await loadPlatformState()).settings
     const maxBytes = documents.maxFileSizeMb * 1024 * 1024
-    if (purpose === "logo") return { maxBytes, allowed: BUSINESS_LOGO_MIMES, allowedLabel: "PNG, JPEG, WebP ou GIF" }
+    if (purpose === "logo" || purpose === "portfolio" || purpose === "media") return { maxBytes, allowed: BUSINESS_LOGO_MIMES, allowedLabel: "PNG, JPEG, WebP ou GIF" }
     return { maxBytes, allowed: documents.allowedTypes.flatMap((type) => DOCUMENT_TYPE_MIME[type]), allowedLabel: documents.allowedTypes.map((type) => DOCUMENT_TYPE_LABELS[type].label).join(", ") }
 }
 
@@ -78,6 +78,17 @@ export function assertFileAllowed(limits: BusinessFileLimits, mediaType: string,
 }
 
 /** Reserva: confere dono, negócio ativo, tipo e tamanho; devolve o PUT assinado. */
+/** Edição exigida para enviar um arquivo de cada finalidade. */
+export const BUSINESS_FILE_PERMISSIONS: Record<BusinessFilePurpose, string> = {
+    document: "documents.edit",
+    success: "successes.edit",
+    logo: "businesses.edit",
+    order: "orders.edit",
+    work: "works.edit",
+    portfolio: "portfolio.edit",
+    media: "portfolio.edit",
+}
+
 export async function reserveBusinessFile(access: AccessContext, businessId: string, raw: unknown): Promise<BusinessFileReservationDto> {
     const input = parseInput(reserveBusinessFileSchema, raw)
     const name = safeAttachmentName(input.name.trim() || fallbackAttachmentName(input.mediaType))
@@ -86,7 +97,7 @@ export async function reserveBusinessFile(access: AccessContext, businessId: str
     const _id = new Types.ObjectId()
     const id = _id.toString()
     const uploadKey = `businesses/tmp/${id}/${name}`
-    await businessTransaction(access, ["businesses.use"], async (current, session, ownerId) => {
+    await businessTransaction(access, ["businesses.use", BUSINESS_FILE_PERMISSIONS[input.purpose]], async (current, session, ownerId) => {
         const business = await loadOwnedForWrite(ownerId, businessId, session)
         if (business.status !== "active") throw new DomainError(409, "O negócio está arquivado: restaure-o para alterar.", "BUSINESS_ARCHIVED")
         await businessModels().files.create(
@@ -213,7 +224,7 @@ export async function importChatFile(access: AccessContext, businessId: string, 
     const _id = new Types.ObjectId()
     const id = _id.toString()
     const key = `businesses/${businessId}/files/${id}/${name}`
-    await businessTransaction(access, ["businesses.use"], async (current, session, ownerId) => {
+    await businessTransaction(access, ["businesses.use", BUSINESS_FILE_PERMISSIONS[purpose]], async (current, session, ownerId) => {
         const business = await loadOwnedForWrite(ownerId, businessId, session)
         if (business.status !== "active") throw new DomainError(409, "O negócio está arquivado: restaure-o para alterar.", "BUSINESS_ARCHIVED")
         await businessModels().files.create([{ _id, businessId, ownerId, purpose, pending: true, ready: false, itemId: null, name, mediaType, size: source.size, key, uploadKey: key, createdBy: current.userId }], { session })

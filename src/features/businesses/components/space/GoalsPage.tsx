@@ -1,5 +1,6 @@
 "use client"
 
+import { usePermissions } from "@nandobfer/perfix/react"
 import { useState } from "react"
 import { motion, useReducedMotion } from "framer-motion"
 import { Archive, ArchiveRestore, History, Pencil, Plus, Target, Trash2 } from "lucide-react"
@@ -207,6 +208,8 @@ function GoalTimeline({ current, history, onSelect }: { current: GoalItemDto | n
 
 /** Detalhes (somente leitura) de uma meta da linha do tempo; as arquivadas podem ser restauradas ou excluídas. */
 function GoalDetailsDialog({ goal, canEdit, busy, onClose, onRestore, onDelete }: { goal: GoalItemDto; canEdit: boolean; busy: boolean; onClose: () => void; onRestore: () => void; onDelete: () => void }) {
+    const { can } = usePermissions()
+    const canDelete = can("businesses.use") && can("goals.delete")
     const { business } = useBusinessSpace()
     const windows = [...(goal.progress.current ? [goal.progress.current] : []), ...goal.progress.history]
     return (
@@ -240,9 +243,11 @@ function GoalDetailsDialog({ goal, canEdit, busy, onClose, onRestore, onDelete }
                 <DialogFooter>
                     {canEdit && goal.status === "archived" && (
                         <>
-                            <Button type="button" variant="ghost" className="gap-1.5 text-destructive hover:text-destructive" disabled={busy} onClick={onDelete}>
-                                <Trash2 className="h-4 w-4" aria-hidden /> Excluir definitivamente
-                            </Button>
+                            {canDelete && (
+                                <Button type="button" variant="ghost" className="gap-1.5 text-destructive hover:text-destructive" disabled={busy} onClick={onDelete}>
+                                    <Trash2 className="h-4 w-4" aria-hidden /> Excluir definitivamente
+                                </Button>
+                            )}
                             <Button type="button" className="gap-1.5" disabled={busy} onClick={onRestore}>
                                 <ArchiveRestore className="h-4 w-4" aria-hidden /> Restaurar como atual
                             </Button>

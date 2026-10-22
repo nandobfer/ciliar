@@ -16,6 +16,7 @@ ganhou o Agente Opex (chat com ferramentas) copiado do Opex.
 - [Espaço do negócio](modules/business-space.md) (M2): dashboard com período e gráficos, ficha com tema por negócio, atividades com histórico de preço, metas com progresso, documentos e sucessos.
 - [Clientes e Pedidos](modules/orders.md) (M3): clientes globais, pedidos globais e por negócio, versões, IA de título, link público e aceite com trabalho mínimo.
 - [Trabalhos](modules/works.md) (M4): Kanban | Tabela por negócio e visão geral, colunas fixas + customizadas, Pago com faturamento, horas, notas, anexos e sucesso.
+- [Portfólio](modules/portfolio.md) (M5): página pública `/p/[slug]` opcional, seleção um a um em ordem, cliente confidencial, itens avulsos, URLs assinadas e pré-visualização.
 - [Docker e deploy](modules/deployment.md): infraestrutura copiada, Compose dev/produção e ambiente.
 
 Leia também `AGENTS.md`. Alterações devem manter este contexto e testes Vitest atualizados.

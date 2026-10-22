@@ -2,10 +2,9 @@ import mongoose from "mongoose"
 import { DomainError } from "@/lib/api/route"
 import { dbConnect } from "@/lib/db"
 import { parseInput } from "@/features/access/server/commands"
-import { denied } from "@/features/access/server/access"
 import { accessModels } from "@/features/access/server/models"
 import type { AccessContext } from "@/features/access/server/context"
-import { auditBusiness, businessOwnerOf, canSupportBusinesses, canUseBusinesses, ensureBusinessCollections } from "@/features/businesses/server/access"
+import { auditBusiness, businessOwnerOf, canBusiness, ensureBusinessCollections, requireModuleRead } from "@/features/businesses/server/access"
 import { publishSpaceChanged, removeObjectsQuietly } from "@/features/businesses/server/businesses"
 import { claimBusinessFiles, refOfFile, releaseBusinessFiles } from "@/features/businesses/server/files"
 import { DAY_MS, readBusiness, writeItem } from "@/features/businesses/server/items"
@@ -45,14 +44,14 @@ export async function listBusinessWorks(access: AccessContext, businessId: strin
 
 /** Visão geral (`/trabalhos`): os trabalhos de todos os negócios do dono efetivo. */
 export async function listWorks(access: AccessContext, query: ListQuery & { businessId?: string } = {}): Promise<WorkListDto> {
-    if (!canUseBusinesses(access) && !canSupportBusinesses(access)) throw denied("Seu perfil não permite usar Negócios.")
+    requireModuleRead(access, "works")
     await dbConnect()
     await ensureBusinessCollections()
     const filter: Record<string, unknown> = { ownerId: businessOwnerOf(access), ...statusFilter(query.status) }
     if (query.businessId) filter.businessId = query.businessId
     if (query.clientId) filter.clientId = query.clientId
     const docs = await workModels().works.find(filter).sort({ position: 1 }).lean<WorkDoc[]>()
-    return { items: await workSummaries(docs), editable: canUseBusinesses(access) }
+    return { items: await workSummaries(docs), editable: canBusiness(access, "works.edit") }
 }
 
 export async function getWork(access: AccessContext, businessId: string, workId: string): Promise<WorkDetailDto> {
@@ -118,7 +117,7 @@ export async function markWorkPaid(access: AccessContext, businessId: string, wo
         await recordMove(session, current, doc, "paid")
         await auditBusiness(current, `${WORK_AUDIT}.pay`, workId, { businessId, code: doc.code, column: doc.column }, { businessId, code: doc.code, column: "paid", paidOn: input.paidOn, receivedCents: input.receivedCents, method }, session)
         return { result: undefined }
-    })
+    }, ["works.payment"])
     return getWork(access, businessId, workId)
 }
 
@@ -151,7 +150,7 @@ export async function unmarkWorkPaid(access: AccessContext, businessId: string, 
             session,
         )
         return { result: undefined }
-    })
+    }, ["works.payment"])
     return getWork(access, businessId, workId)
 }
 
@@ -241,7 +240,7 @@ export async function deleteWork(access: AccessContext, businessId: string, work
         const removeKeys = await deleteWorkData(doc, session)
         await auditBusiness(current, `${WORK_AUDIT}.delete`, workId, { businessId, code: doc.code, orderId: doc.orderId, column: doc.column, loggedMinutes: doc.loggedMinutes ?? 0 }, null, session)
         return { result: undefined, removeKeys }
-    })
+    }, ["works.delete"])
     await publishSpaceChanged(ownerId, businessId, "orders")
     return { id: workId }
 }
@@ -324,7 +323,7 @@ export async function removeWorkAttachment(access: AccessContext, businessId: st
 
 /** Sugestões: as formas já usadas pelo dono em todos os negócios (mais recentes primeiro) + as padrão. */
 export async function paymentMethodSuggestions(access: AccessContext): Promise<string[]> {
-    if (!canUseBusinesses(access) && !canSupportBusinesses(access)) throw denied("Seu perfil não permite usar Negócios.")
+    requireModuleRead(access, "works")
     await dbConnect()
     const rows = await workModels().works.aggregate<{ _id: string }>([
         { $match: { ownerId: businessOwnerOf(access) } },

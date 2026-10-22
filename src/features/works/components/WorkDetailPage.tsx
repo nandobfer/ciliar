@@ -1,5 +1,6 @@
 "use client"
 
+import { usePermissions } from "@nandobfer/perfix/react"
 import { useId, useState, type ComponentType } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -55,6 +56,10 @@ export function WorkDetailPage({ workId }: { workId: string }) {
     const baseId = useId()
     const back = businessSpaceHref(business.id, "trabalhos")
     const work = query.data
+    const { can } = usePermissions()
+    const canConvert = can("successes.edit")
+    const canDelete = can("works.delete")
+    const canRestore = can("businesses.use") && can("works.edit")
     const view = query.isLoading ? "loading" : query.isError ? (apiErrorCode(query.error) === "WORK_NOT_FOUND" ? "missing" : "error") : "ready"
     const active = TABS.find((item) => item.id === tab) ?? TABS[0]!
     const Section = active.Component
@@ -138,7 +143,7 @@ export function WorkDetailPage({ workId }: { workId: string }) {
                                             </Link>
                                         </Button>
                                     ) : (
-                                        work.editable && (
+                                        work.editable && canConvert && (
                                             <Button type="button" variant="outline" className="h-9 gap-1.5" onClick={() => setConverting(true)}>
                                                 <Trophy className="h-4 w-4" aria-hidden /> Converter em Sucesso
                                             </Button>
@@ -149,14 +154,18 @@ export function WorkDetailPage({ workId }: { workId: string }) {
                                             <Archive className="h-4 w-4" aria-hidden />
                                         </Button>
                                     )}
-                                    {work.status === "archived" && business.status === "active" && (
+                                    {work.status === "archived" && business.status === "active" && business.editable && (
                                         <>
-                                            <Button type="button" variant="outline" className="h-9 gap-1.5" onClick={() => setConfirm("restore")}>
-                                                <ArchiveRestore className="h-4 w-4" aria-hidden /> Restaurar
-                                            </Button>
-                                            <Button type="button" variant="outline" size="icon" className="h-9 w-9 text-destructive hover:text-destructive" onClick={() => setConfirm("delete")} aria-label="Excluir definitivamente" title="Excluir definitivamente">
-                                                <Trash2 className="h-4 w-4" aria-hidden />
-                                            </Button>
+                                            {canRestore && (
+                                                <Button type="button" variant="outline" className="h-9 gap-1.5" onClick={() => setConfirm("restore")}>
+                                                    <ArchiveRestore className="h-4 w-4" aria-hidden /> Restaurar
+                                                </Button>
+                                            )}
+                                            {canDelete && (
+                                                <Button type="button" variant="outline" size="icon" className="h-9 w-9 text-destructive hover:text-destructive" onClick={() => setConfirm("delete")} aria-label="Excluir definitivamente" title="Excluir definitivamente">
+                                                    <Trash2 className="h-4 w-4" aria-hidden />
+                                                </Button>
+                                            )}
                                         </>
                                     )}
                                 </div>

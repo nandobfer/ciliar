@@ -14,8 +14,7 @@ import { INTEGRATION_IDS } from "@/lib/integrations/catalog"
 import { OrdersRealtime } from "@/features/orders/components/OrdersRealtime"
 import { WorksRealtime } from "@/features/works/components/WorksRealtime"
 
-/** Telas do prestador (Negócios, Clientes, Pedidos e Trabalhos): `businesses.use` ou `businesses.view_all`. */
-const BUSINESS_HREFS = ["/negocios", "/clientes", "/pedidos", "/trabalhos"]
+import { businessRouteAccess, canReadModule } from "@/features/businesses/permissions"
 
 interface AppLayoutShellProps {
     ownerName: string
@@ -35,12 +34,13 @@ export function AppLayoutShell({ ownerName, version, children }: AppLayoutShellP
     const canBusinesses = canAny(["businesses.use", "businesses.view_all"])
     // Negócio aberto: as páginas do espaço entram como seção própria e navegar entre elas não remonta a casca.
     const businessId = canBusinesses ? activeBusinessId(pathname) : null
+    // Telas do prestador (Negócios, Clientes, Pedidos e Trabalhos): a permissão do módulo (ou o suporte), sem o painel.
     const nav = APP_NAV.map(section => ({ ...section, items: section.items.filter(item =>
-        BUSINESS_HREFS.includes(item.href) ? canBusinesses
+        businessRouteAccess(item.href) ? businessRouteAccess(item.href)!(can)
             : !can("admin.access") ? false
             : item.href === "/usuarios" ? can("users.view") : item.href === "/perfis" ? can("roles.view") : canAny(INTEGRATION_IDS.map(id => `integrations.${id}.view`)),
     ) })).filter(section => section.items.length)
-    const sections = businessId ? nav.flatMap(section => section.id === "negocios" ? [section, businessSpaceNavSection(businessId)] : [section]) : nav
+    const sections = businessId ? nav.flatMap(section => section.id === "negocios" ? [section, businessSpaceNavSection(businessId, can)] : [section]) : nav
     return (
         <AppShell
             brand={{ name: "Ciliar", subtitle: can("admin.access") ? "Integrações" : "Negócios", homeHref: homeHrefOf(can) }}
@@ -53,8 +53,8 @@ export function AppLayoutShell({ ownerName, version, children }: AppLayoutShellP
             sidebarHeaderItems={can("businesses.use") ? businessHeaderItems : undefined}
         >
             <BusinessThemeController />
-            {can("businesses.use") && <OrdersRealtime />}
-            {can("businesses.use") && <WorksRealtime />}
+            {canReadModule(can, "orders") && can("businesses.use") && <OrdersRealtime />}
+            {canReadModule(can, "works") && can("businesses.use") && <WorksRealtime />}
             {children}
         </AppShell>
     )

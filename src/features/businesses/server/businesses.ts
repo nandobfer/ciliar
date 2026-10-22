@@ -22,10 +22,14 @@ import {
     businessOwnerOf,
     businessTransaction,
     canSupportBusinesses,
+    canBusiness,
     canUseBusinesses,
+    canUseModule,
     ensureBusinessCollections,
     limitReached,
+    requireModuleRead,
 } from "./access"
+import type { BusinessModule } from "../permissions"
 import { businessModels, type BusinessGoalRecord, type BusinessLogo, type BusinessRecord } from "./models"
 
 /**
@@ -127,7 +131,8 @@ export async function countBusinesses(ownerId: string, session: ClientSession | 
 export async function businessCapacity(access: AccessContext, session: ClientSession | null = null): Promise<BusinessCapacityDto> {
     const limit = businessLimitOf(access.roles)
     const counts = await countBusinesses(businessOwnerOf(access), session)
-    return { limit, ...counts, canCreate: canUseBusinesses(access) && (limit === null || counts.active < limit) }
+    const vacancy = limit === null || counts.active < limit
+    return { limit, ...counts, vacancy, canCreate: canBusiness(access, "businesses.create") && vacancy }
 }
 
 /** Confere a vaga (dentro da transação com o fence do dono). */
@@ -140,13 +145,17 @@ export async function assertBusinessVacancy(access: AccessContext, session: Clie
  * Negócio visível: o dono efetivo vê os próprios; o suporte (`businesses.view_all`) vê os demais
  * em leitura, com auditoria do acesso. Qualquer outro caso é 404 (não revela existência).
  */
-export async function loadVisibleBusiness(access: AccessContext, id: string, options: { audit?: boolean; section?: string } = {}): Promise<{ doc: BusinessDoc; own: boolean }> {
+export async function loadVisibleBusiness(access: AccessContext, id: string, options: { audit?: boolean; section?: string; module?: BusinessModule | null } = {}): Promise<{ doc: BusinessDoc; own: boolean }> {
     assertBusinessId(id)
     await dbConnect()
     const doc = await businessModels().businesses.findById(id).lean<BusinessDoc>()
     if (!doc) throw businessNotFound()
     const own = doc.ownerId === businessOwnerOf(access)
-    if (own && canUseBusinesses(access)) return { doc, own }
+    if (own && canUseBusinesses(access)) {
+        if (!options.module || canUseModule(access, options.module)) return { doc, own }
+        // Dono sem a visualização do módulo: só o suporte ainda lê (somente leitura).
+        if (!canSupportBusinesses(access)) requireModuleRead(access, options.module)
+    }
     if (!canSupportBusinesses(access)) throw businessNotFound()
     if (options.audit !== false) await auditBusiness(access, "business.support_view", id, null, { ownerId: doc.ownerId, ...(options.section ? { section: options.section } : {}) })
     return { doc, own: false }
@@ -217,6 +226,7 @@ export async function getBusinessDetail(access: AccessContext, id: string): Prom
         ...toBusinessDto(doc, days, names.get(doc.ownerId) ?? null),
         goals: goals.map(toGoalDto),
         editable: own && canUseBusinesses(access) && doc.status === "active",
+        actions: { edit: own && canBusiness(access, "businesses.edit") && doc.status === "active", archive: own && canBusiness(access, "businesses.archive"), delete: own && canBusiness(access, "businesses.delete") },
         own,
         accountEmail: email,
         currencyLocked: locked,
@@ -237,7 +247,7 @@ const conflict = () => new DomainError(409, "O negócio foi alterado por outra a
 export async function updateBusiness(access: AccessContext, id: string, raw: unknown): Promise<BusinessDetailDto> {
     const { version, ...patch } = parseInput(businessUpdateSchema, raw)
     if (!Object.keys(patch).length) throw new DomainError(400, "Nada para alterar", "VALIDATION_ERROR")
-    await businessTransaction(access, ["businesses.use"], async (current, session, ownerId) => {
+    await businessTransaction(access, ["businesses.use", "businesses.edit"], async (current, session, ownerId) => {
         const doc = await loadOwnedForWrite(ownerId, id, session)
         if ((doc.version ?? 0) !== version) throw conflict()
         if (doc.status !== "active") throw new DomainError(409, "Restaure o negócio antes de editar.", "BUSINESS_ARCHIVED")
@@ -268,7 +278,7 @@ export async function updateBusiness(access: AccessContext, id: string, raw: unk
 }
 
 export async function archiveBusiness(access: AccessContext, id: string): Promise<BusinessDetailDto> {
-    await businessTransaction(access, ["businesses.use"], async (current, session, ownerId) => {
+    await businessTransaction(access, ["businesses.use", "businesses.archive"], async (current, session, ownerId) => {
         const doc = await loadOwnedForWrite(ownerId, id, session)
         if (doc.status === "archived") throw new DomainError(409, "O negócio já está arquivado.", "BUSINESS_ARCHIVED")
         await businessModels().businesses.updateOne({ _id: doc._id }, { $set: { status: "archived", archivedAt: new Date(), updatedBy: current.userId }, $inc: { version: 1 } }, { session })
@@ -280,7 +290,7 @@ export async function archiveBusiness(access: AccessContext, id: string): Promis
 
 /** Restaurar exige vaga no limite do perfil. */
 export async function restoreBusiness(access: AccessContext, id: string): Promise<BusinessDetailDto> {
-    await businessTransaction(access, ["businesses.use"], async (current, session, ownerId) => {
+    await businessTransaction(access, ["businesses.use", "businesses.archive"], async (current, session, ownerId) => {
         const doc = await loadOwnedForWrite(ownerId, id, session)
         if (doc.status === "active") throw new DomainError(409, "O negócio já está ativo.", "BUSINESS_ACTIVE")
         await assertBusinessVacancy(current, session)
@@ -304,6 +314,10 @@ async function deleteBusinessData(doc: BusinessDoc, session: ClientSession): Pro
     await models.activityPrices.deleteMany({ businessId: id }, { session })
     await models.documents.deleteMany({ businessId: id }, { session })
     await models.successes.deleteMany({ businessId: id }, { session })
+    // Portfólio (M5): a configuração (libera o slug) e os itens avulsos; as imagens saem com os arquivos.
+    await models.portfolios.deleteMany({ businessId: id }, { session })
+    await models.portfolioPublications.deleteMany({ businessId: id }, { session })
+    await models.portfolioItems.deleteMany({ businessId: id }, { session })
     // Pedidos (com versões) e trabalhos (colunas, movimentações, notas e horas) do negócio; os clientes são do usuário e ficam.
     const orders = orderModels()
     await orders.orders.deleteMany({ businessId: id }, { session })
@@ -339,7 +353,7 @@ export async function removeObjectsQuietly(keys: readonly string[]): Promise<num
 
 /** Exclusão definitiva manual: só arquivado, com confirmação na tela. Irreversível. */
 export async function deleteBusiness(access: AccessContext, id: string): Promise<{ id: string }> {
-    const keys = await businessTransaction(access, ["businesses.use"], async (current, session, ownerId) => {
+    const keys = await businessTransaction(access, ["businesses.use", "businesses.delete"], async (current, session, ownerId) => {
         const doc = await loadOwnedForWrite(ownerId, id, session)
         if (doc.status !== "archived") throw new DomainError(409, "Arquive o negócio antes de excluí-lo definitivamente.", "BUSINESS_NOT_ARCHIVED")
         const removed = await deleteBusinessData(doc, session)

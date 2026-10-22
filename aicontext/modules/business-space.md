@@ -6,13 +6,14 @@ telas em `components/space/`; hooks em `hooks/useBusinessSpace.ts`). Base do M1 
 
 ## Acesso
 
-- Tudo sob `businesses.use` (dono efetivo, `businessOwnerOf`: o alvo na simulação de usuário, com a
+- Permissões por módulo (`activities.*`, `goals.*`, `documents.*`, `successes.*`, ficha/logo em
+  `businesses.edit`; ver "Permissões dos Negócios por módulo" em [access.md](access.md)) sobre a base `businesses.use` (dono efetivo, `businessOwnerOf`: o alvo na simulação de usuário, com a
   auditoria no ator real) e `businesses.view_all` (suporte **somente leitura**: cada leitura grava
   `business.support_view` com `after.section` = `ficha`, `activities`, `goals`, `documents`, `successes`,
-  `dashboard`, `files`…). Sem permissão nova no Perfix; prazos e limites seguem em
-  `integrations.platform.edit`.
+  `dashboard`, `files`…). Prazos e limites seguem em `integrations.platform.edit`. O dashboard só traz os
+  blocos dos módulos visíveis (`visible`).
 - `routePermissions`: `GET /api/businesses/[id]/…` = `[]` (o serviço confere dono/suporte); qualquer
-  alteração = `businesses.use`. Só as sub-rotas conhecidas casam (falha fechado). Não exigem o painel.
+  alteração = `businesses.use` + a chave do módulo (`businessRoutePermissions`). Só as sub-rotas conhecidas casam (falha fechado). Não exigem o painel.
 - **Escrita** (`writeItem` em `server/items.ts`): `businessTransaction` (replica set, fence por dono,
   acesso relido), negócio do dono e **ativo** (arquivado → 409 `BUSINESS_ARCHIVED`), `version` otimista
   por item (409 `VERSION_CONFLICT`), item arquivado não edita (409 `ITEM_ARCHIVED`). Depois do commit:
@@ -203,3 +204,11 @@ O espaço inclui **Pedidos** (`/negocios/[id]/pedidos`), além da lista global `
 Qualquer pedido/trabalho trava a moeda; exclusão/purge do negócio remove pedidos/versões/trabalhos.
 Sucessos têm cliente opcional do dono, selecionado com busca. Arquivos aceitam `purpose: order`.
 Detalhes: [Clientes e Pedidos](orders.md).
+
+## Integração com M5
+
+A barra do espaço ganhou **Portfólio** (`/negocios/[id]/portfolio`). `portfolioItems` entrou em
+`BUSINESS_ITEM_KINDS` (API `portfolio-items` via `BUSINESS_ITEM_PATHS`; os hooks genéricos usam o
+segmento); `itemCleanup` tira da seleção do portfólio a atividade/documento/sucesso/item excluído;
+excluir o negócio apaga portfólio e itens. Arquivos aceitam `purpose: portfolio` (só imagens). A
+invalidação de qualquer item também relê o portfólio. Detalhes: [Portfólio](portfolio.md).

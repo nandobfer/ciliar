@@ -8,6 +8,7 @@ vi.mock("@/lib/pusher/channels", () => ({ publishToChannels: vi.fn(async () => u
 vi.mock("@/lib/after-response", () => ({ runAfterResponse: vi.fn() }))
 vi.mock("@/lib/email/mailer", () => ({ isMockMode: vi.fn(async () => true), sendEmail: vi.fn() }))
 
+import { BUSINESS_FULL_PERMISSIONS } from "@/features/businesses/permissions"
 import { accessModels } from "@/features/access/server/models"
 import { createRole } from "@/features/access/server/commands"
 import { resolveAccess } from "@/features/access/server/access"
@@ -56,7 +57,7 @@ beforeEach(async () => {
     const role = await access.roles.create({ slug: "admin", nome: "Administrador", permissoes: ["*"], ativo: true })
     const actor = await access.users.create({ name: "Admin", email: "admin@example.test", active: true, roles: [role.id] })
     admin = await resolveAccess(actor.id as string)
-    const provider = await createRole(admin, { nome: "Prestador", descricao: "", cor: "azul", ativo: true, permissoes: ["businesses.use"], limiteNegocios: null })
+    const provider = await createRole(admin, { nome: "Prestador", descricao: "", cor: "azul", ativo: true, permissoes: [...BUSINESS_FULL_PERMISSIONS], limiteNegocios: null })
     const a = await access.users.create({ name: "Ana", email: "ana@example.test", active: true, roles: [provider.id] })
     const b = await access.users.create({ name: "Bia", email: "bia@example.test", active: true, roles: [provider.id] })
     ana = { ...(await resolveAccess(a.id as string)), timeZone: "America/Sao_Paulo" }

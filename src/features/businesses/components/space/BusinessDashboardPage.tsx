@@ -27,6 +27,8 @@ import { useBusinessDashboard, useBusinessDashboardPeriod } from "../../hooks/us
 import { CurrentGoalHighlight } from "./GoalProgressCard"
 import { businessSubtitle, useBusinessSpace } from "./BusinessSpaceLayout"
 import { BusinessAvatar } from "../BusinessAvatar"
+import { usePermissions } from "@nandobfer/perfix/react"
+import { canSeeSpaceSection } from "./space-nav"
 
 type CountKey = keyof BusinessDashboardDto["counts"]
 
@@ -48,14 +50,15 @@ const units = (cents: number | null) => (cents === null ? null : cents / 100)
 function kpiItems(data: BusinessDashboardDto): DashboardKpiItem[] {
     const money = (value: number) => formatMoney(Math.round(value), data.currency)
     const period = BUSINESS_DASHBOARD_PERIOD_LABELS[data.period].toLowerCase()
+    const shown = data.visible
     return [
-        { label: "Faturamento bruto", hint: `No período · ${period}`, value: data.kpis.revenueCents, formatter: money },
-        { label: "Meta atual", hint: data.goal ? "% atingido na janela atual" : "Sem meta ativa", value: data.kpis.currentGoalPercent ?? 0, formatter: data.kpis.currentGoalPercent === null ? () => "—" : formatPercent },
-        { label: "Atividades ativas", hint: "Situação atual", value: data.kpis.activeActivities, formatter: formatCount },
-        { label: "Valor/hora médio", hint: "Das atividades ativas", value: data.kpis.averageRateCents ?? 0, formatter: data.kpis.averageRateCents === null ? () => "—" : money },
-        { label: "Documentos", hint: "Situação atual", value: data.kpis.documents, formatter: formatCount },
-        { label: "Sucessos", hint: `No período · ${period}`, value: data.kpis.successesInPeriod, formatter: formatCount },
-    ]
+        shown.revenue && { label: "Faturamento bruto", hint: `No período · ${period}`, value: data.kpis.revenueCents, formatter: money },
+        shown.goals && { label: "Meta atual", hint: data.goal ? "% atingido na janela atual" : "Sem meta ativa", value: data.kpis.currentGoalPercent ?? 0, formatter: data.kpis.currentGoalPercent === null ? () => "—" : formatPercent },
+        shown.activities && { label: "Atividades ativas", hint: "Situação atual", value: data.kpis.activeActivities, formatter: formatCount },
+        shown.activities && { label: "Valor/hora médio", hint: "Das atividades ativas", value: data.kpis.averageRateCents ?? 0, formatter: data.kpis.averageRateCents === null ? () => "—" : money },
+        shown.documents && { label: "Documentos", hint: "Situação atual", value: data.kpis.documents, formatter: formatCount },
+        shown.successes && { label: "Sucessos", hint: `No período · ${period}`, value: data.kpis.successesInPeriod, formatter: formatCount },
+    ].filter((item): item is DashboardKpiItem => Boolean(item))
 }
 
 function CategoryDonut({ title, description, slices, ariaLabel }: { title: string; description: string; slices: DashboardCategorySlice[]; ariaLabel: string }) {
@@ -97,6 +100,7 @@ function DashboardCharts({ data }: { data: BusinessDashboardDto }) {
 
     return (
         <div className="grid gap-4 md:grid-cols-2">
+            {data.visible.revenue && (
             <ChartCard title="Faturamento bruto × meta mensal" description="Por mês do período (trabalhos pagos, pela data do pagamento)">
                 {!data.charts.hasRevenue ? (
                     <EmptyChart message={NO_REVENUE} />
@@ -116,7 +120,9 @@ function DashboardCharts({ data }: { data: BusinessDashboardDto }) {
                     />
                 )}
             </ChartCard>
+            )}
 
+            {data.visible.activities && (
             <ChartCard title="Valor por hora das atividades" description="As atividades ativas de maior valor">
                 {!rateRows.length ? (
                     <EmptyChart message="Nenhuma atividade ativa." />
@@ -132,7 +138,9 @@ function DashboardCharts({ data }: { data: BusinessDashboardDto }) {
                     />
                 )}
             </ChartCard>
+            )}
 
+            {data.visible.activities && (
             <ChartCard title="Evolução do valor por hora" description={`Pelo histórico de preços · por ${pointLabel.toLowerCase()}`}>
                 {!trendSeries.length ? (
                     <EmptyChart message="Nenhuma atividade ativa." />
@@ -149,7 +157,9 @@ function DashboardCharts({ data }: { data: BusinessDashboardDto }) {
                     />
                 )}
             </ChartCard>
+            )}
 
+            {data.visible.successes && (
             <ChartCard title="Sucessos no período" description={`Pela data do sucesso · por ${pointLabel.toLowerCase()}`}>
                 {!successRows.some((row) => row.count > 0) ? (
                     <EmptyChart />
@@ -166,22 +176,24 @@ function DashboardCharts({ data }: { data: BusinessDashboardDto }) {
                     />
                 )}
             </ChartCard>
+            )}
 
-            <CategoryDonut title="Atividades por categoria" description="Atividades ativas" slices={data.charts.activitiesByCategory} ariaLabel="Atividades por categoria" />
-            <CategoryDonut title="Documentos por categoria" description="Documentos ativos" slices={data.charts.documentsByCategory} ariaLabel="Documentos por categoria" />
+            {data.visible.activities && <CategoryDonut title="Atividades por categoria" description="Atividades ativas" slices={data.charts.activitiesByCategory} ariaLabel="Atividades por categoria" />}
+            {data.visible.documents && <CategoryDonut title="Documentos por categoria" description="Documentos ativos" slices={data.charts.documentsByCategory} ariaLabel="Documentos por categoria" />}
         </div>
     )
 }
 
 /** Atalhos do espaço numa coluna à direita (no celular, depois do conteúdo). */
 function Shortcuts({ businessId, counts }: { businessId: string; counts: BusinessDashboardDto["counts"] | null }) {
+    const { can } = usePermissions()
     return (
         <nav aria-labelledby="dashboard-shortcuts" className="space-y-3 lg:sticky lg:top-0">
             <h2 id="dashboard-shortcuts" className="text-sm font-semibold text-foreground">
                 Atalhos
             </h2>
             <ul className="space-y-2">
-                {SHORTCUTS.map((shortcut) => (
+                {SHORTCUTS.filter((shortcut) => canSeeSpaceSection(shortcut.slug, can)).map((shortcut) => (
                     <li key={shortcut.slug}>
                         <Link href={businessSpaceHref(businessId, shortcut.slug)} scroll={false} className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                             <Card className="flex items-center gap-3 p-3 transition-colors group-hover:border-primary/50">
@@ -249,6 +261,7 @@ export function BusinessDashboardPage() {
                         {view === "ready" && data && (
                             <>
                                 <DashboardKpis items={kpiItems(data)} className="xl:grid-cols-3" />
+                                {data.visible.goals && (
                                 <section aria-labelledby="dashboard-goal">
                                     <h2 id="dashboard-goal" className="sr-only">
                                         Meta atual
@@ -274,6 +287,7 @@ export function BusinessDashboardPage() {
                                         </Card>
                                     )}
                                 </section>
+                                )}
                                 <section className="space-y-3" aria-labelledby="dashboard-charts">
                                     <h2 id="dashboard-charts" className="text-sm font-semibold text-foreground">
                                         Gráficos
