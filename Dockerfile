@@ -66,6 +66,8 @@ RUN chown nextjs:nodejs .next
 
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# Documentação viva lida em tempo real pelo Agente Opex (o standalone não rastreia esses arquivos).
+COPY --from=builder --chown=nextjs:nodejs /app/aicontext ./aicontext
 
 USER nextjs
 

@@ -33,7 +33,8 @@ Leia `aicontext/README.md` e o guia do módulo antes de desenvolver.
   Status/debug transmitem só invalidações; conteúdo é relido pela API autorizada.
 - Crons usam agendador interno em processo Node persistente; sem Redis, filas ou workers.
 - Toda alteração: implementar → ferramentas do agente → documentar em `aicontext/` → testes Vitest
-  em `__tests__/`.
+  em `__tests__/`. O `aicontext/` é lido em tempo real pelo Agente Opex: arquivo novo em
+  `aicontext/modules` entra no mapa de público `APP_DOC_AUDIENCE` (`src/features/opex-agent/app-docs.ts`).
 - **Ferramentas do Agente Opex são obrigatórias.** Ao criar ou alterar uma funcionalidade, crie ou
   atualize as ferramentas correspondentes para o agente executar o mesmo que a tela/API:
   1. registre no catálogo puro `src/features/opex-agent/tool-catalog.ts` (nome `snake_case`, grupo,

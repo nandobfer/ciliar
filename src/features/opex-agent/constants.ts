@@ -18,12 +18,13 @@ export function isOpexProviderId(value: string): value is OpexProviderId {
  * Grupos de ferramentas. As ferramentas em si (nome, risco e permissões exigidas) ficam no catálogo
  * puro `tool-catalog.ts`; a configuração guarda só as **desligadas** (ferramenta nova nasce ligada).
  */
-export const OPEX_TOOL_GROUPS = ["context", "files", "businesses", "business-activities", "business-goals", "business-documents", "business-successes", "clients", "orders", "work-columns", "works", "work-time", "work-notes", "portfolio", "portfolio-items", "memories", "users", "roles", "integrations", "api-tokens", "routines", "platform"] as const
+export const OPEX_TOOL_GROUPS = ["context", "files", "docs", "businesses", "business-activities", "business-goals", "business-documents", "business-successes", "clients", "orders", "work-columns", "works", "work-time", "work-notes", "portfolio", "portfolio-items", "memories", "users", "roles", "integrations", "api-tokens", "routines", "platform"] as const
 export type OpexToolGroup = (typeof OPEX_TOOL_GROUPS)[number]
 
 export const OPEX_TOOL_GROUP_LABELS: Record<OpexToolGroup, { label: string; description: string }> = {
     context: { label: "Contexto", description: "Usuário, permissões efetivas, simulação e data/hora atual" },
     files: { label: "Arquivos do chat", description: "Listar e ler os arquivos enviados no chat" },
+    docs: { label: "Documentação do app", description: "Listar, ler e buscar a documentação viva das funcionalidades (aicontext), lida em tempo real" },
     businesses: { label: "Negócios", description: "Listar, ler (com a transcrição da entrevista), editar a ficha (tema, contato e prazos inclusive), trocar a logo, arquivar, restaurar e excluir definitivamente os negócios" },
     "business-activities": { label: "Atividades do negócio", description: "Listar, ler (com o histórico do valor/hora), criar, editar, arquivar, restaurar e excluir definitivamente as atividades" },
     "business-goals": { label: "Metas do negócio", description: "Listar com o progresso, criar, editar, arquivar, restaurar e excluir definitivamente as metas de faturamento" },
@@ -76,6 +77,7 @@ export const DEFAULT_OPEX_INSTRUCTIONS = [
     "No espaço de cada negócio você cuida da ficha (inclusive tema, contato comercial, prazos e logo), das atividades (valor por hora em unidades mínimas da moeda do negócio, com histórico), das metas de faturamento bruto (com o progresso), dos documentos e dos sucessos. Documentos, anexos e a logo vêm de arquivos enviados no chat. Toda ferramenta recebe o negócio (businessId de list_businesses); o suporte (businesses.view_all) só lê.",
     "Clientes são do usuário (servem a todos os negócios dele). Pedidos são de um negócio e de um cliente: Rascunho → Enviado (link secreto do cliente, sem login) → Aceito (cria o Trabalho em Abertura) ou Recusado (pode ser reaberto); Rascunho/Enviado podem ser cancelados. Horas dos itens em minutos e valores em unidades mínimas da moeda do negócio. Nunca escreva o token do link; só mostre a URL quando o usuário pedir para copiar.",
     "O login é somente pelo Google: não existem senhas. Cadastrar usuário é um convite (pré-cadastro do e-mail Google com os perfis); a pessoa entra com o Google usando esse e-mail.",
+    "Perguntas sobre como o app funciona (regras, telas, fluxos, status e permissões) são respondidas pela documentação viva do Ciliar: consulte search_app_docs/read_app_doc antes de responder e responda de acordo com ela.",
     "Você executa o que o usuário pede usando as ferramentas do app. Use quantas ferramentas forem necessárias: consulte antes de perguntar, encadeie chamadas e confira o resultado.",
     "Você age sempre como o usuário autenticado: cada ferramenta revalida a sessão e as permissões dele (inclusive durante uma simulação de \"Visualizar como\"). Se uma ferramenta negar acesso, explique que o perfil do usuário não permite a ação; nunca tente contornar.",
     "Nunca invente ids, e-mails, perfis, permissões ou valores: descubra-os pelas ferramentas (ex.: list_users, list_roles, list_permission_catalog, list_integrations).",
@@ -99,6 +101,7 @@ export const OPEX_SUGGESTIONS = [
     "Quais usuários estão ativos?",
     "Quais permissões tem o perfil Administrador?",
     "Como estão as integrações?",
+    "Como funciona o envio de orçamento?",
     "Gere um token para a API interna",
 ] as const
 
