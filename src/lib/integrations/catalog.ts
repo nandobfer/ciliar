@@ -176,6 +176,8 @@ export const HEALTH_CHECK_JOB_ID = "integrations-health-check"
 export const OPEX_FILES_CLEANUP_JOB_ID = "opex-files-cleanup"
 /** Exclusão definitiva dos negócios e itens do espaço arquivados depois do prazo de cada tipo na Plataforma (+ envios pendentes). */
 export const BUSINESSES_PURGE_JOB_ID = "businesses-purge"
+/** Google Agenda (Calendário): renova os canais de notificação, sincroniza com `syncToken` (garantia do push) e reprocessa a fila de publicação. */
+export const CALENDAR_GOOGLE_SYNC_JOB_ID = "calendar-google-sync"
 
 /** Rotinas internas que processam tarefas e deixam escolher o escopo (`scope`). */
 const SCOPED_CRON_JOB_IDS = new Set<string>()
@@ -211,6 +213,13 @@ export const DEFAULT_CRON_JOBS: CronJobConfig[] = [
         label: "Excluir definitivamente os negócios e itens arquivados após o prazo",
         kind: "internal",
         schedule: { type: "interval", minutes: 60 },
+        enabled: true,
+    },
+    {
+        id: CALENDAR_GOOGLE_SYNC_JOB_ID,
+        label: "Sincronizar o Google Agenda do Calendário",
+        kind: "internal",
+        schedule: { type: "interval", minutes: 15 },
         enabled: true,
     },
 ]

@@ -150,6 +150,9 @@ export async function generateOrderTitle(orderId: string): Promise<void> {
             }
         })
         await publishSpaceChanged(source.ownerId, source.businessId, "orders")
+        // Título novo também no Google Agenda (opcional).
+        const { markCalendarDirty } = await import("@/features/calendar/server/google/publish")
+        await markCalendarDirty(source.ownerId, { businessId: source.businessId, orderId })
     } catch (error) {
         const message = error instanceof Error ? error.message : "Falha ao gerar o título por IA"
         log.warn({ err: message, orderId }, "[pedidos] falha na geração por IA")

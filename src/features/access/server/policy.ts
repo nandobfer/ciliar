@@ -8,7 +8,7 @@ import { isIntegrationId } from "@/lib/integrations/catalog"
  */
 export function requiresPanel(path: string): boolean {
     if (path === "/api/me" || path.startsWith("/api/me/") || path.startsWith("/api/access/view-as") || path === "/api/pusher/auth") return false
-    return !/^\/api\/(?:businesses|interview|opex|clients|orders|works)(?:\/|$)/.test(path)
+    return !/^\/api\/(?:businesses|interview|opex|clients|orders|works|calendar)(?:\/|$)/.test(path)
 }
 
 /** Lista explícita de capacidades. Rotas desconhecidas nunca recebem autorização por padrão. */
@@ -64,6 +64,9 @@ export function businessRoutePermissions(path: string, method: string): string[]
     if (/^\/api\/interview(?:\/|$)/.test(path)) return ["businesses.use", "businesses.create"]
     if (/^\/api\/clients(?:\/[a-f\d]{24}(?:\/(?:archive|restore))?)?$/i.test(path)) return write(method === "DELETE" ? "clients.delete" : "clients.edit")
     if (path === "/api/orders" || path === "/api/works" || path === "/api/works/payment-methods") return read ? [] : null // requireModuleRead no serviço
+    // Calendário: eventos e conflito conferem no serviço (calendário, pedidos/trabalhos ou suporte); o Google exige só calendar.view.
+    if (path === "/api/calendar/events" || path === "/api/calendar/conflict") return read ? [] : null
+    if (/^\/api\/calendar\/google(?:\/(?:connect|calendars|settings|sync|republish))?$/.test(path)) return ["businesses.use", "calendar.view"]
     const match = new RegExp(`^/api/businesses/(${ID})(?:/(.*))?$`, "i").exec(path)
     if (!match) return null
     const tail = match[2] ?? ""

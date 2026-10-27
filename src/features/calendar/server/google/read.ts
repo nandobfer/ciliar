@@ -1,0 +1,116 @@
+import type { Interval } from "../../conflict"
+import { GOOGLE_READ_CACHE_MS } from "../../constants"
+import { dayStart, dayKeyOf } from "../../time"
+import type { CalendarEventDto } from "../../types"
+import { calendarApi, type GoogleEvent } from "./client"
+import { accessTokenOf, inBackoff, loadConnection, recordGoogleFailure, recordGoogleSuccess } from "./connection"
+
+/**
+ * Leitura das agendas marcadas pelo usuário (somente consulta): eventos para exibir e os "ocupados"
+ * para a capacidade. Sob demanda, com cache curto por dono e período. Eventos publicados pelo próprio
+ * Ciliar (`extendedProperties.private.ciliar`) ficam de fora (não contam em dobro). Falha do Google
+ * devolve `error` e o resto do calendário continua.
+ */
+
+export interface GoogleReadResult {
+    events: CalendarEventDto[]
+    busy: Interval[]
+    error: string | null
+}
+
+const cache = new Map<string, { at: number; value: GoogleReadResult }>()
+
+export function clearGoogleReadCache(ownerId?: string): void {
+    if (!ownerId) return cache.clear()
+    for (const key of cache.keys()) if (key.startsWith(`${ownerId}|`)) cache.delete(key)
+}
+
+const EMPTY: GoogleReadResult = { events: [], busy: [], error: null }
+
+/** Evento "ocupado": opaco, não cancelado e não recusado pelo próprio usuário. */
+export function isBusyEvent(event: GoogleEvent): boolean {
+    if (event.status === "cancelled" || event.transparency === "transparent") return false
+    const self = event.attendees?.find((attendee) => attendee.self)
+    return self?.responseStatus !== "declined"
+}
+
+/** Intervalo do evento em ms (dia inteiro no fuso do usuário; com hora, convertido pelo ISO). */
+export function eventInterval(event: GoogleEvent, timeZone: string): Interval | null {
+    if (event.start?.date && event.end?.date) return [dayStart(event.start.date, timeZone), dayStart(event.end.date, timeZone)]
+    if (event.start?.dateTime && event.end?.dateTime) {
+        const start = Date.parse(event.start.dateTime)
+        const end = Date.parse(event.end.dateTime)
+        return Number.isFinite(start) && Number.isFinite(end) && end > start ? [start, end] : null
+    }
+    return null
+}
+
+export async function readGoogleEvents(ownerId: string, from: number, to: number, timeZone: string): Promise<GoogleReadResult> {
+    const connection = await loadConnection(ownerId)
+    if (!connection || connection.status === "reauth" || !(connection.readCalendars ?? []).length) return EMPTY
+    if (inBackoff(connection)) return { ...EMPTY, error: connection.lastError ?? "Google Agenda em espera pela cota." }
+    const key = `${ownerId}|${from}|${to}|${timeZone}|${connection.readCalendars.map((calendar) => calendar.id).join(",")}`
+    const cached = cache.get(key)
+    if (cached && Date.now() - cached.at < GOOGLE_READ_CACHE_MS) return cached.value
+    try {
+        const token = await accessTokenOf(connection)
+        const events: CalendarEventDto[] = []
+        const busy: Interval[] = []
+        for (const calendar of connection.readCalendars) {
+            let pageToken: string | undefined
+            do {
+                const page = await calendarApi.listEvents(token, calendar.id, {
+                    singleEvents: "true",
+                    orderBy: "startTime",
+                    timeMin: new Date(from).toISOString(),
+                    timeMax: new Date(to).toISOString(),
+                    maxResults: "250",
+                    ...(pageToken ? { pageToken } : {}),
+                })
+                for (const item of page.items ?? []) {
+                    if (item.status === "cancelled" || item.extendedProperties?.private?.ciliar === "1") continue
+                    const interval = eventInterval(item, timeZone)
+                    if (!interval) continue
+                    const allDay = Boolean(item.start?.date)
+                    const isBusy = isBusyEvent(item)
+                    if (isBusy) busy.push(interval)
+                    events.push({
+                        id: `google:${calendar.id}:${item.id}`,
+                        kind: "google",
+                        businessId: null,
+                        businessName: null,
+                        color: calendar.color ?? "#6b7280",
+                        title: item.summary?.trim() || "(Sem título)",
+                        subtitle: calendar.name,
+                        allDay,
+                        start: allDay ? item.start!.date! : new Date(interval[0]).toISOString(),
+                        // Dia inteiro: o fim do Google é exclusivo; aqui o fim é inclusivo.
+                        end: allDay ? dayKeyOf(interval[1] - 1, timeZone) : new Date(interval[1]).toISOString(),
+                        workId: null,
+                        orderId: null,
+                        code: null,
+                        statusLabel: isBusy ? "Ocupado" : "Livre",
+                        orderStatus: null,
+                        column: null,
+                        deadlineLabel: null,
+                        deadlineOverdue: false,
+                        conflict: null,
+                        draggable: false,
+                        version: null,
+                        minutes: null,
+                        details: null,
+                        google: { calendarId: calendar.id, calendarName: calendar.name, htmlLink: item.htmlLink ?? null, busy: isBusy },
+                        googleLink: null,
+                    })
+                }
+                pageToken = page.nextPageToken
+            } while (pageToken)
+        }
+        await recordGoogleSuccess(connection)
+        const value = { events, busy, error: null }
+        cache.set(key, { at: Date.now(), value })
+        return value
+    } catch (error) {
+        return { ...EMPTY, error: await recordGoogleFailure(connection, error) }
+    }
+}

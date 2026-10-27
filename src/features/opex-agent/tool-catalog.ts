@@ -907,6 +907,35 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         description: "Exclui definitivamente um item avulso ARQUIVADO com as imagens (irreversível).",
     },
 
+    // ── Calendário (CIL-4) ──────────────────────────────────────────────────────────
+    {
+        name: "list_calendar_events",
+        group: "calendar",
+        label: "Ler calendário",
+        risk: "read",
+        access: { any: ["calendar.view", "businesses.view_all"] },
+        description:
+            "Calendário do usuário num período (até 62 dias, AAAA-MM-DD), opcionalmente de um negócio e por tipos: prazos e períodos (aceite → prazo) dos trabalhos em andamento, prazos dos pedidos abertos (Rascunho/Enviado), horas apontadas por dia e eventos das agendas Google lidas. Inclui o expediente (janelas por dia), as marcações de conflito (info = sobreposição, strong = capacidade insuficiente) e o estado da conexão Google. Prazos de trabalhos/pedidos exigem Trabalhos/Pedidos › Visualizar.",
+    },
+    {
+        name: "check_deadline_conflict",
+        group: "calendar",
+        label: "Verificar conflito de prazo",
+        risk: "read",
+        access: { any: ["calendar.view", "orders.view", "works.view", "businesses.view_all"] },
+        description:
+            "Verifica o conflito de um prazo (nunca bloqueia): por uma data e horas estimadas (minutos), ou a partir de um pedido ou trabalho (businessId + orderId/workId; a data informada substitui a dele). Devolve a sobreposição com os trabalhos em andamento (aviso informativo) e a capacidade: expediente de agora até o prazo em todos os negócios ativos, ocupação (horas restantes dos trabalhos + eventos ocupados do Google), horas livres e se faltam horas (alerta forte).",
+    },
+    {
+        name: "sync_google_calendar",
+        group: "calendar",
+        label: "Sincronizar Google Agenda",
+        risk: "write",
+        access: { all: ["businesses.use", "calendar.view"] },
+        description:
+            "Sincroniza agora o Google Agenda conectado: aplica as datas movidas no Google (prazo do trabalho/pedido aberto), publica as pendências na agenda de publicação e renova o canal de notificação. Conectar, desconectar e escolher as agendas só pela tela (credencial).",
+    },
+
     // ── Memórias dos agentes ──────────────────────────────────────────────────
     {
         name: "list_agent_memories",
@@ -1206,7 +1235,7 @@ export const OPEX_ALWAYS_ON_TOOLS = new Set(OPEX_TOOL_CATALOG.filter((tool) => t
 const has = (permissions: ReadonlySet<string>, key: string) => permissions.has("*") || permissions.has(key)
 
 /** Grupos do prestador: não exigem o painel. Os demais (administração) exigem também `admin.access`. */
-export const OPEX_NO_PANEL_GROUPS: ReadonlySet<OpexToolGroup> = new Set<OpexToolGroup>(["context", "files", "businesses", "business-activities", "business-goals", "business-documents", "business-successes", "clients", "orders", "work-columns", "works", "work-time", "work-notes", "portfolio", "portfolio-items"])
+export const OPEX_NO_PANEL_GROUPS: ReadonlySet<OpexToolGroup> = new Set<OpexToolGroup>(["context", "files", "businesses", "business-activities", "business-goals", "business-documents", "business-successes", "clients", "orders", "work-columns", "works", "work-time", "work-notes", "portfolio", "portfolio-items", "calendar"])
 
 /** As permissões efetivas liberam a ferramenta? (Revalidado no servidor antes de cada execução.) */
 export function canUseOpexTool(meta: Pick<OpexToolMeta, "access" | "group">, permissions: ReadonlySet<string>): boolean {

@@ -80,7 +80,7 @@ export const BUSINESS_ITEM_AUDIT: Record<BusinessItemKind, string> = { activitie
 /** Segmento da API de cada tipo (`/api/businesses/[id]/<segmento>`). */
 export const BUSINESS_ITEM_PATHS: Record<BusinessItemKind, string> = { activities: "activities", goals: "goals", documents: "documents", successes: "successes", portfolioItems: "portfolio-items" }
 /** Invalidações do espaço (`business-space-updated`): os itens do M2, os pedidos (M3), os trabalhos (M4) e o portfólio (M5). */
-export type BusinessSpaceKind = BusinessItemKind | "orders" | "works" | "portfolio"
+export type BusinessSpaceKind = BusinessItemKind | "orders" | "works" | "portfolio" | "calendar"
 export const BUSINESS_ITEM_LABELS: Record<BusinessItemKind, { one: string; many: string }> = {
     activities: { one: "Atividade", many: "Atividades" },
     goals: { one: "Meta", many: "Metas" },
@@ -116,6 +116,7 @@ export const BUSINESS_SPACE_SECTIONS = [
     { slug: "sucessos", label: "Sucessos" },
     { slug: "pedidos", label: "Pedidos" },
     { slug: "trabalhos", label: "Trabalhos" },
+    { slug: "calendario", label: "Calendário" },
     { slug: "portfolio", label: "Portfólio" },
 ] as const
 export type BusinessSpaceSlug = (typeof BUSINESS_SPACE_SECTIONS)[number]["slug"]

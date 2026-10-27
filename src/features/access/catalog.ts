@@ -65,6 +65,9 @@ export const PERMISSION_TREE = [
             { key: "portfolio.edit", label: "Editar o conteúdo, as seções, a indexação e os itens avulsos" },
             { key: "portfolio.publish", label: "Publicar, despublicar e trocar o endereço", sensitive: true },
         ] },
+        { id: "negocios_calendario", label: "Calendário", viewKey: "calendar.view", children: [
+            { key: "calendar.view", label: "Ver o calendário e conectar o Google Agenda", description: "Os eventos seguem Pedidos › Visualizar e Trabalhos › Visualizar; criar e mover prazos exigem as edições deles." },
+        ] },
         { id: "negocios_suporte", label: "Suporte", children: [
             { key: "businesses.view_all", label: "Ver negócios, entrevistas e todos os módulos de outros usuários (somente leitura, auditado)", sensitive: true },
         ] },

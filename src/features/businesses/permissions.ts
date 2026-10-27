@@ -16,7 +16,7 @@ export const BUSINESS_PERMISSIONS = {
     viewAll: "businesses.view_all",
 } as const
 
-export const BUSINESS_MODULES = ["activities", "goals", "documents", "successes", "clients", "orders", "works", "portfolio"] as const
+export const BUSINESS_MODULES = ["activities", "goals", "documents", "successes", "clients", "orders", "works", "portfolio", "calendar"] as const
 export type BusinessModule = (typeof BUSINESS_MODULES)[number]
 
 export const BUSINESS_MODULE_LABELS: Record<BusinessModule, string> = {
@@ -28,6 +28,7 @@ export const BUSINESS_MODULE_LABELS: Record<BusinessModule, string> = {
     orders: "Pedidos",
     works: "Trabalhos",
     portfolio: "Portfólio",
+    calendar: "Calendário",
 }
 
 /** Ações de cada módulo (a primeira é a visualização). */
@@ -40,6 +41,8 @@ export const BUSINESS_MODULE_ACTIONS = {
     orders: ["view", "edit", "send", "decide"],
     works: ["view", "edit", "columns", "payment", "delete"],
     portfolio: ["view", "edit", "publish"],
+    // O calendário só lê (prazos, períodos e horas); criar e mover usam as chaves de Pedidos e Trabalhos.
+    calendar: ["view"],
 } as const satisfies Record<BusinessModule, readonly string[]>
 
 export type BusinessModuleAction<M extends BusinessModule = BusinessModule> = (typeof BUSINESS_MODULE_ACTIONS)[M][number]
@@ -128,6 +131,7 @@ export const BUSINESS_SECTION_MODULES: Readonly<Record<string, BusinessModule>> 
     portfolio: "portfolio",
     portfolioItems: "portfolio",
     "portfolio-items": "portfolio",
+    calendar: "calendar",
 }
 
 /** Módulo da seção (`works.columns` → `works`); `null` para a ficha, arquivos etc. */
@@ -143,6 +147,7 @@ export function businessRouteAccess(pathname: string): ((can: Can) => boolean) |
     if (pathname === "/clientes" || pathname.startsWith("/clientes/")) return (can) => canReadModule(can, "clients")
     if (pathname === "/pedidos" || pathname.startsWith("/pedidos/")) return (can) => canReadModule(can, "orders")
     if (pathname === "/trabalhos" || pathname.startsWith("/trabalhos/")) return (can) => canReadModule(can, "works")
+    if (pathname === "/calendario" || pathname.startsWith("/calendario/")) return (can) => canReadModule(can, "calendar")
     if (pathname.startsWith("/previa-portfolio/")) return (can) => canReadModule(can, "portfolio")
     if (pathname === "/negocios/novo") return (can) => can(BUSINESS_PERMISSIONS.use) && can(BUSINESS_PERMISSIONS.create)
     if (pathname === "/negocios" || pathname.startsWith("/negocios/")) {
@@ -162,4 +167,5 @@ export const BUSINESS_SPACE_SEGMENT_MODULES: Readonly<Record<string, BusinessMod
     pedidos: "orders",
     trabalhos: "works",
     portfolio: "portfolio",
+    calendario: "calendar",
 }

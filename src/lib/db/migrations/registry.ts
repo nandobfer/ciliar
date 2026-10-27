@@ -12,6 +12,8 @@ import { ensureBusinessIndexes } from "./ensure-business-indexes"
 import { ensureAgentMemoryIndexes } from "./ensure-agent-memory-indexes"
 import { expandBusinessPermissions } from "./expand-business-permissions"
 import { convertPortfolioBlocks } from "./convert-portfolio-blocks"
+import { ensureCalendarIndexes } from "./ensure-calendar-indexes"
+import { grantCalendarPermission } from "./grant-calendar-permission"
 
 registerMigrations(
     { name: "seed-integrations-from-env", run: () => seedIntegrationsFromEnv() },
@@ -23,4 +25,6 @@ registerMigrations(
     { name: "ensure-agent-memory-indexes", run: () => ensureAgentMemoryIndexes() },
     { name: "expand-business-permissions", run: async () => void (await expandBusinessPermissions()) },
     { name: "convert-portfolio-blocks", run: async () => void (await convertPortfolioBlocks()) },
+    { name: "ensure-calendar-indexes", run: () => ensureCalendarIndexes() },
+    { name: "grant-calendar-permission", run: async () => void (await grantCalendarPermission()) },
 )

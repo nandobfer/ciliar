@@ -1,7 +1,7 @@
 import { hostname } from "os"
 import { dbConnect } from "@/lib/db"
 import { CronJobState } from "@/lib/db/models/CronJobState"
-import { BUSINESSES_PURGE_JOB_ID, HEALTH_CHECK_JOB_ID, OPEX_FILES_CLEANUP_JOB_ID, type CronJobConfig } from "@/lib/integrations/catalog"
+import { BUSINESSES_PURGE_JOB_ID, CALENDAR_GOOGLE_SYNC_JOB_ID, HEALTH_CHECK_JOB_ID, OPEX_FILES_CLEANUP_JOB_ID, type CronJobConfig } from "@/lib/integrations/catalog"
 import { getIntegrationConfig, getInternalBaseUrl } from "@/lib/integrations/config"
 import { integrationDebug } from "@/lib/integrations/debug"
 import { nextRunAt, scheduleSignature, validateSchedule } from "@/lib/integrations/schedule"
@@ -295,6 +295,10 @@ export function registerBuiltInJobs(): void {
         const images = await cleanupPendingInterviewFiles()
         const files = await cleanupPendingBusinessFiles()
         return [purged, items, works, clients, images ? `${images} imagem(ns) pendente(s) da entrevista removida(s)` : null, files ? `${files} arquivo(s) pendente(s) do espaço removido(s)` : null].filter(Boolean).join("; ")
+    })
+    registerInternalJob(CALENDAR_GOOGLE_SYNC_JOB_ID, async () => {
+        const { runCalendarGoogleSync } = await import("@/features/calendar/server/google/cron")
+        return runCalendarGoogleSync()
     })
 }
 

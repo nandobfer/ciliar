@@ -28,6 +28,7 @@ import { firstLine, formatMinutes, itemSubtotalCents, parseHoursInput, suggested
 import { clientCreateSchema, orderCreateSchema, orderUpdateSchema } from "../schemas"
 import type { OrderDto } from "../types"
 import { useClients, useRegenerateOrderTitle } from "../hooks/useOrders"
+import { DeadlineConflictNotice } from "@/features/calendar/components/DeadlineConflictAlert"
 
 interface ItemDraft {
     key: string
@@ -75,6 +76,7 @@ export function OrderForm({
     pending,
     onSubmit,
     onCancel,
+    initialDueDate,
 }: {
     business: BusinessDetailDto
     order: OrderDto | null
@@ -82,12 +84,14 @@ export function OrderForm({
     pending: boolean
     onSubmit: (data: Record<string, unknown>) => Promise<boolean>
     onCancel: () => void
+    /** Novo pedido já com o prazo (criado pelo Calendário). */
+    initialDueDate?: string
 }) {
     const reduceMotion = useReducedMotion()
     const clients = useClients()
     const activities = useItemList(business.id, "activities")
     const uploads = useBusinessUploads(business.id, "order")
-    const [draft, setDraft] = useState<Draft>(() => draftOf(order))
+    const [draft, setDraft] = useState<Draft>(() => (initialDueDate && !order ? { ...draftOf(order), dueDate: initialDueDate } : draftOf(order)))
     const [baseline, setBaseline] = useState<Draft>(() => draftOf(order))
     const [base, setBase] = useState(order?.version ?? -1)
     const [newClient, setNewClient] = useState<{ name: string; email: string; phone: string } | null>(null)
@@ -316,6 +320,11 @@ export function OrderForm({
                     <Field id="order-due" label="Data de entrega (prazo)">
                         <DatePicker id="order-due" value={draft.dueDate} onChange={(value) => patch({ dueDate: value })} inputDisabled={disabled} />
                     </Field>
+                    {/* Calendário (CIL-4): conflito de prazo ao definir ou alterar a data (só avisa). */}
+                    <DeadlineConflictNotice
+                        enabled={!readOnly && Boolean(draft.dueDate) && draft.dueDate !== baseline.dueDate}
+                        params={{ businessId: business.id, dueDate: draft.dueDate, estimatedMinutes: parsedItems.reduce((sum, item) => sum + (item.minutes ?? 0), 0), orderId: order?.id ?? null }}
+                    />
                 </CardContent>
             </Card>
 

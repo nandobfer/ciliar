@@ -34,6 +34,7 @@ import { timeEntryValueCents } from "../logic"
 import { workUpdateSchema } from "../schemas"
 import type { TimeEntryDto, WorkDetailDto } from "../types"
 import { useDeleteTimeEntry, useSaveTimeEntry, useUpdateWork, useWorkAttachments, useWorkNote } from "../hooks/useWorks"
+import { DeadlineConflictNotice } from "@/features/calendar/components/DeadlineConflictAlert"
 
 const dateTime = (iso: string) => new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })
 
@@ -205,6 +206,11 @@ export function OrderDataSection({ work }: SectionProps) {
                 <Field id="work-due" label="Data de entrega (prazo)">
                     <DatePicker id="work-due" value={draft.dueDate} onChange={(value) => patch({ dueDate: value })} inputDisabled={disabled} />
                 </Field>
+                {/* Calendário (CIL-4): conflito ao alterar o prazo (W1); horas restantes = estimadas − apontadas. Só avisa. */}
+                <DeadlineConflictNotice
+                    enabled={!readOnly && Boolean(draft.dueDate) && draft.dueDate !== baseline.dueDate}
+                    params={{ businessId: work.businessId, workId: work.id, dueDate: draft.dueDate, estimatedMinutes: Math.max(0, parsedItems.reduce((sum, item) => sum + (item.minutes ?? 0), 0) - work.loggedMinutes) }}
+                />
                 {error && (
                     <p role="alert" className="text-sm text-destructive">
                         {error}
