@@ -17,7 +17,7 @@ const styleTag = () => document.getElementById("ciliar-business-theme")
 
 describe("tema do negócio na tela", () => {
     beforeEach(() => {
-        document.documentElement.className = "dark"
+        document.documentElement.className = ""
         state.pathname = "/negocios"
         state.business = { id: ID, theme: { primaryColor: "#FF6600", mode: "light" } }
     })
@@ -26,21 +26,25 @@ describe("tema do negócio na tela", () => {
         act(() => setThemePreview(null))
     })
 
-    it("telas globais ficam no padrão; no espaço vale a cor como regra :root e o modo claro troca a classe do <html>", () => {
+    it("telas globais ficam no padrão claro; no espaço vale a cor como regra :root e só o modo escuro põe .dark no <html>", () => {
         const view = render(<BusinessThemeController />)
         expect(styleTag()).toBeNull()
-        expect(document.documentElement.classList.contains("dark")).toBe(true)
+        expect(document.documentElement.className).toBe("")
 
         state.pathname = `/negocios/${ID}/atividades`
         view.rerender(<BusinessThemeController />)
-        expect(styleTag()?.textContent).toContain(":root, :root.light {")
-        expect(document.documentElement.classList.contains("light")).toBe(true)
+        expect(styleTag()?.textContent).toContain(":root, :root.dark {")
+        expect(styleTag()?.textContent).toContain("--sidebar:")
         expect(document.documentElement.classList.contains("dark")).toBe(false)
+
+        state.business = { id: ID, theme: { primaryColor: "#FF6600", mode: "dark" } }
+        view.rerender(<BusinessThemeController />)
+        expect(document.documentElement.classList.contains("dark")).toBe(true)
 
         state.pathname = "/negocios"
         view.rerender(<BusinessThemeController />)
         expect(styleTag()).toBeNull()
-        expect(document.documentElement.className).toBe("dark")
+        expect(document.documentElement.className).toBe("")
     })
 
     it("pré-visualização ao vivo da ficha vence o tema salvo até sair", () => {

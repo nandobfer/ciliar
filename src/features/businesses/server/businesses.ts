@@ -73,7 +73,7 @@ export function toBusinessDto(doc: BusinessDoc, retentionDays: number, ownerName
         links: doc.links ?? [],
         availability: (doc.availability ?? []).map((day) => ({ weekday: day.weekday, start: day.start ?? null, end: day.end ?? null })),
         currency: doc.currency ?? DEFAULT_CURRENCY,
-        theme: { primaryColor: doc.theme?.primaryColor ?? DEFAULT_BUSINESS_THEME.primaryColor, mode: doc.theme?.mode === "light" ? "light" : "dark" },
+        theme: { primaryColor: doc.theme?.primaryColor ?? DEFAULT_BUSINESS_THEME.primaryColor, mode: doc.theme?.mode === "dark" ? "dark" : "light" },
         contactEmail: doc.contactEmail ?? null,
         contactPhone: doc.contactPhone ?? null,
         deadlineAlertDays: doc.deadlineAlertDays ?? DEFAULT_DEADLINE_ALERT_DAYS,
@@ -195,8 +195,29 @@ export async function listBusinesses(access: AccessContext, query: { status?: "a
         .sort({ status: 1, createdAt: 1 })
         .lean<BusinessDoc[]>()
     if (support) await auditBusiness(access, "business.support_list", ownerId, null, { count: docs.length })
-    const [days, names] = await Promise.all([retentionDays(), ownerNames([ownerId])])
-    return { items: docs.map((doc) => toBusinessDto(doc, days, names.get(ownerId) ?? null)), capacity: await businessCapacity(access) }
+    const [days, names, accessed] = await Promise.all([retentionDays(), ownerNames([ownerId]), lastAccesses(access.userId, docs.map((doc) => doc._id.toString()))])
+    return {
+        items: docs.map((doc) => ({ ...toBusinessDto(doc, days, names.get(ownerId) ?? null), lastAccessedAt: accessed.get(doc._id.toString()) ?? null })),
+        capacity: await businessCapacity(access),
+    }
+}
+
+/** Últimos acessos do usuário real aos negócios (ISO). */
+async function lastAccesses(userId: string, businessIds: readonly string[]): Promise<Map<string, string>> {
+    if (!businessIds.length) return new Map()
+    const rows = await businessModels().accesses.find({ userId, businessId: { $in: businessIds } }).lean()
+    return new Map(rows.map((row) => [row.businessId, new Date(row.accessedAt).toISOString()]))
+}
+
+/**
+ * Registra o acesso ao espaço do negócio (ordena o seletor do cabeçalho). Sempre do ator REAL — na
+ * simulação também —, sem auditoria nem versão: não altera o negócio. Só de negócio visível.
+ */
+export async function recordBusinessAccess(access: AccessContext, id: string, now: Date = new Date()): Promise<{ id: string; accessedAt: string }> {
+    await loadVisibleBusiness(access, id, { audit: false })
+    await ensureBusinessCollections()
+    await businessModels().accesses.updateOne({ userId: access.userId, businessId: id }, { $set: { accessedAt: now } }, { upsert: true })
+    return { id, accessedAt: now.toISOString() }
 }
 
 /** Busca no suporte: negócios de todos os usuários por nome (somente `businesses.view_all`). */
@@ -333,6 +354,7 @@ async function deleteBusinessData(doc: BusinessDoc, session: ClientSession): Pro
     await models.interviewMessages.deleteMany({ interviewId: { $in: interviewIds } }, { session })
     await models.interviewFiles.deleteMany({ interviewId: { $in: interviewIds } }, { session })
     await models.interviews.deleteMany({ _id: { $in: interviewIds } }, { session })
+    await models.accesses.deleteMany({ businessId: id }, { session })
     await models.businesses.deleteOne({ _id: doc._id }, { session })
     return [doc.logo?.key, ...[...files, ...spaceFiles].flatMap((file) => [file.key, file.uploadKey])].filter((key): key is string => Boolean(key))
 }

@@ -2,7 +2,7 @@ import { EditorView } from "@codemirror/view"
 
 const MONO = "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
 
-/** Tema do editor Vim pelos tokens do tema escuro (mesma aparência do `<textarea>`). */
+/** Tema do editor Vim pelos tokens do tema (claro ou escuro; mesma aparência do `<textarea>`). */
 export const vimTheme = EditorView.theme(
     {
         "&": { flex: "1 1 auto", minWidth: "0", maxHeight: "60vh", color: "hsl(var(--foreground))", backgroundColor: "transparent", fontSize: "0.875rem" },
@@ -26,5 +26,4 @@ export const vimTheme = EditorView.theme(
         ".cm-activeLineGutter": { backgroundColor: "transparent", color: "hsl(var(--primary))", fontWeight: "600" },
         ".cm-searchMatch": { backgroundColor: "hsl(var(--primary) / 0.25)" },
     },
-    { dark: true },
 )

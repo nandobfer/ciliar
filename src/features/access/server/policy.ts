@@ -72,6 +72,8 @@ export function businessRoutePermissions(path: string, method: string): string[]
     if (tail === "archive" || tail === "restore") return write("businesses.archive")
     if (tail === "logo") return write("businesses.edit")
     if (tail === "interview" || tail === "dashboard" || tail === "categories") return read ? [] : null
+    // Último acesso (ordena o seletor): o serviço confere o negócio visível (dono ou suporte).
+    if (tail === "access") return method === "POST" ? [] : null
     // Arquivos: a finalidade decide a edição exigida (BUSINESS_FILE_PERMISSIONS, no serviço).
     if (new RegExp(`^files(?:/${ID}(?:/complete)?)?$`, "i").test(tail)) return write()
     // Itens do espaço (M2) e itens avulsos do portfólio (M5).

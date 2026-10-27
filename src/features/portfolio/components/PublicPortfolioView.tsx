@@ -1,5 +1,6 @@
 "use client"
 
+import { applyDocumentMode } from '@/lib/ui/document-theme';
 import { useCallback, useEffect, useState, type MouseEvent, type ReactNode } from "react"
 import { motion, useReducedMotion } from "framer-motion"
 import { businessThemeCss, businessThemeStyle } from "@/features/businesses/theme"
@@ -13,19 +14,18 @@ import { BlocksView, PortfolioContactView, PortfolioHeaderView, type OpenFile } 
  * por URL assinada de curta duração: vencida, `refresh` relê o portfólio antes de abrir/baixar.
  */
 
-/** Tema do negócio no documento inteiro (inclusive o modo claro), como no link do orçamento. */
+/** Tema do negócio no documento inteiro (inclusive o modo escuro), como no link do orçamento. */
 export function useDocumentBusinessTheme(theme: PublicPortfolioDto["business"]["theme"] | null) {
     useEffect(() => {
         if (!theme) return
-        const html = document.documentElement
-        const light = theme.mode === "light"
-        html.classList.toggle("light", light)
-        html.classList.toggle("dark", !light)
-        html.style.colorScheme = light ? "light" : "dark"
+        const restoreMode = applyDocumentMode(theme.mode)
         const style = document.createElement("style")
         style.textContent = businessThemeCss(theme)
         document.head.appendChild(style)
-        return () => style.remove()
+        return () => {
+            style.remove()
+            restoreMode()
+        }
     }, [theme])
 }
 

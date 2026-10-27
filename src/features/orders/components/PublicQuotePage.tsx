@@ -1,5 +1,6 @@
 "use client"
 
+import { applyDocumentMode } from '@/lib/ui/document-theme';
 import { useEffect, useState } from "react"
 import { format } from "date-fns"
 import { motion, useReducedMotion } from "framer-motion"
@@ -32,18 +33,17 @@ export function PublicQuotePage({ token, initial, error }: { token: string; init
     const [quote, setQuote] = useState(initial)
     const theme = quote?.business.theme ?? null
 
-    // Tema do negócio no documento inteiro (inclusive o modo claro).
+    // Tema do negócio no documento inteiro (inclusive o modo escuro).
     useEffect(() => {
         if (!theme) return
-        const html = document.documentElement
-        const light = theme.mode === "light"
-        html.classList.toggle("light", light)
-        html.classList.toggle("dark", !light)
-        html.style.colorScheme = light ? "light" : "dark"
+        const restoreMode = applyDocumentMode(theme.mode)
         const style = document.createElement("style")
         style.textContent = businessThemeCss(theme)
         document.head.appendChild(style)
-        return () => style.remove()
+        return () => {
+            style.remove()
+            restoreMode()
+        }
     }, [theme])
 
     if (!quote) {

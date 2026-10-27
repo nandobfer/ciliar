@@ -26,6 +26,11 @@ interface DateRangeCalendarProps {
     onChange: (value: DateRangeValue) => void
     placeholder?: string
     className?: string
+    /** Primeiro dia selecion√°vel (ex.: hoje); antes dele os dias ficam desabilitados. */
+    minDate?: Date
+    disabled?: boolean
+    id?: string
+    "aria-invalid"?: boolean
 }
 
 const ISO = "yyyy-MM-dd"
@@ -50,7 +55,7 @@ export function formatRangeLabel(startDate: string, endDate: string, placeholder
     return `${display(startDate)} - ${display(endDate)}`
 }
 
-function DateRangeCalendarImpl({ value, onChange, placeholder = "Selecionar per√≠odo", className }: DateRangeCalendarProps) {
+function DateRangeCalendarImpl({ value, onChange, placeholder = "Selecionar per√≠odo", className, minDate, disabled, id, "aria-invalid": invalid }: DateRangeCalendarProps) {
     const [open, setOpen] = React.useState(false)
     const [hoveredDate, setHoveredDate] = React.useState<Date | undefined>(undefined)
     const selectedFrom = parseIsoDate(value.startDate)
@@ -89,7 +94,14 @@ function DateRangeCalendarImpl({ value, onChange, placeholder = "Selecionar per√
     return (
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-                <Button type="button" variant="outline" className={cn("h-10 w-full justify-start truncate px-3 text-left font-normal", !hasValue && "text-muted-foreground", className)}>
+                <Button
+                    id={id}
+                    type="button"
+                    variant="outline"
+                    disabled={disabled}
+                    aria-invalid={invalid}
+                    className={cn("h-10 w-full justify-start truncate px-3 text-left font-normal", !hasValue && "text-muted-foreground", invalid && "border-destructive", className)}
+                >
                     <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
                     <span className="truncate">{formatRangeLabel(value.startDate, value.endDate, placeholder)}</span>
                 </Button>
@@ -98,7 +110,8 @@ function DateRangeCalendarImpl({ value, onChange, placeholder = "Selecionar per√
                 <Calendar
                     mode="range"
                     selected={selected}
-                    defaultMonth={selected?.from ?? selected?.to}
+                    defaultMonth={selected?.from ?? selected?.to ?? minDate}
+                    {...(minDate ? { disabled: { before: startOfDay(minDate) }, startMonth: startOfDay(minDate) } : {})}
                     onDayClick={handleDayClick}
                     onDayMouseEnter={(date) => {
                         if (value.startDate && !value.endDate) setHoveredDate(date)

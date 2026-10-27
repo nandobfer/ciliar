@@ -5,11 +5,12 @@ Leia `aicontext/README.md` e o guia do módulo antes de desenvolver.
 - App Next.js único com pnpm; TypeScript estrito; rotas em `src/app`, regras em `src/features`,
   infraestrutura em `src/lib`, UI compartilhada em `src/components`.
 - Base copiada do Opex. Preserve os componentes e bibliotecas existentes; não reescreva a UI.
-- Tema escuro fixo, primária `#0B57C4` (azul do crm-marketing-campanhas), cores por tokens. Shadcn/Radix, Tailwind 4, lucide-react,
+- Tema claro (cópia do visual do crm-marketing-campanhas: tokens, componentes, sidebar em degradê e cabeçalho com seletor de
+  negócio), primária `#0B57C4`, cores por tokens; o login continua escuro. Shadcn/Radix, Tailwind 4, lucide-react,
   sonner, date-fns e Framer Motion (respeitando movimento reduzido).
 - Escopo atual: Integrações, Usuários, Perfis, Visualizar como, o Agente Opex (chat com
   ferramentas), a Plataforma (M0), Negócios + Agente Entrevistador (M1), o Espaço do negócio (M2),
-  Clientes + Pedidos (M3), Trabalhos (M4) e Portfólio (M5), por solicitação do usuário. Exceção ao tema fixo: o espaço do negócio,
+  Clientes + Pedidos (M3), Trabalhos (M4) e Portfólio (M5), por solicitação do usuário. Exceção ao tema padrão: o espaço do negócio,
   seu orçamento público e o portfólio público usam a cor e o modo do negócio (`aicontext/modules/business-space.md`,
   `aicontext/modules/orders.md` e `aicontext/modules/portfolio.md`).
 - Auth.js nativo no Next, **somente Google** (sem e-mail/senha). Cadastro público com o perfil

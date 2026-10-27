@@ -3,6 +3,7 @@ import { objectId } from "@/features/access/schemas"
 import { BUSINESS_THEME_MODES, BUSINESS_TYPES, CURRENCIES } from "@/features/businesses/constants"
 import { describeAvailability, describeGoal } from "@/features/businesses/format"
 import { archiveBusiness, deleteBusiness, getBusinessDetail, listBusinesses, restoreBusiness, searchAllBusinesses, updateBusiness } from "@/features/businesses/server/businesses"
+import { sortByRecentAccess } from "@/features/businesses/recent-access"
 import { businessInterviewTranscript } from "@/features/businesses/server/interview/sessions"
 import { removeBusinessLogo, setBusinessLogoFromChat } from "@/features/businesses/server/space"
 import { loadSessionFile } from "../files"
@@ -30,6 +31,7 @@ function slim(business: BusinessDto) {
         ownerName: business.ownerName,
         archivedAt: business.archivedAt,
         purgeAt: business.purgeAt,
+        ...(business.lastAccessedAt !== undefined ? { lastAccessedAt: business.lastAccessedAt } : {}),
     }
 }
 
@@ -71,7 +73,7 @@ export const businessTools = [
         execute: async (input, { access }) => {
             if (input.query !== undefined) return { items: (await searchAllBusinesses(access, { q: input.query, status: input.status })).map(slim) }
             const list = await listBusinesses(access, { status: input.status, ownerId: input.ownerId ?? null })
-            return { items: list.items.map(slim), capacity: list.capacity, createHint: "Novos negócios só pela entrevista em /negocios/novo." }
+            return { items: sortByRecentAccess(list.items).map(slim), capacity: list.capacity, createHint: "Novos negócios só pela entrevista em /negocios/novo." }
         },
     }),
     defineTool("get_business", {

@@ -47,7 +47,7 @@ export interface BusinessRecord {
     updatedAt: Date
 }
 
-const themeSchema = new Schema<BusinessTheme>({ primaryColor: { type: String, default: "#0B57C4" }, mode: { type: String, enum: ["dark", "light"], default: "dark" } }, { _id: false })
+const themeSchema = new Schema<BusinessTheme>({ primaryColor: { type: String, default: "#0B57C4" }, mode: { type: String, enum: ["dark", "light"], default: "light" } }, { _id: false })
 const logoSchema = new Schema<BusinessLogo>({ key: String, name: String, mediaType: String, size: Number }, { _id: false })
 const availabilitySchema = new Schema<AvailabilityDay>({ weekday: Number, start: { type: String, default: null }, end: { type: String, default: null } }, { _id: false })
 
@@ -64,7 +64,7 @@ const businessSchema = new Schema<BusinessRecord>(
         links: { type: [String], default: [] },
         availability: { type: [availabilitySchema], default: [] },
         currency: { type: String, default: "BRL" },
-        theme: { type: themeSchema, default: () => ({ primaryColor: "#0B57C4", mode: "dark" }) },
+        theme: { type: themeSchema, default: () => ({ primaryColor: "#0B57C4", mode: "light" }) },
         contactEmail: { type: String, default: null },
         contactPhone: { type: String, default: null },
         deadlineAlertDays: { type: Number, default: 3 },
@@ -565,6 +565,22 @@ const alertSchema = new Schema<InterviewerAlertRecord>(
     { collection: "interviewer_alerts", versionKey: false },
 )
 
+/**
+ * Último acesso de um usuário (o ator REAL, inclusive na simulação) ao espaço de um negócio: ordena o
+ * seletor do cabeçalho. Não é dado do negócio (sem versão nem auditoria); sai junto com o negócio.
+ */
+export interface BusinessAccessRecord {
+    userId: string
+    businessId: string
+    accessedAt: Date
+}
+
+const accessSchema = new Schema<BusinessAccessRecord>(
+    { userId: { type: String, required: true }, businessId: { type: String, required: true, index: true }, accessedAt: { type: Date, required: true } },
+    { collection: "business_accesses", versionKey: false },
+)
+accessSchema.index({ userId: 1, businessId: 1 }, { unique: true })
+
 function modelOf<T>(connection: Connection, name: string, schema: Schema<T>): mongoose.Model<T> {
     return (connection.models[name] as mongoose.Model<T>) || connection.model<T>(name, schema)
 }
@@ -587,5 +603,6 @@ export function businessModels(connection: Connection = mongoose.connection) {
         interviewMessages: modelOf(connection, "BusinessInterviewMessage", interviewMessageSchema),
         interviewFiles: modelOf(connection, "BusinessInterviewFile", interviewFileSchema),
         alerts: modelOf(connection, "InterviewerAlert", alertSchema),
+        accesses: modelOf(connection, "BusinessAccess", accessSchema),
     }
 }

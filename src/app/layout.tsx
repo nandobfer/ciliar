@@ -31,14 +31,15 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
     // Key e cluster/URL do Pusher vêm da integração (banco → .env), não do build.
     return (
-        <html lang="pt-BR" className="dark" style={{ colorScheme: "dark" }}>
+        // Claro por padrão; o modo escuro (`.dark` no <html>) vem do negócio aberto, das páginas públicas dele e do login.
+        <html lang="pt-BR" suppressHydrationWarning>
             <body className={cn("min-h-screen bg-background font-sans antialiased", inter.variable)}>
                 <CtrlEnterSubmit />
                 <EditorModeShortcut />
                 <QueryProvider>
                     <MotionProvider>
                         {children}
-                        <Toaster richColors theme="dark" position="top-right" />
+                        <Toaster richColors position="top-right" />
                     </MotionProvider>
                 </QueryProvider>
             </body>

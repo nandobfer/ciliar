@@ -58,7 +58,7 @@ export async function getPublicQuote(token: string, now: Date = new Date()): Pro
         logoUrl: business.logo ? `${base}/logo?v=${encodeURIComponent(business.logo.key.split("/").slice(-2).join("-"))}` : null,
         contactEmail: business.contactEmail ?? (await ownerAccountEmail(business.ownerId)),
         contactPhone: business.contactPhone ?? null,
-        theme: { primaryColor: business.theme?.primaryColor ?? DEFAULT_BUSINESS_THEME.primaryColor, mode: business.theme?.mode === "light" ? ("light" as const) : ("dark" as const) },
+        theme: { primaryColor: business.theme?.primaryColor ?? DEFAULT_BUSINESS_THEME.primaryColor, mode: business.theme?.mode === "dark" ? ("dark" as const) : ("light" as const) },
     }
     // Negócio arquivado: só "indisponível" (sem dados do pedido).
     if (state === "unavailable") {

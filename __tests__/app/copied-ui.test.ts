@@ -16,7 +16,8 @@ const originals: Record<string, string> = {
     "src/components/list/StatusFilterMultiSelect.tsx": "f3e7225f2503d95d777e46b1aa1d61751dbb7e1cc4facc92167179f3d1bb70f4",
     "src/components/list/StatusPill.tsx": "bbacbf8074ffb6e9754db28a1a7ccefecf1f3423940172a3cbf8ae182882d1a4",
     "src/components/list/TabFooter.tsx": "633366e7254c7f48251ab1b884423459bf834d11fb9bebfb389a3ccaf7fb98d0",
-    "src/components/list/TableAction.tsx": "1b01f08285efd8347c6d174763bbe532278660841c3b60ad18cfcf8c1ef29cac",
+    // Cores do crm-marketing-campanhas (tema claro, 22/10/2026): `-600`/`-700` em vez dos `-400`/`-300` do escuro.
+    "src/components/list/TableAction.tsx": "e7870218d18547d43717f457c046067263a376e649550d9728b2634d7254496c",
     "src/features/view-as/components/ViewAsBanner.tsx": "e896a4b9522d72632653c4c076c311868e69cb51c2c09082c488dce3fa4bdf65",
     "src/features/view-as/components/ViewAsStepHeader.tsx": "1218d8f8525ddb27a4cc49472b161a463258f23c43ee28a19556581b88d11ed3",
     "src/features/view-as/components/ViewAsSelector.tsx": "7b798e2a65c40ba0f508154e4f0bd3f4791f565f3f1418971655d735e49a5eb4",

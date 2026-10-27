@@ -1,7 +1,7 @@
 import { BUSINESS_FULL_PERMISSIONS } from "@/features/businesses/permissions"
 import { describe, expect, it } from "vitest"
 import { routePermissions } from "@/features/access/server/policy"
-import { businessThemeCss, businessThemeStyle, contrastRatio, readableForeground, resolveTheme } from "@/features/businesses/theme"
+import { businessThemeCss, businessThemeStyle, contrastRatio, hexToHslTriplet, readableForeground, resolveTheme } from "@/features/businesses/theme"
 import { goalWindows, windowProgress } from "@/features/businesses/goal-progress"
 import { activityCreateSchema, businessThemeSchema, documentCreateSchema, successCreateSchema } from "@/features/businesses/space-schemas"
 import { businessUpdateSchema } from "@/features/businesses/schemas"
@@ -19,21 +19,25 @@ describe("tema do negócio", () => {
         expect(readableForeground("#0B57C4")).toBe("#FFFFFF")
         expect(readableForeground("#FFE066")).toBe("#111111")
         expect(contrastRatio("#FFFFFF", "#000000")).toBeCloseTo(21, 0)
-        expect(resolveTheme({ primaryColor: "#FFE066" })).toMatchObject({ primary: "#FFE066", primaryForeground: "#111111", neutral: false, mode: "dark" })
+        expect(resolveTheme({ primaryColor: "#FFE066" })).toMatchObject({ primary: "#FFE066", primaryForeground: "#111111", neutral: false, mode: "light" })
         expect(resolveTheme({ primaryColor: "vermelho" })).toMatchObject({ primary: "#0B57C4", neutral: true })
         // Cinza médio: nem branco nem quase-preto chegam a 4,5:1.
         expect(resolveTheme({ primaryColor: "#777777" })).toMatchObject({ primary: "#0B57C4", neutral: true })
         expect(resolveTheme({ primaryColor: "#0B57C4", mode: "light" }).mode).toBe("light")
+        expect(resolveTheme({ primaryColor: "#0B57C4", mode: "dark" }).mode).toBe("dark")
     })
 
-    it("só os destaques mudam (sidebar neutra) e o CSS sai só dos trios HSL calculados", () => {
+    it("primária e sidebar em degradê como no crm (18% mais escura) e o CSS sai só dos trios HSL calculados", () => {
         const style = businessThemeStyle({ primaryColor: "#0B57C4" }) as Record<string, string>
-        expect(Object.keys(style).sort()).toEqual(["--chart-1", "--primary", "--primary-foreground", "--ring", "--sidebar-primary", "--sidebar-primary-foreground"])
+        expect(Object.keys(style).sort()).toEqual(["--chart-1", "--primary", "--primary-foreground", "--ring", "--sidebar", "--sidebar-foreground", "--sidebar-primary", "--sidebar-primary-foreground"])
         expect(style["--chart-1"]).toBe("hsl(215 89.4% 40.6%)")
         expect(style["--primary"]).toBe("215 89.4% 40.6%")
-        expect(style).not.toHaveProperty("--sidebar")
+        expect(style["--sidebar"]).toBe("215 89.4% 40.6%")
+        expect(style["--sidebar-foreground"]).toBe("0 0% 100%")
+        // #0B57C4 × 0,82 = #0947A1
+        expect(style["--sidebar-primary"]).toBe(hexToHslTriplet("#0947A1"))
         const css = businessThemeCss({ primaryColor: "#0B57C4;} body{display:none" })
-        expect(css.startsWith(":root, :root.light {")).toBe(true)
+        expect(css.startsWith(":root, :root.dark {")).toBe(true)
         expect(css).not.toContain("display")
         expect(css).toContain("--primary: 215 89.4% 40.6%;")
         expect(css).toContain("--chart-1: hsl(215 89.4% 40.6%);")

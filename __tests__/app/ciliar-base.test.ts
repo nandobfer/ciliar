@@ -57,7 +57,8 @@ describe('base do Ciliar com controle de acesso', () => {
         expect(existsSync(resolve('src/app/login'))).toBe(true)
         const root = readFileSync(resolve('src/app/layout.tsx'), 'utf8')
         expect(root).toContain('title: "Ciliar"')
-        expect(root).toContain('className="dark"')
+        // Claro por padrão (crm-marketing-campanhas): sem `dark` fixo no <html>.
+        expect(root).not.toContain('className="dark"')
         expect(buildPublicApiSpec()).toMatchObject({ info: { title: 'API interna do Ciliar' } })
     })
 })

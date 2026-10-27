@@ -1,6 +1,8 @@
 "use client"
 
+import { useEffect } from "react"
 import { motion, useReducedMotion } from "framer-motion"
+import { applyDocumentMode } from "@/lib/ui/document-theme"
 import { LoginBackdrop } from "./LoginBackdrop"
 import { LoginForm } from "./LoginForm"
 
@@ -12,11 +14,15 @@ import { LoginForm } from "./LoginForm"
  * `isolate` cria um stacking context no `main` para que as camadas do fundo (`z-0`) fiquem
  * **acima** do `bg-background` e **abaixo** do conteúdo (`z-10`) — sem z-index negativo, que
  * esconderia as partículas atrás do fundo opaco.
+ *
+ * O app é claro, mas o login continua ESCURO (decisão do produto): `.dark` no `main` (já no HTML do
+ * servidor, sem piscar) e no `<html>` enquanto a tela está aberta (toasts e popovers do `<body>`).
  */
 export function LoginPage({ nextPath, notice, disabled }: { nextPath?: string; notice?: string; disabled?: boolean }) {
     const reducedMotion = useReducedMotion()
+    useEffect(() => applyDocumentMode("dark"), [])
     return (
-        <main className="relative isolate flex min-h-screen items-center justify-center overflow-hidden bg-background px-4 py-10">
+        <main className="dark relative isolate flex min-h-screen items-center justify-center overflow-hidden bg-background px-4 text-foreground py-10">
             <LoginBackdrop />
 
             <motion.div

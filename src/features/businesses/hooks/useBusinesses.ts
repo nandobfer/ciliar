@@ -30,6 +30,20 @@ export const useBusinesses = (enabled = true) =>
 export const useBusiness = (id: string | null) =>
     useQuery({ queryKey: [BUSINESSES_KEY, "detail", id ?? ""], queryFn: () => get<BusinessDetailDto>(`/businesses/${id}`), enabled: Boolean(id) })
 
+/**
+ * Registra o acesso ao espaço do negócio aberto (uma vez por negócio na tela) e relê a lista: o
+ * seletor do cabeçalho ordena pelo último acesso. Falha silenciosa (é só a ordem do seletor).
+ */
+export function useRecordBusinessAccess(id: string | null, enabled: boolean): void {
+    const queryClient = useQueryClient()
+    useEffect(() => {
+        if (!id || !enabled) return
+        api.post(`/businesses/${id}/access`, {})
+            .then(() => queryClient.invalidateQueries({ queryKey: [BUSINESSES_KEY, "list"] }))
+            .catch(() => undefined)
+    }, [id, enabled, queryClient])
+}
+
 function useBusinessAction(action: "archive" | "restore" | "delete", success: string) {
     const queryClient = useQueryClient()
     return useMutation({

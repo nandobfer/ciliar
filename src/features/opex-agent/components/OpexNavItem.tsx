@@ -82,7 +82,7 @@ function OpexNavItemContent({ collapsed }: OpexNavItemProps) {
                 whileTap={{ scale: 0.98 }}
                 className={cn(
                     "relative flex w-full items-center gap-3 rounded-[4px] px-3 py-2 text-sm transition-colors",
-                    open ? "bg-sidebar-accent font-semibold text-sidebar-accent-foreground" : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+                    open ? "bg-black/20 font-semibold text-sidebar-foreground shadow-inner" : "text-sidebar-foreground/75 hover:bg-white/10 hover:text-sidebar-foreground",
                     collapsed && "justify-center px-0 py-2.5",
                 )}
             >
@@ -93,8 +93,8 @@ function OpexNavItemContent({ collapsed }: OpexNavItemProps) {
                     <AnimatePresence>
                         {busy && (
                             <motion.span key="busy" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="absolute -right-1 -top-1 flex h-2.5 w-2.5" aria-hidden>
-                                {!reduceMotion && <motion.span className="absolute inset-0 rounded-full bg-primary" animate={{ opacity: [0.7, 0], scale: [1, 2.2] }} transition={{ duration: 1.4, repeat: Infinity }} />}
-                                <span className="relative h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-sidebar" />
+                                {!reduceMotion && <motion.span className="absolute inset-0 rounded-full bg-white" animate={{ opacity: [0.7, 0], scale: [1, 2.2] }} transition={{ duration: 1.4, repeat: Infinity }} />}
+                                <span className="relative h-2.5 w-2.5 rounded-full bg-white ring-2 ring-white/25" />
                             </motion.span>
                         )}
                     </AnimatePresence>

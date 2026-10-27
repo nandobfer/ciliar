@@ -21,7 +21,7 @@ export function canSeeSpaceSection(slug: BusinessSpaceSlug, can: (key: string) =
     return !area || canReadModule(can, area)
 }
 
-/** Seção "Negócio" da barra lateral com as páginas do espaço do negócio aberto (só as permitidas). */
+/** Páginas do espaço do negócio aberto (só as permitidas): abas do cabeçalho e título da página. */
 export function businessSpaceNavSection(businessId: string, can: (key: string) => boolean = () => true): NavSectionDef {
     return {
         id: "negocio-espaco",

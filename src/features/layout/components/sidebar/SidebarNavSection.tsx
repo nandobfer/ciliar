@@ -28,7 +28,7 @@ export function SidebarNavSection({ label, open, collapsed, reduceMotion, onTogg
     if (collapsed) {
         return (
             <div role="group" aria-label={label}>
-                <div className="mx-3 mb-2 mt-1 h-px bg-sidebar-border" aria-hidden />
+                <div className="mx-3 mb-2 mt-1 h-px bg-white/15" aria-hidden />
                 {list}
             </div>
         )

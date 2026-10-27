@@ -15,7 +15,7 @@ export function OpexEmptyChat({ onPick, disabled }: { onPick: (text: string) => 
                 initial={{ opacity: 0, scale: 0.8, rotate: -8 }}
                 animate={{ opacity: 1, scale: 1, rotate: 0 }}
                 transition={{ type: "spring", stiffness: 260, damping: 18 }}
-                className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15 text-primary shadow-[0_0_28px_-6px_hsl(var(--primary))] ring-1 ring-primary/40"
+                className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15 text-primary ring-1 ring-primary/20"
                 aria-hidden
             >
                 <Bot className="h-7 w-7" />

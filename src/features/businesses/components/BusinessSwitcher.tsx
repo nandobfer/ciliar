@@ -1,119 +1,171 @@
 "use client"
 
-import { useState } from "react"
+import { forwardRef, useMemo, type ComponentPropsWithoutRef } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import * as PopoverPrimitive from "@radix-ui/react-popover"
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import { Check, ChevronsUpDown, LayoutGrid, Plus } from "lucide-react"
+import { SearchPicker } from "@/components/ui/search-picker"
+import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
-import { SidebarTooltip } from "@/features/layout/components/sidebar/SidebarTooltip"
-import { SIDEBAR_FOCUS_RING, sidebarItemVariants } from "@/features/layout/components/sidebar/sidebar-styles"
+import { withBasePath } from "@/lib/base-path"
 import { useAppSession } from "@/features/access/components/AccessProvider"
-import { useBusinesses, useBusinessesRealtime } from "../hooks/useBusinesses"
-import { BusinessAvatar } from "./BusinessAvatar"
-
-const LABEL = "Negócio"
+import { useBusiness, useBusinesses, useBusinessesRealtime } from "../hooks/useBusinesses"
+import { formatAccessTime, searchBusinesses, sortByRecentAccess } from "../recent-access"
+import { readableForeground, resolveTheme } from "../theme"
+import type { BusinessDto } from "../types"
 
 /** Negócio ativo na URL (`/negocios/[id]`). */
 export const activeBusinessId = (pathname: string) => /^\/negocios\/([a-f\d]{24})(?:\/|$)/i.exec(pathname)?.[1] ?? null
 
-/**
- * Seletor de negócio no topo da barra lateral (com "Novo negócio"): troca o negócio ativo da URL.
- * Arquivados não aparecem; no limite do perfil, "Novo negócio" fica indisponível com o aviso.
- */
-export function BusinessSwitcher({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
-    const router = useRouter()
-    const pathname = usePathname()
-    const reduceMotion = useReducedMotion() ?? false
-    const { session } = useAppSession()
-    const [open, setOpen] = useState(false)
-    const query = useBusinesses()
-    useBusinessesRealtime(session?.user.id ?? null, !session?.access.simulation)
-    const active = (query.data?.items ?? []).filter((item) => item.status === "active")
-    const currentId = activeBusinessId(pathname)
-    const current = active.find((item) => item.id === currentId) ?? null
-    const capacity = query.data?.capacity
-    const go = (href: string) => {
-        setOpen(false)
-        onNavigate?.()
-        router.push(href)
+const AVATAR_SIZES = {
+    xs: "h-5 w-5 rounded-[4px] text-[9px]",
+    sm: "h-8 w-8 rounded-[6px] text-[11px]",
+} as const
+
+const initials = (name: string) =>
+    name
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0]!.toUpperCase())
+        .join("") || "N"
+
+/** Avatar do seletor (cópia do `CompanyAvatar` do crm): logo ou iniciais na cor de CADA negócio. */
+export function SwitcherAvatar({ business, size }: { business: Pick<BusinessDto, "name" | "logo" | "theme">; size: keyof typeof AVATAR_SIZES }) {
+    if (business.logo) {
+        // eslint-disable-next-line @next/next/no-img-element -- imagem privada servida pela API autenticada
+        return <img src={withBasePath(business.logo.url)} alt="" aria-hidden className={cn("shrink-0 border border-border bg-white object-contain p-0.5", AVATAR_SIZES[size])} />
     }
-
-    const trigger = (
-        <button type="button" aria-label={collapsed ? `${LABEL}: ${current?.name ?? "selecionar"}` : undefined} aria-expanded={open} aria-haspopup="dialog" className={cn("block w-full rounded-[4px]", SIDEBAR_FOCUS_RING)}>
-            <motion.div
-                variants={sidebarItemVariants}
-                initial="hidden"
-                animate="show"
-                whileHover={{ x: 4 }}
-                whileTap={{ scale: 0.98 }}
-                className={cn(
-                    "relative flex w-full items-center gap-3 rounded-[4px] px-3 py-2 text-sm transition-colors",
-                    open ? "bg-sidebar-accent font-semibold text-sidebar-accent-foreground" : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
-                    collapsed && "justify-center px-0 py-2",
-                )}
-            >
-                {current ? <BusinessAvatar business={current} className="h-7 w-7" /> : <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-dashed border-sidebar-border"><LayoutGrid className="h-4 w-4" aria-hidden /></span>}
-                {!collapsed && (
-                    <>
-                        <span className="min-w-0 flex-1 truncate text-left">{current?.name ?? "Selecionar negócio"}</span>
-                        <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
-                    </>
-                )}
-            </motion.div>
-        </button>
-    )
-
+    const theme = resolveTheme(business.theme)
     return (
-        <li>
-            <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
-                <SidebarTooltip label={current ? `${LABEL}: ${current.name}` : "Selecionar negócio"} enabled={collapsed && !open}>
-                    <PopoverPrimitive.Trigger asChild>{trigger}</PopoverPrimitive.Trigger>
-                </SidebarTooltip>
-                <AnimatePresence>
-                    {open && (
-                        <PopoverPrimitive.Portal forceMount>
-                            <PopoverPrimitive.Content forceMount asChild side="right" align="start" sideOffset={12} collisionPadding={12} aria-label="Selecionar negócio">
-                                <motion.div
-                                    initial={{ opacity: 0, scale: 0.95, x: -8 }}
-                                    animate={{ opacity: 1, scale: 1, x: 0 }}
-                                    exit={{ opacity: 0, scale: 0.96, x: -6, transition: { duration: 0.12 } }}
-                                    transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 380, damping: 30 }}
-                                    style={{ transformOrigin: "var(--radix-popover-content-transform-origin)" }}
-                                    className="z-50 w-72 overflow-hidden rounded-xl border bg-popover p-1.5 text-popover-foreground shadow-2xl shadow-primary/10"
-                                >
-                                    <p className="px-2 pb-1.5 pt-1 text-xs font-semibold text-muted-foreground">Seus negócios</p>
-                                    <ul className="max-h-72 space-y-0.5 overflow-y-auto">
-                                        {query.isLoading && <li className="px-2 py-1.5 text-sm text-muted-foreground">Carregando…</li>}
-                                        {!query.isLoading && !active.length && <li className="px-2 py-1.5 text-sm text-muted-foreground">Nenhum negócio ativo</li>}
-                                        {active.map((item) => (
-                                            <li key={item.id}>
-                                                <button type="button" onClick={() => go(`/negocios/${item.id}`)} className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted" aria-current={item.id === currentId ? "true" : undefined}>
-                                                    <BusinessAvatar business={item} className="h-7 w-7" />
-                                                    <span className="min-w-0 flex-1 truncate">{item.name}</span>
-                                                    {item.id === currentId && <Check className="h-4 w-4 text-primary" aria-hidden />}
-                                                </button>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                    <div className="mt-1.5 space-y-0.5 border-t pt-1.5">
-                                        {capacity?.canCreate !== false || capacity.vacancy === false ? (
-                                            <button type="button" disabled={!capacity?.canCreate} onClick={() => go("/negocios/novo")} className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60">
-                                                <Plus className="h-4 w-4 text-primary" aria-hidden /> Novo negócio
-                                            </button>
-                                        ) : null}
-                                        {capacity?.canCreate === false && !capacity.vacancy && <p className="px-2 pb-1 text-[11px] text-warning">Limite de negócios ativos do seu perfil atingido: arquive um para criar outro.</p>}
-                                        <Link href="/negocios" onClick={() => { setOpen(false); onNavigate?.() }} className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-sm hover:bg-muted">
-                                            <LayoutGrid className="h-4 w-4 text-muted-foreground" aria-hidden /> Gerenciar negócios
-                                        </Link>
-                                    </div>
-                                </motion.div>
-                            </PopoverPrimitive.Content>
-                        </PopoverPrimitive.Portal>
-                    )}
-                </AnimatePresence>
-            </PopoverPrimitive.Root>
-        </li>
+        <span
+            aria-hidden
+            data-testid="business-avatar"
+            className={cn("flex shrink-0 items-center justify-center font-bold", AVATAR_SIZES[size])}
+            style={{ backgroundColor: theme.primary, color: readableForeground(theme.primary) ?? "#FFFFFF" }}
+        >
+            {initials(business.name)}
+        </span>
     )
 }
+
+/**
+ * Seletor de negócio no início do caminho do cabeçalho — cópia do `CompanySwitcher` do
+ * crm-marketing-campanhas. Trocar de negócio = navegar para `/negocios/[id]`. Lista os negócios ativos
+ * do último acessado (usuário real) para o mais antigo, com busca sem acento nem maiúsculas; no rodapé,
+ * "Novo negócio" (indisponível no limite do perfil, com o aviso) e "Ver todos os negócios".
+ */
+export function BusinessSwitcher() {
+    const router = useRouter()
+    const pathname = usePathname()
+    const { session } = useAppSession()
+    const query = useBusinesses()
+    useBusinessesRealtime(session?.user.id ?? null, !session?.access.simulation)
+    const items = query.data?.items
+    const businesses = useMemo(() => sortByRecentAccess((items ?? []).filter((item) => item.status === "active")), [items])
+    const currentId = activeBusinessId(pathname)
+    // Arquivado ou de outro usuário (suporte) não entra na lista, mas aparece no caminho.
+    const detail = useBusiness(currentId)
+    const current = (items ?? []).find((item) => item.id === currentId) ?? (detail.data?.id === currentId ? detail.data : undefined)
+    const label = current?.name ?? "Escolher negócio"
+    const capacity = query.data?.capacity
+    const { refetch } = query
+
+    if (query.isLoading) {
+        return (
+            <span className="flex min-w-0 items-center gap-2 px-1.5 text-xs font-medium text-muted-foreground">
+                <Skeleton className="h-5 w-5 rounded-[4px]" />
+                <span className="hidden max-w-[200px] truncate sm:inline">{label}</span>
+            </span>
+        )
+    }
+
+    return (
+        <SearchPicker<BusinessDto>
+            trigger={<SwitcherTrigger business={current} label={label} />}
+            items={businesses}
+            getKey={(business) => business.id}
+            filterItems={searchBusinesses}
+            onOpenChange={(open) => {
+                // O último acesso muda a cada troca de negócio: a ordem é recarregada ao abrir.
+                if (open) void refetch()
+            }}
+            onPick={(business) => {
+                if (business.id !== currentId) router.push(`/negocios/${business.id}`)
+            }}
+            renderItem={(business) => (
+                <>
+                    <SwitcherAvatar business={business} size="sm" />
+                    <span className="flex min-w-0 flex-1 flex-col">
+                        <span className={cn("truncate text-sm", business.id === currentId ? "font-semibold" : "font-medium")}>{business.name}</span>
+                        <span className="truncate text-[11px] text-muted-foreground">
+                            {business.id === currentId ? "Negócio atual" : business.lastAccessedAt ? `Acessado ${formatAccessTime(business.lastAccessedAt)}` : "Nunca acessado"}
+                        </span>
+                    </span>
+                    {business.id === currentId && <Check className="h-4 w-4 shrink-0 text-primary" aria-label="Negócio atual" />}
+                </>
+            )}
+            placeholder="Buscar negócio"
+            searchLabel="Buscar negócio"
+            listLabel="Seus negócios, do último acessado para o mais antigo"
+            emptyText="Nenhum negócio ativo."
+            emptySearchText="Nenhum negócio encontrado."
+            align="start"
+            contentClassName="w-[min(340px,calc(100vw-2rem))]"
+            footer={
+                <>
+                    {capacity?.canCreate || capacity?.vacancy === false ? (
+                        <Link
+                            href="/negocios/novo"
+                            aria-disabled={!capacity.canCreate}
+                            onClick={(event) => {
+                                if (!capacity.canCreate) event.preventDefault()
+                            }}
+                            className={cn(
+                                "flex w-full items-center gap-2 rounded-sm px-2 py-2 text-sm font-medium text-primary hover:bg-muted focus-visible:bg-muted focus-visible:outline-none",
+                                !capacity.canCreate && "pointer-events-none opacity-50",
+                            )}
+                        >
+                            <Plus className="h-4 w-4" aria-hidden />
+                            Novo negócio
+                        </Link>
+                    ) : null}
+                    {capacity?.canCreate === false && !capacity.vacancy && <p className="px-2 pb-1 text-[11px] text-warning">Limite de negócios ativos do seu perfil atingido: arquive um para criar outro.</p>}
+                    <Link
+                        href="/negocios"
+                        className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-sm font-medium text-primary hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+                    >
+                        <LayoutGrid className="h-4 w-4" aria-hidden />
+                        Ver todos os negócios
+                    </Link>
+                </>
+            }
+        />
+    )
+}
+
+interface SwitcherTriggerProps extends ComponentPropsWithoutRef<"button"> {
+    business?: BusinessDto
+    label: string
+}
+
+/** Gatilho do seletor; recebe do popover o estado aberto (`data-state`) e os eventos. */
+const SwitcherTrigger = forwardRef<HTMLButtonElement, SwitcherTriggerProps>(function SwitcherTrigger({ business, label, className, ...props }, ref) {
+    return (
+        <button
+            ref={ref}
+            type="button"
+            aria-label={`Trocar de negócio (atual: ${label})`}
+            className={cn(
+                "group flex min-w-0 items-center gap-2 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "-ml-1 h-8 rounded-[6px] px-1.5 font-medium text-muted-foreground hover:bg-muted hover:text-foreground data-[state=open]:bg-muted data-[state=open]:text-foreground",
+                className,
+            )}
+            {...props}
+        >
+            {business ? <SwitcherAvatar business={business} size="xs" /> : <LayoutGrid className="h-3.5 w-3.5 shrink-0" aria-hidden />}
+            <span className="hidden max-w-[200px] truncate sm:inline">{label}</span>
+            <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 opacity-60 transition-transform group-data-[state=open]:scale-110" aria-hidden />
+        </button>
+    )
+})

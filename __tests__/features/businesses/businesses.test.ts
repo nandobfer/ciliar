@@ -16,7 +16,7 @@ import { createRole } from "@/features/access/server/commands"
 import { resolveAccess } from "@/features/access/server/access"
 import type { AccessContext } from "@/features/access/server/context"
 import { businessModels } from "@/features/businesses/server/models"
-import { archiveBusiness, deleteBusiness, getBusinessDetail, listBusinesses, purgeArchivedBusinesses, restoreBusiness, updateBusiness } from "@/features/businesses/server/businesses"
+import { archiveBusiness, deleteBusiness, getBusinessDetail, listBusinesses, purgeArchivedBusinesses, recordBusinessAccess, restoreBusiness, updateBusiness } from "@/features/businesses/server/businesses"
 import { onboardingState } from "@/features/businesses/server/onboarding"
 import { currentInterviewScript, saveInterviewScript } from "@/features/businesses/server/interviewer-settings"
 import { businessInterviewTranscript, discardInterview, startInterview } from "@/features/businesses/server/interview/sessions"
@@ -243,6 +243,41 @@ describe("negócios: limite, arquivamento, isolamento e suporte", () => {
         expect(await run("archive_business", { businessId: id })).toMatchObject({ status: "archived" })
         expect(await run("restore_business", { businessId: id })).toMatchObject({ status: "active" })
         await expect(run("delete_business", { businessId: id })).rejects.toMatchObject({ code: "BUSINESS_NOT_ARCHIVED" })
+    })
+
+    it("último acesso ordena o seletor: do usuário real (também na simulação), sem auditoria, só de negócio visível e sai com o negócio", async () => {
+        const provider = (await role("Prestador", [...BUSINESS_FULL_PERMISSIONS, "opex.use"])).id
+        const lia = await user("Lia", [provider])
+        const outsider = await user("Ugo", [provider])
+        const first = await business.businesses.create({ ownerId: lia.userId, number: 1, name: "Zeta", status: "active", createdBy: lia.userId, updatedBy: lia.userId })
+        const second = await business.businesses.create({ ownerId: lia.userId, number: 2, name: "Alfa", status: "active", createdBy: lia.userId, updatedBy: lia.userId })
+        const auditsBefore = await access.audits.countDocuments({})
+
+        expect((await listBusinesses(lia)).items.map((item) => item.lastAccessedAt)).toEqual([null, null])
+        await recordBusinessAccess(lia, first.id as string, new Date("2026-10-20T10:00:00Z"))
+        await recordBusinessAccess(lia, second.id as string, new Date("2026-10-21T10:00:00Z"))
+        await recordBusinessAccess(lia, first.id as string, new Date("2026-10-22T10:00:00Z"))
+        expect(await business.accesses.countDocuments({ userId: lia.userId })).toBe(2)
+        const items = (await listBusinesses(lia)).items
+        expect(Object.fromEntries(items.map((item) => [item.name, item.lastAccessedAt]))).toEqual({ Zeta: "2026-10-22T10:00:00.000Z", Alfa: "2026-10-21T10:00:00.000Z" })
+        expect(await access.audits.countDocuments({})).toBe(auditsBefore)
+        await expect(recordBusinessAccess(outsider, first.id as string)).rejects.toMatchObject({ status: 404 })
+
+        // Simulação: a lista é do alvo, os acessos são do admin (ator real).
+        const simulated = await resolveAccess(admin.userId, viewAsUser(lia.userId))
+        await recordBusinessAccess(simulated, second.id as string, new Date("2026-10-23T10:00:00Z"))
+        expect(await business.accesses.exists({ userId: admin.userId, businessId: second.id })).not.toBeNull()
+        const asAdmin = (await listBusinesses(simulated)).items
+        expect(Object.fromEntries(asAdmin.map((item) => [item.name, item.lastAccessedAt]))).toEqual({ Zeta: null, Alfa: "2026-10-23T10:00:00.000Z" })
+
+        // Agente: list_businesses do último acessado para o nunca acessado.
+        const tool = findOpexTool("list_businesses")!
+        const listed = (await requestAccess.run(lia, () => tool.execute(tool.input.parse({}), { sessionId: "s".repeat(24), actorId: lia.userId, scope: scopeOf(lia), access: lia }))) as { items: { name: string; lastAccessedAt: string | null }[] }
+        expect(listed.items.map((item) => item.name)).toEqual(["Zeta", "Alfa"])
+
+        await archiveBusiness(lia, first.id as string)
+        await deleteBusiness(lia, first.id as string)
+        expect(await business.accesses.countDocuments({ businessId: first.id })).toBe(0)
     })
 
     it("rotina businesses-purge exclui os arquivados depois do prazo", async () => {

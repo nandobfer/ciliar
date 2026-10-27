@@ -156,7 +156,7 @@ export function ScheduleEditor({ value, onChange, disabled }: ScheduleEditorProp
                                         }
                                         className={cn(
                                             "h-8 min-w-11 rounded-full border px-3 text-xs font-medium transition-colors",
-                                            active ? "border-primary bg-primary text-white" : "bg-background hover:bg-muted",
+                                            active ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:bg-muted",
                                         )}
                                     >
                                         {label}

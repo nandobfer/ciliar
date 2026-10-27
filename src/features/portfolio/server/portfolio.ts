@@ -104,7 +104,7 @@ export async function portfolioBusiness(business: BusinessDoc, logoUrl: string |
             contactEmail: business.contactEmail ?? accountEmail,
             contactPhone: business.contactPhone ?? null,
             whatsappUrl: whatsappUrl(business.contactPhone),
-            theme: { primaryColor: business.theme?.primaryColor ?? DEFAULT_BUSINESS_THEME.primaryColor, mode: business.theme?.mode === "light" ? "light" : "dark" },
+            theme: { primaryColor: business.theme?.primaryColor ?? DEFAULT_BUSINESS_THEME.primaryColor, mode: business.theme?.mode === "dark" ? "dark" : "light" },
         },
         contactEmailIsAccount: !business.contactEmail,
     }

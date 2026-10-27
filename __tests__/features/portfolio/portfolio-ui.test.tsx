@@ -47,7 +47,7 @@ afterEach(() => {
 describe("portfólio público", () => {
     it("aplica o tema, mostra os blocos na ordem, cliente confidencial, PDF na página, texto restrito e o contato no fim", () => {
         render(<PublicPortfolioPage initial={page("2999-01-01T00:00:00Z")} error={null} />)
-        expect(document.documentElement.classList.contains("light")).toBe(true)
+        expect(document.documentElement.classList.contains("dark")).toBe(false)
         expect(screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)).toEqual(["Nossos trabalhos", "Sucessos", "Documentos"])
         expect(screen.getByText("Cliente confidencial")).toBeTruthy()
         expect(screen.getByTitle("Apresentação").getAttribute("src")).toBe("https://s3.local/doc?view=1")

@@ -12,6 +12,7 @@ import { ensureBusinessIndexes } from "./ensure-business-indexes"
 import { ensureAgentMemoryIndexes } from "./ensure-agent-memory-indexes"
 import { expandBusinessPermissions } from "./expand-business-permissions"
 import { convertPortfolioBlocks } from "./convert-portfolio-blocks"
+import { businessThemeLight } from "./business-theme-light"
 
 registerMigrations(
     { name: "seed-integrations-from-env", run: () => seedIntegrationsFromEnv() },
@@ -23,4 +24,5 @@ registerMigrations(
     { name: "ensure-agent-memory-indexes", run: () => ensureAgentMemoryIndexes() },
     { name: "expand-business-permissions", run: async () => void (await expandBusinessPermissions()) },
     { name: "convert-portfolio-blocks", run: async () => void (await convertPortfolioBlocks()) },
+    { name: "business-theme-light", run: async () => void (await businessThemeLight()) },
 )

@@ -116,7 +116,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         risk: "read",
         access: { any: ["businesses.use", "businesses.view_all"] },
         description:
-            "Negócios do usuário (ativos e arquivados, com a data da exclusão definitiva automática) e as vagas do limite do perfil. Com businesses.view_all (suporte, somente leitura e auditado): os de outro usuário (ownerId) ou a busca por nome em todos (query).",
+            "Negócios do usuário (ativos e arquivados, com a data da exclusão definitiva automática), do último acessado (lastAccessedAt, como o seletor do cabeçalho) para os nunca acessados, e as vagas do limite do perfil. Com businesses.view_all (suporte, somente leitura e auditado): os de outro usuário (ownerId) ou a busca por nome em todos (query).",
     },
     {
         name: "get_business",
