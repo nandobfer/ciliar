@@ -73,8 +73,9 @@ devolve a origem resolvida e os métodos do protocolo (vazio em host não permit
 - Rota `/api/auth/[...nextauth]`: recusa host não permitido (403 `HOST_NOT_ALLOWED`); confere o método de
   `signin|callback/google` e `callback/credentials` (`auth-paths.ts`) **antes do Auth.js** — desabilitado no
   protocolo responde no formato do `signIn` do navegador (`{ url: …/login?erro=metodo-indisponivel&error=MetodoIndisponivel }`,
-  403) ou redireciona (303); limita tentativas de senha por IP (`cf-connecting-ip`/`x-real-ip`) e por e-mail
-  (429 `RateLimited`); entrega ao Auth.js a requisição na **origem resolvida** (cookies e retorno do Google no
+  403) ou redireciona (303); limita tentativas de senha **por e-mail** (independente do IP; o e-mail é lido do
+  corpo form **ou JSON**, os dois formatos que o Auth.js aceita; outro formato é recusado com 400) e, em
+  segundo plano, por IP (`cf-connecting-ip`/`x-real-ip`, forjáveis no acesso direto à porta) (429 `RateLimited`); entrega ao Auth.js a requisição na **origem resolvida** (cookies e retorno do Google no
   próprio endereço de acesso). `AUTH_URL`/`NEXTAUTH_URL` são removidas na carga de `src/auth.ts` (fariam o
   Auth.js reescrever tudo para uma origem); `AUTH_URL` só serve de fallback do `APP_ORIGIN`.
 - Risco residual documentado: num acesso direto à porta, `X-Forwarded-Proto` pode ser forjado; com a lista
@@ -105,8 +106,9 @@ Credenciais inválidas: "E-mail ou senha incorretos." (`credentialsErrorMessage`
   409 `SIGNUP_EMAIL_TAKEN`. O navegador entra em seguida com `signIn("credentials")`.
 - **Sequestro prévio**: o cadastro por senha não verifica o e-mail, então grava `passwordUnverified: true`.
   Se o dono do e-mail entrar depois com o Google (e-mail verificado), `resolveGoogleAccount` vincula a conta,
-  **remove essa senha** e encerra as sessões (auditoria `user.unverified_password_dropped`). Senhas definidas
-  pelo admin, pelo CLI ou pela própria pessoa logada não são descartadas.
+  **remove essa senha** e encerra as sessões (auditoria `user.unverified_password_dropped`). Trocar a própria senha
+  ("Alterar senha") **não** limpa a marca (não comprova o dono do e-mail); só a senha definida pelo admin
+  ou pelo CLI a limpa. Senhas sem a marca (admin, CLI, criada por quem entrou com o Google) não são descartadas.
 - Agente Opex: `get_auth_settings`/`update_auth_settings` (grupo Autenticação) e `set_user_password`/
   `remove_user_password` (Usuários); a senha tem `redact` e nunca volta ao modelo.
 - Testes: `__tests__/features/auth/{request-origin,auth-route,auth,login}.test.*`,

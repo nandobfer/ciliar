@@ -65,7 +65,9 @@ export async function changeOwnPassword(context: AccessContext, raw: unknown): P
     }
     const changed = await users.updateOne(
         { _id: user._id, active: true, sessionVersion: context.sessionVersion, passwordHash: user.passwordHash ?? null },
-        { $set: { passwordHash: await hashPassword(data.newPassword), passwordSetAt: new Date(), passwordUnverified: false }, $inc: { sessionVersion: 1 } },
+        // `passwordUnverified` fica como está: trocar a senha não comprova o dono do e-mail do cadastro
+        // público (só o admin/CLI ou o vínculo Google, que descarta a senha, resolvem).
+        { $set: { passwordHash: await hashPassword(data.newPassword), passwordSetAt: new Date() }, $inc: { sessionVersion: 1 } },
     )
     if (!changed.modifiedCount) throw new DomainError(409, "Sua conta foi alterada. Entre novamente")
     await audits.create({ actorId: context.userId, action: user.passwordHash ? "user.password_changed" : "user.password_created", targetId: context.userId, before: null, after: { senha: true }, simulation: context.dto.simulation })

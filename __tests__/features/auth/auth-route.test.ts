@@ -65,4 +65,17 @@ describe("rota do Auth.js: métodos por protocolo e endereços permitidos", () =
         expect(blocked.status).toBe(429)
         expect((await blocked.json()).url).toContain("erro=muitas-tentativas")
     })
+    it("limite por e-mail vale também com corpo JSON e IP forjado a cada tentativa; outro formato é recusado", async () => {
+        vi.mocked(cachedAuthSettings).mockResolvedValue(settings(["password"], ["password"]))
+        const json = (identifier: string) => POST(new NextRequest("http://0.0.0.0:3000/api/auth/callback/credentials", {
+            method: "POST",
+            headers: { ...HTTP, "content-type": "application/json", "x-auth-return-redirect": "1", "cf-connecting-ip": `10.9.${++ip}.1` },
+            body: JSON.stringify({ identifier, password: "x", csrfToken: "x" }),
+        }))
+        for (let index = 0; index < 10; index++) expect((await json(index % 2 ? "JSON@b.test" : " json@b.test ")).status).toBe(200)
+        expect((await json("json@b.test")).status).toBe(429)
+        const plain = await POST(new NextRequest("http://0.0.0.0:3000/api/auth/callback/credentials", { method: "POST", headers: { ...HTTP, "content-type": "text/plain", "x-auth-return-redirect": "1" }, body: "identifier=outro@b.test" }))
+        expect(plain.status).toBe(400)
+        expect(state.handler).toHaveBeenCalledTimes(10)
+    })
 })

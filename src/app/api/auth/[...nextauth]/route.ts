@@ -16,6 +16,25 @@ function refuse(request: NextRequest, origin: string, status: number, error: str
     return new Response(null, { status: 303, headers: { Location: url, "Cache-Control": "no-store" } })
 }
 
+/**
+ * E-mail do login por senha, normalizado como no `loginSchema`, nos dois formatos de corpo que o
+ * Auth.js aceita no callback de credenciais (form urlencoded/multipart e JSON). `null` = outro formato.
+ */
+async function credentialsIdentifier(request: NextRequest): Promise<string | null> {
+    const type = (request.headers.get("content-type") ?? "").toLowerCase()
+    let raw: unknown
+    if (type.includes("application/json")) {
+        const body = (await request.clone().json().catch(() => null)) as { identifier?: unknown } | null
+        raw = body?.identifier
+    } else if (type.includes("application/x-www-form-urlencoded") || type.includes("multipart/form-data")) {
+        const form = await request.clone().formData().catch(() => null)
+        raw = form?.get("identifier")
+    } else {
+        return null
+    }
+    return typeof raw === "string" ? raw.trim().toLowerCase().slice(0, 254) : ""
+}
+
 async function handle(request: NextRequest) {
     try {
         const { resolved, methods } = await requestAuthContext(request.headers, request.url)
@@ -34,11 +53,13 @@ async function handle(request: NextRequest) {
             return refuse(request, resolved.origin, 403, METHOD_DISABLED_ERROR, "metodo-indisponivel")
         }
         if (method === "password" && request.method === "POST") {
-            const form = await request.clone().formData().catch(() => null)
-            const email = String(form?.get("identifier") ?? "").trim().toLowerCase().slice(0, 254)
+            const identifier = await credentialsIdentifier(request)
+            // Formato de corpo que o Auth.js não lê (nem form nem JSON) não chega ao `authorize`.
+            if (identifier === null) return refuse(request, resolved.origin, 400, "CredentialsSignin", "credenciais")
             try {
+                // O limite por e-mail independe do IP (cabeçalhos de IP são forjáveis no acesso direto à porta).
+                checkRateLimit(`login:${identifier || "(vazio)"}`)
                 checkRateLimit(`login:ip:${clientIp(request) ?? "?"}`, Date.now(), 30)
-                if (email) checkRateLimit(`login:${email}`)
             } catch {
                 return refuse(request, resolved.origin, 429, "RateLimited", "muitas-tentativas")
             }

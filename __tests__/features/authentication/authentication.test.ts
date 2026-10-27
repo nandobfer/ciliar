@@ -198,6 +198,15 @@ describe("senhas: administrador, própria conta, CLI e cadastro público", () =>
         await resolveGoogleAccount({ sub: "sub-caio", email: "caio@example.test", emailVerified: true })
         expect(await passwordHashOf(id)).not.toBeNull()
     })
+    it("trocar a própria senha não limpa a marca de senha não verificada: o vínculo Google ainda a descarta", async () => {
+        await enablePublicSignup()
+        const created = await signupWithPassword({ nome: "Impostor", email: "vitima@example.test", password: PASSWORD })
+        const impostor = await resolveAccess(created.id, "none", null, 0)
+        await changeOwnPassword(impostor, { currentPassword: PASSWORD, newPassword: "senha-do-impostor-2" })
+        expect((await models.users.findById(created.id).lean())?.passwordUnverified).toBe(true)
+        await resolveGoogleAccount({ sub: "sub-vitima", email: "vitima@example.test", emailVerified: true })
+        expect(await passwordHashOf(created.id)).toBeNull()
+    })
     it("ferramentas do agente definem e removem a senha sem devolvê-la nem exibi-la", async () => {
         const role = await createRole(admin, roleData("Leitor", ["admin.access"]))
         await createUser(admin, { nome: "Duda", email: "duda@example.test", ativo: true, cargos: [role.id] })
