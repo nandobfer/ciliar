@@ -56,7 +56,7 @@ export function UserPasswordSection({ user, self }: { user: UserDto; self: boole
             </div>
             {open && !self && (
                 <div className="space-y-3">
-                    <Field id="user-new-password" label="Nova senha (12 a 128 caracteres)" error={error ?? undefined}><Input id="user-new-password" type="password" autoComplete="new-password" value={password} onChange={event => { setPassword(event.target.value); setError(null) }} disabled={save.isPending} /></Field>
+                    <Field id="user-new-password" label="Nova senha" error={error ?? undefined}><Input id="user-new-password" type="password" autoComplete="new-password" value={password} onChange={event => { setPassword(event.target.value); setError(null) }} disabled={save.isPending} /></Field>
                     <Field id="user-new-password-confirm" label="Confirme a senha"><Input id="user-new-password-confirm" type="password" autoComplete="new-password" value={confirmation} onChange={event => { setConfirmation(event.target.value); setError(null) }} disabled={save.isPending} /></Field>
                     <p className="text-xs text-muted-foreground">Salvar encerra as sessões abertas desta pessoa.</p>
                     <div className="flex justify-end gap-2">

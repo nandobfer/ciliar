@@ -17,9 +17,9 @@ import { useAppSession } from "./AccessProvider"
 import { UserPasswordSection } from "./UserPasswordSection"
 import type { InviteResult, UserDto } from "../types"
 
-// Senha inicial opcional (cadastro): vazia = sem senha; com valor, 12 a 128 e igual à confirmação.
+// Senha inicial opcional (cadastro): vazia = sem senha; com valor, sem tamanho mínimo (teto técnico de 128) e igual à confirmação.
 const formSchema = createUserSchema.extend({ password: z.string(), confirmacao: z.string() }).superRefine((data, context) => {
-    if (data.password && (data.password.length < 12 || data.password.length > 128)) context.addIssue({ code: "custom", path: ["password"], message: "Use de 12 a 128 caracteres" })
+    if (data.password.length > 128) context.addIssue({ code: "custom", path: ["password"], message: "Use no máximo 128 caracteres" })
     if (data.password !== data.confirmacao) context.addIssue({ code: "custom", path: ["confirmacao"], message: "As senhas não coincidem" })
 })
 type Values = z.infer<typeof formSchema>
@@ -73,7 +73,7 @@ export function UserEditor({ user, onClose }: { user?: UserDto; onClose: () => v
                     <Field id="user-email" label="E-mail" error={errors.email?.message}><Input id="user-email" type="email" autoComplete="email" {...form.register("email")} disabled={!!user || save.isPending} /></Field>
                     <label className="flex items-center gap-2 text-sm"><Checkbox checked={active} onCheckedChange={checked => form.setValue("ativo", checked === true, { shouldDirty: true })} disabled={self || save.isPending} />Usuário ativo</label>
                     {!user && <>
-                        <Field id="user-password" label="Senha inicial (opcional, 12 a 128 caracteres)" error={errors.password?.message}><Input id="user-password" type="password" autoComplete="new-password" {...form.register("password")} disabled={save.isPending} /></Field>
+                        <Field id="user-password" label="Senha inicial (opcional)" error={errors.password?.message}><Input id="user-password" type="password" autoComplete="new-password" {...form.register("password")} disabled={save.isPending} /></Field>
                         <Field id="user-confirm" label="Confirme a senha" error={errors.confirmacao?.message}><Input id="user-confirm" type="password" autoComplete="new-password" {...form.register("confirmacao")} disabled={save.isPending} /></Field>
                         <p className="text-xs text-muted-foreground">A senha vale quando o login por e-mail e senha estiver habilitado em Integrações › Autenticação. Nunca é enviada no convite.</p>
                     </>}

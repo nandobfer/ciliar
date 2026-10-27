@@ -135,7 +135,8 @@ describe("senhas: administrador, própria conta, CLI e cadastro público", () =>
         await setUserPassword(admin, id, { password: PASSWORD })
         expect(await verifyPassword((await passwordHashOf(id))!, PASSWORD)).toBe(true)
         expect(await sessionVersionOf(id)).toBe(1)
-        await expect(setUserPassword(admin, id, { password: "curta" })).rejects.toMatchObject({ status: 400 })
+        await expect(setUserPassword(admin, id, { password: "x".repeat(129) })).rejects.toMatchObject({ status: 400 })
+        await expect(setUserPassword(admin, id, { password: "" })).rejects.toMatchObject({ status: 400 })
         await expect(setUserPassword(admin, admin.userId, { password: PASSWORD })).rejects.toMatchObject({ status: 403 })
         expect(await removeUserPassword(admin, id)).toEqual({ id, senha: false, google: false })
         expect(await passwordHashOf(id)).toBeNull()
@@ -170,7 +171,10 @@ describe("senhas: administrador, própria conta, CLI e cadastro público", () =>
         await Promise.all(Object.values(models).map((model) => model.deleteMany({})))
         const { id } = await createOperatorUser(mongoose.connection, { nome: "Operador", email: "op@example.test" }, [OPERATOR_ADMIN], PASSWORD)
         expect(await verifyPassword((await passwordHashOf(id))!, PASSWORD)).toBe(true)
-        await expect(createOperatorUser(mongoose.connection, { nome: "Outro", email: "outro@example.test" }, [OPERATOR_ADMIN], "curta")).rejects.toThrow()
+        // Sem tamanho mínimo: senha curta é aceita; só o teto técnico de 128 é recusado.
+        const short = await createOperatorUser(mongoose.connection, { nome: "Curta", email: "curta@example.test" }, [OPERATOR_ADMIN], "abc")
+        expect(await verifyPassword((await passwordHashOf(short.id))!, "abc")).toBe(true)
+        await expect(createOperatorUser(mongoose.connection, { nome: "Outro", email: "outro@example.test" }, [OPERATOR_ADMIN], "x".repeat(129))).rejects.toThrow()
     })
     it("cadastro público por senha segue as regras do cadastro Google (falha fechado)", async () => {
         const input = { nome: "Pessoa Nova", email: "NOVA@example.test", password: PASSWORD }
@@ -183,7 +187,10 @@ describe("senhas: administrador, própria conta, CLI e cadastro público", () =>
         expect(await models.audits.findOne({ action: "user.signup", targetId: created.id }).lean()).toMatchObject({ actorId: "password-signup" })
         expect((await resolveAccess(created.id)).legalAcceptanceRequired).toBe(true)
         await expect(signupWithPassword(input)).rejects.toMatchObject({ code: "SIGNUP_EMAIL_TAKEN" })
-        await expect(signupWithPassword({ ...input, email: "x@example.test", password: "curta" })).rejects.toMatchObject({ status: 400 })
+        await expect(signupWithPassword({ ...input, email: "x@example.test", password: "x".repeat(129) })).rejects.toMatchObject({ status: 400 })
+        await expect(signupWithPassword({ ...input, email: "y@example.test", password: "" })).rejects.toMatchObject({ status: 400 })
+        const short = await signupWithPassword({ ...input, email: "z@example.test", password: "1" })
+        expect(await verifyPassword((await passwordHashOf(short.id))!, "1")).toBe(true)
     })
     it("vínculo Google pelo e-mail verificado descarta a senha não verificada do cadastro público", async () => {
         await enablePublicSignup()
@@ -219,6 +226,8 @@ describe("senhas: administrador, própria conta, CLI e cadastro público", () =>
         expect(JSON.stringify(result)).not.toMatch(new RegExp(`${PASSWORD}|argon`))
         expect(await run("get_user", { user: "duda@example.test" }, admin)).toMatchObject({ loginMethods: { google: false, password: true } })
         expect(await run("remove_user_password", { user: "duda@example.test" }, admin)).toMatchObject({ ok: true, passwordSet: false, googleLinked: false })
-        expect(() => tool.input.parse({ user: "duda@example.test", password: "curta" })).toThrow()
+        expect(tool.input.parse({ user: "duda@example.test", password: "1" })).toMatchObject({ password: "1" })
+        expect(() => tool.input.parse({ user: "duda@example.test", password: "" })).toThrow()
+        expect(() => tool.input.parse({ user: "duda@example.test", password: "x".repeat(129) })).toThrow()
     })
 })

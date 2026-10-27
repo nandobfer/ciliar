@@ -60,7 +60,8 @@ describe("persistência transacional de usuários e perfis", () => {
         const dto = (await userRows(context)).find(row => row.id === result.id)!
         expect(dto).toMatchObject({ convitePendente: true, metodos: { google: false, senha: false }, ultimoAcesso: null, termosAceitos: null })
         expect(JSON.stringify(dto)).not.toMatch(/googleSub|password/)
-        await expect(createUser(context, { ...newUser("curta@example.test", [role.id]), password: "curta" })).rejects.toMatchObject({ status: 400 })
+        await expect(createUser(context, { ...newUser("longa@example.test", [role.id]), password: "x".repeat(129) })).rejects.toMatchObject({ status: 400 })
+        await expect(createUser(context, { ...newUser("curta@example.test", [role.id]), password: "abc" })).resolves.toMatchObject({ id: expect.any(String) })
     })
     it("envia o convite por e-mail só com SMTP configurado e nunca desfaz o cadastro por falha no envio", async () => {
         const role = await createRole(context, roleData("Leitor"))

@@ -118,7 +118,7 @@ function PasswordSignupForm({ onDone }: { onDone: () => void }) {
             <Field id="signup-email" label="E-mail" error={errors.email?.message}>
                 <Input id="signup-email" type="email" autoComplete="email" disabled={signup.isPending} aria-invalid={errors.email ? true : undefined} {...form.register("email")} />
             </Field>
-            <Field id="signup-password" label="Senha (12 a 128 caracteres)" error={errors.password?.message}>
+            <Field id="signup-password" label="Senha" error={errors.password?.message}>
                 <PasswordInput id="signup-password" autoComplete="new-password" disabled={signup.isPending} invalid={!!errors.password} register={form.register("password")} />
             </Field>
             <Field id="signup-confirm" label="Confirme a senha" error={errors.confirmacao?.message}>
