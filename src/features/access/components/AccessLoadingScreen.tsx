@@ -41,7 +41,7 @@ export function AccessLoadingScreen() {
                     />
                 </div>
                 <motion.p
-                    className="text-4xl font-bold tracking-tight drop-shadow-[0_0_18px_hsl(var(--primary)/0.6)] sm:text-5xl"
+                    className="text-4xl font-bold tracking-tight sm:text-5xl"
                     animate={reducedMotion ? undefined : { opacity: [0.75, 1] }}
                     transition={reducedMotion ? undefined : pulse}
                 >

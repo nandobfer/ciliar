@@ -2,7 +2,9 @@
 
 Infraestrutura copiada de `~/code/opex`: `Dockerfile`, `.dockerignore`, `docker-compose.yml`,
 `docker-compose.deploy.yml` e `scripts/deploy-production.ts`, com os testes originais do script.
-Dockerfile e dockerignore são idênticos aos da origem. Nomes de projeto/imagem, banco e variáveis
+Dockerfile e dockerignore são idênticos aos da origem, exceto a documentação viva: o estágio
+`runner` copia `aicontext/` e o `.dockerignore` não o exclui do contexto de build (antes excluía).
+O Agente Opex lê desse diretório em tempo real; ver `opex-agent.md`. Nomes de projeto/imagem, banco e variáveis
 de deploy foram adaptados para Ciliar; nenhum serviço, volume, dado ou segredo do Opex é copiado.
 
 ## Imagem e Compose
@@ -26,14 +28,22 @@ faz fallback para Opex. No ambiente inicial essa variável já está preparada n
 Endereços de Pusher/S3 e outros serviços também devem ser acessíveis de dentro do container.
 O banco deve ser replica set para administração de acessos. Não reconfigure o Mongo compartilhado.
 Configure `AUTH_SECRET` novo e `APP_ORIGIN` com a origem pública canônica (HTTPS em produção).
-Login somente Google: `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` (cliente OAuth "Aplicativo da Web" no
-Google Cloud) com URI de redirecionamento `${APP_ORIGIN}/api/auth/callback/google`. O Calendário (CIL-4)
-usa o mesmo cliente para o Google Agenda: cadastre também `${APP_ORIGIN}/api/calendar/google/callback`,
-habilite a Google Calendar API e inclua os escopos `calendar.events` e `calendar.calendarlist.readonly`
-na tela de consentimento (sensíveis: sem a verificação do app, só usuários de teste conectam). As
-notificações push chegam em `${APP_ORIGIN}/api/public/calendar/google/notify` (exige HTTPS público). Na tela de
-consentimento, use `${APP_ORIGIN}/privacidade` e `${APP_ORIGIN}/termos`. Sem elas o login fica
-desabilitado com aviso. Não há mais Argon2/`@node-rs/argon2`.
+Login Google: `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` (cliente OAuth "Aplicativo da Web" no
+Google Cloud) com URI de redirecionamento `${APP_ORIGIN}/api/auth/callback/google` (e uma por
+endereço extra em que o Google estiver habilitado: o retorno volta ao endereço de acesso; o Google
+só aceita HTTP em localhost, nunca em IP). Na tela de consentimento, use `${APP_ORIGIN}/privacidade`
+e `${APP_ORIGIN}/termos`. Sem elas o botão do Google fica desabilitado com aviso. E-mail e senha
+(CIL-6) usa Argon2id (`@node-rs/argon2`, binário nativo pré-compilado). Os métodos de cada protocolo
+e os endereços extras (ex.: o IP com a porta publicada) ficam em Integrações › Autenticação.
+**Não defina `AUTH_URL`/`NEXTAUTH_URL`**: o Auth.js passaria a reescrever toda requisição para uma
+única origem e o acesso por outro endereço quebraria (`src/auth.ts` remove as duas na carga e usa
+`AUTH_URL` só como fallback do `APP_ORIGIN`).
+O Calendário (CIL-4) usa o mesmo cliente OAuth para o Google Agenda: cadastre também
+`${APP_ORIGIN}/api/calendar/google/callback` (e o mesmo caminho em cada endereço extra pelo qual o
+usuário for conectar a agenda: o retorno volta ao endereço de acesso), habilite a Google Calendar API e
+inclua os escopos `calendar.events` e `calendar.calendarlist.readonly` na tela de consentimento
+(sensíveis: sem a verificação do app, só usuários de teste conectam). As notificações push chegam em
+`${APP_ORIGIN}/api/public/calendar/google/notify` (exige HTTPS público).
 
 ```sh
 # Validação sem imprimir as credenciais resolvidas.
@@ -68,15 +78,14 @@ Use diretório/projeto exclusivos e healthcheck `http://127.0.0.1:3101/integraco
 `linux/amd64`. Configuração é validada antes de comandos remotos; o script não é executado nesta cópia.
 
 **Acesso:** a porta continua publicada em todas as interfaces. Use HTTPS/proxy/firewall e a origem
-canônica. O app tem login e autorização, mas nunca crie contas ou exponha segredos por automação.
+canônica. Acesso direto pela porta (ex.: `http://IP:porta`) só autentica se o IP estiver em
+Integrações › Autenticação › Endereços de acesso adicionais. O app tem login e autorização, mas nunca crie contas ou exponha segredos por automação.
 O CLI é executado no checkout ou na imagem de desenvolvimento, não no runner standalone:
 
 ```sh
 pnpm user:create
 # Alternativa Docker com terminal interativo e .env próprio:
 docker compose --profile dev run --build --rm --no-deps app-dev pnpm user:create
-# Uma vez, ao migrar do login antigo: remove senhas e troca obrigatória (idempotente).
-pnpm auth:migrate-google
 ```
 
 O CLI mantém hostnames da rede dentro de container. No host, `SCRIPT_MONGODB_HOST` permite mapear

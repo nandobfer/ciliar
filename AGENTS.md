@@ -5,19 +5,22 @@ Leia `aicontext/README.md` e o guia do módulo antes de desenvolver.
 - App Next.js único com pnpm; TypeScript estrito; rotas em `src/app`, regras em `src/features`,
   infraestrutura em `src/lib`, UI compartilhada em `src/components`.
 - Base copiada do Opex. Preserve os componentes e bibliotecas existentes; não reescreva a UI.
-- Tema escuro fixo, primária `#0B57C4` (azul do crm-marketing-campanhas), cores por tokens. Shadcn/Radix, Tailwind 4, lucide-react,
+- Tema claro (cópia do visual do crm-marketing-campanhas: tokens, componentes, sidebar em degradê e cabeçalho com seletor de
+  negócio), primária `#0B57C4`, cores por tokens; o login continua escuro. Shadcn/Radix, Tailwind 4, lucide-react,
   sonner, date-fns e Framer Motion (respeitando movimento reduzido).
 - Escopo atual: Integrações, Usuários, Perfis, Visualizar como, o Agente Opex (chat com
   ferramentas), a Plataforma (M0), Negócios + Agente Entrevistador (M1), o Espaço do negócio (M2),
   Clientes + Pedidos (M3), Trabalhos (M4), Portfólio (M5) e o Calendário com Google Agenda (CIL-4,
-  `aicontext/modules/calendar.md`), por solicitação do usuário. Exceção ao tema fixo: o espaço do negócio,
+  `aicontext/modules/calendar.md`), por solicitação do usuário. Exceção ao tema padrão: o espaço do negócio,
   seu orçamento público e o portfólio público usam a cor e o modo do negócio (`aicontext/modules/business-space.md`,
   `aicontext/modules/orders.md` e `aicontext/modules/portfolio.md`).
-- Auth.js nativo no Next, **somente Google** (sem e-mail/senha). Cadastro público com o perfil
-  padrão da Plataforma, convite (pré-cadastro do e-mail) e vínculo automático por e-mail verificado.
+- Auth.js nativo no Next com **Google e e-mail/senha** (Argon2id, CIL-6); os métodos de cada protocolo
+  (HTTP/HTTPS) e os endereços de acesso extras ficam em Integrações › Autenticação (padrão: só Google),
+  conferidos no servidor. Cadastro público (Google ou senha) com o perfil padrão da Plataforma, convite
+  (pré-cadastro do e-mail, senha inicial opcional) e vínculo automático por e-mail verificado.
   Aceite versionado dos termos/política é conferido no servidor. Toda API administrativa exige
   sessão válida e autorização Perfix no servidor, inclusive chamadas diretas.
-- O CLI `pnpm user:create` (pré-autoriza um e-mail Google) é a única entrada de bootstrap do
+- O CLI `pnpm user:create` (pré-autoriza um e-mail, com senha opcional) é a única entrada de bootstrap do
   primeiro Administrador; não crie contas no startup.
 - Nunca confunda o ator real com o alvo da simulação. Marcador explícito por requisição/aba;
   auditoria preserva o ator real. Preserve o histórico antigo do ator `local`. **Exceção (M1):** na
@@ -34,7 +37,8 @@ Leia `aicontext/README.md` e o guia do módulo antes de desenvolver.
   Status/debug transmitem só invalidações; conteúdo é relido pela API autorizada.
 - Crons usam agendador interno em processo Node persistente; sem Redis, filas ou workers.
 - Toda alteração: implementar → ferramentas do agente → documentar em `aicontext/` → testes Vitest
-  em `__tests__/`.
+  em `__tests__/`. O `aicontext/` é lido em tempo real pelo Agente Opex: arquivo novo em
+  `aicontext/modules` entra no mapa de público `APP_DOC_AUDIENCE` (`src/features/opex-agent/app-docs.ts`).
 - **Ferramentas do Agente Opex são obrigatórias.** Ao criar ou alterar uma funcionalidade, crie ou
   atualize as ferramentas correspondentes para o agente executar o mesmo que a tela/API:
   1. registre no catálogo puro `src/features/opex-agent/tool-catalog.ts` (nome `snake_case`, grupo,

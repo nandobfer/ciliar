@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* Animações `animate-in`/`fade-in-0`/`zoom-in-95` dos popovers, seleções, diálogos e menus (shadcn). */
+@import "tw-animate-css";
 
 /* Dark mode apenas por classe (ignora prefers-color-scheme). */
 @variant dark (&:where(.dark, .dark *));
@@ -36,14 +38,11 @@
   --color-card: hsl(var(--card));
   --color-card-foreground: hsl(var(--card-foreground));
 
-  /* Sidebar (tema escuro, destaque na primária). */
+  /* Sidebar: degradê da cor primária (do Ciliar ou do negócio; ver src/features/businesses/theme.ts). */
   --color-sidebar: hsl(var(--sidebar));
   --color-sidebar-foreground: hsl(var(--sidebar-foreground));
   --color-sidebar-primary: hsl(var(--sidebar-primary));
   --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
-  --color-sidebar-accent: hsl(var(--sidebar-accent));
-  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
-  --color-sidebar-border: hsl(var(--sidebar-border));
 
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
@@ -52,9 +51,9 @@
 
 @theme {
   /* Cores SEMÂNTICAS fixas (não são de marca). */
-  --color-success: #22c55e;
-  --color-warning: #fbbf24;
-  --color-danger: #ef4444;
+  --color-success: #16a34a;
+  --color-warning: #ea580c;
+  --color-danger: #dc2626;
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
 
@@ -94,55 +93,11 @@
 
 @layer base {
   /*
-   * Tema ESCURO fixo do app, com cor primária #0B57C4 (215 89% 41%, a mesma do crm-marketing-campanhas) e neutros no mesmo matiz azul. O app não tem tema claro:
-   * `:root` e `.dark` usam os mesmos valores (a classe `dark` fica no <html> para as variantes
-   * `dark:` dos componentes copiados).
+   * Tema CLARO padrão, cópia do `:root` do ~/code/sipal/crm-marketing-campanhas (primária #0B57C4).
+   * A sidebar é o degradê `--sidebar` → `--sidebar-primary`; o tema do negócio sobrescreve a primária
+   * e a sidebar com a cor dele (regra `:root` gerada por `businessThemeCss`).
    */
-  :root,
-  .dark {
-    --background: 215 22% 6%;
-    --foreground: 215 20% 96%;
-    --card: 215 20% 9%;
-    --card-foreground: 215 20% 96%;
-    --popover: 215 20% 10%;
-    --popover-foreground: 215 20% 96%;
-    --primary: 215 89% 41%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 215 16% 15%;
-    --secondary-foreground: 215 20% 96%;
-    --muted: 215 16% 14%;
-    --muted-foreground: 215 10% 66%;
-    --accent: 215 40% 18%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 215 16% 18%;
-    --input: 215 16% 20%;
-    --ring: 215 89% 55%;
-    --sidebar: 215 24% 5%;
-    --sidebar-foreground: 215 14% 90%;
-    --sidebar-primary: 215 89% 41%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 50% 16%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 215 18% 13%;
-    --radius: 0.5rem;
-    /* Paleta dos gráficos, derivada da primária. */
-    --chart-1: #0b57c4;
-    --chart-2: #2f8fd8;
-    --chart-3: #22d3ee;
-    --chart-4: #f472b6;
-    --chart-5: #34d399;
-    --chart-6: #fbbf24;
-    color-scheme: dark;
-  }
-
-  /*
-   * Modo CLARO, só no espaço de um negócio com o tema claro (o <html> troca `.dark` por `.light`).
-   * Tokens copiados do `:root` do ~/code/sipal/crm-marketing-campanhas (o Opex não tem modo claro).
-   * A sidebar fica neutra (decisão do produto): fundo do card, acento/borda dos tokens claros.
-   */
-  html.light {
+  :root {
     --background: 0 0% 98%;
     --foreground: 0 0% 10%;
     --card: 0 0% 100%;
@@ -162,13 +117,11 @@
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
     --ring: 215 89% 41%;
-    --sidebar: 0 0% 100%;
-    --sidebar-foreground: 0 0% 10%;
-    --sidebar-primary: 215 89% 41%;
+    --sidebar: 215 89% 41%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 215 89% 33%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 240 5.9% 90%;
+    --radius: 0.5rem;
     --chart-1: #0b57c4;
     --chart-2: #2f8fd8;
     --chart-3: #4b3fb3;
@@ -176,6 +129,35 @@
     --chart-5: #2fa6a0;
     --chart-6: #8f6fd6;
     color-scheme: light;
+  }
+
+  /*
+   * Modo ESCURO: só no espaço de um negócio com o modo escuro, nas páginas públicas dele e no login
+   * (a classe `dark` vai no <html>). A sidebar continua no degradê da cor primária.
+   */
+  .dark {
+    --background: 215 22% 6%;
+    --foreground: 215 20% 96%;
+    --card: 215 20% 9%;
+    --card-foreground: 215 20% 96%;
+    --popover: 215 20% 10%;
+    --popover-foreground: 215 20% 96%;
+    --secondary: 215 16% 15%;
+    --secondary-foreground: 215 20% 96%;
+    --muted: 215 16% 14%;
+    --muted-foreground: 215 10% 66%;
+    --accent: 215 40% 18%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 215 16% 18%;
+    --input: 215 16% 20%;
+    --chart-2: #2f8fd8;
+    --chart-3: #22d3ee;
+    --chart-4: #f472b6;
+    --chart-5: #34d399;
+    --chart-6: #fbbf24;
+    color-scheme: dark;
   }
 }
 
@@ -190,9 +172,6 @@
   button {
     cursor: pointer;
   }
-  ::selection {
-    background: hsl(var(--primary) / 0.45);
-  }
 }
 
 ::-webkit-scrollbar {
@@ -203,11 +182,11 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--primary) / 0.35);
+  background: rgba(0, 0, 0, 0.22);
   border-radius: 999px;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--primary) / 0.55);
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
 }
 ::-webkit-scrollbar-corner {
   background: transparent;

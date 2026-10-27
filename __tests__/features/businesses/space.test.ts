@@ -36,6 +36,7 @@ import { getBusinessDashboard } from "@/features/businesses/server/dashboard"
 import { platformModels } from "@/features/platform/server/models"
 import { findOpexTool } from "@/features/opex-agent/server/tools/registry"
 import { scopeOfAccess } from "@/features/opex-agent/server/scope"
+import { BUSINESS_THEME_LIGHT_MIGRATION, businessThemeLight } from "@/lib/db/migrations/business-theme-light"
 
 /** Espaço do negócio (M2) contra os serviços reais (MongoMemoryReplSet efêmero; nunca o banco real). */
 
@@ -87,7 +88,7 @@ describe("ficha, tema e logo", () => {
         const ana = await user("Ana", [provider])
         const id = await businessOf(ana)
         const detail = await getBusinessDetail(ana, id)
-        expect(detail).toMatchObject({ theme: { primaryColor: "#0B57C4", mode: "dark" }, deadlineAlertDays: 3, quoteValidityDays: 15, contactEmail: null, accountEmail: "ana@example.test", currencyLocked: false, editable: true, own: true })
+        expect(detail).toMatchObject({ theme: { primaryColor: "#0B57C4", mode: "light" }, deadlineAlertDays: 3, quoteValidityDays: 15, contactEmail: null, accountEmail: "ana@example.test", currencyLocked: false, editable: true, own: true })
         await createActivity(ana, id, { name: "Consultoria", hourlyRateCents: 15000 })
         const updated = await updateBusiness(ana, id, { theme: { primaryColor: "#ff6600", mode: "light" }, contactPhone: "(11) 99999-0000", deadlineAlertDays: 5, quoteValidityDays: 30, currency: "USD", version: detail.version })
         expect(updated).toMatchObject({ theme: { primaryColor: "#FF6600", mode: "light" }, contactPhone: "(11) 99999-0000", deadlineAlertDays: 5, quoteValidityDays: 30, currency: "USD", valuedItems: { activities: 1, goals: 0 } })
@@ -110,6 +111,23 @@ describe("ficha, tema e logo", () => {
         expect(storage.deleteFile).toHaveBeenCalledWith(`businesses/${id}/files/${first}/logo.png`)
         expect((await removeBusinessLogo(bia, id)).logo).toBeNull()
         expect(await access.audits.countDocuments({ action: { $in: ["business.logo.update", "business.logo.remove"] } })).toBe(3)
+    })
+})
+
+describe("migração do tema claro", () => {
+    it("leva uma vez para Claro o negócio que ficou no Escuro do padrão antigo", async () => {
+        await mongoose.connection.collection("app_migrations").deleteOne({ _id: BUSINESS_THEME_LIGHT_MIGRATION } as never)
+        const provider = (await role("Prestador", [...BUSINESS_FULL_PERMISSIONS])).id
+        const ana = await user("Ana", [provider])
+        const id = await businessOf(ana)
+        expect((await business.businesses.findById(id).lean().orFail()).theme.mode).toBe("light")
+        await business.businesses.updateOne({ _id: id }, { $set: { "theme.mode": "dark" } })
+        expect(await businessThemeLight()).toBe(1)
+        expect((await business.businesses.findById(id).lean().orFail()).theme.mode).toBe("light")
+        // Uma vez só: quem voltar para Escuro depois continua Escuro.
+        await business.businesses.updateOne({ _id: id }, { $set: { "theme.mode": "dark" } })
+        expect(await businessThemeLight()).toBe(0)
+        expect((await business.businesses.findById(id).lean().orFail()).theme.mode).toBe("dark")
     })
 })
 

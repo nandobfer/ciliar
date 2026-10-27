@@ -70,7 +70,7 @@ export function OpexSessionTabs({ open, active, sessions, onActivate, onClose }:
                                     <X className="h-3 w-3" aria-hidden />
                                 </button>
                             )}
-                            {selected && <motion.span layoutId={reduceMotion ? undefined : "opex-tab-indicator"} className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary))]" aria-hidden />}
+                            {selected && <motion.span layoutId={reduceMotion ? undefined : "opex-tab-indicator"} className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-primary" aria-hidden />}
                         </motion.div>
                     )
                 })}

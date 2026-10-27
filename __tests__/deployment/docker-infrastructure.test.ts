@@ -13,6 +13,8 @@ describe('infraestrutura Docker copiada', () => {
         expect(dockerfile).toContain('pnpm install --frozen-lockfile --ignore-scripts')
         expect(dockerfile).toContain('/app/.next/standalone')
         expect(dockerfile).toContain('USER nextjs')
+        // Documentação viva lida em tempo real pelo Agente Opex.
+        expect(dockerfile.slice(dockerfile.indexOf('AS runner'))).toContain('COPY --from=builder --chown=nextjs:nodejs /app/aicontext ./aicontext')
         expect(dockerfile).toContain('CMD ["node", "server.js"]')
         expect(dockerfile).not.toContain('INTEGRATIONS_ENCRYPTION_KEY')
         expect(read('next.config.ts')).toContain('output: "standalone"')
@@ -21,6 +23,8 @@ describe('infraestrutura Docker copiada', () => {
     it('exclui segredos, dados locais, caches e worktrees do contexto de build', () => {
         const excluded = read('.dockerignore').split(/\r?\n/)
         for (const name of ['.env', '.env*', 'node_modules', '.next', '.git', '.cortexkit', 'worktrees']) expect(excluded).toContain(name)
+        // O aicontext vai na imagem (documentação viva do Agente Opex): não pode sair do contexto de build.
+        expect(excluded).not.toContain('aicontext')
     })
 
     it('não reaproveita nomes ou banco do Opex nas configurações executáveis', () => {

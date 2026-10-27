@@ -25,12 +25,12 @@ const ACTION_CONFIG: Record<
   edit: {
     icon: Pencil,
     title: "Editar",
-    className: "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/15",
+    className: "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-600/10",
   },
   create: {
     icon: Plus,
     title: "Criar",
-    className: "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/15",
+    className: "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-600/10",
   },
   delete: {
     icon: Trash2,
@@ -40,22 +40,22 @@ const ACTION_CONFIG: Record<
   visualize: {
     icon: Eye,
     title: "Visualizar",
-    className: "text-blue-400 hover:text-blue-300 hover:bg-blue-500/15",
+    className: "text-blue-600 hover:text-blue-700 hover:bg-blue-600/10",
   },
   test: {
     icon: PlugZap,
     title: "Testar conexão",
-    className: "text-sky-400 hover:text-sky-300 hover:bg-sky-500/15",
+    className: "text-sky-600 hover:text-sky-700 hover:bg-sky-600/10",
   },
   debug: {
     icon: Bug,
     title: "Debug",
-    className: "text-amber-400 hover:text-amber-300 hover:bg-amber-500/15",
+    className: "text-amber-600 hover:text-amber-700 hover:bg-amber-600/10",
   },
   link: {
     icon: Link2,
     title: "Vincular",
-    className: "text-violet-400 hover:text-violet-300 hover:bg-violet-500/15",
+    className: "text-violet-600 hover:text-violet-700 hover:bg-violet-600/10",
   },
 }
 

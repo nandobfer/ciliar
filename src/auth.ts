@@ -1,30 +1,73 @@
 import NextAuth from "next-auth"
+import Credentials from "next-auth/providers/credentials"
 import Google from "next-auth/providers/google"
 import { dbConnect } from "@/lib/db"
 import { accessModels } from "@/features/access/server/models"
 import { resolveGoogleAccount } from "@/features/auth/server/google-account"
 import { loginErrorPath } from "@/features/auth/login-errors"
+import { loginSchema } from "@/features/auth/schemas"
+import { getDummyHash, verifyPassword } from "@/features/auth/server/password"
+import { requestProtocol } from "@/features/auth/request-origin"
+import { appOrigin, requestAuthContext } from "@/features/auth/server/origin"
 import { logger } from "@/lib/logger"
-import { appOrigin } from "@/features/auth/server/origin"
 
 const OBJECT_ID = /^[a-f\d]{24}$/i
 
-export const { handlers, auth, signIn, signOut } = NextAuth(() => {
-    // Configuração lazy: o build não depende de ambiente/segredos de produção.
-    process.env.AUTH_URL ||= appOrigin()
+// `AUTH_URL`/`NEXTAUTH_URL` fariam o Auth.js reescrever TODA requisição para uma única origem,
+// quebrando o acesso por outro endereço permitido (ex.: http://IP:porta). A origem canônica fica no
+// `APP_ORIGIN` (fallback legado no `AUTH_URL`) e a rota do Auth.js entrega a origem de cada requisição.
+if (!process.env.APP_ORIGIN && process.env.AUTH_URL) process.env.APP_ORIGIN = process.env.AUTH_URL
+delete process.env.AUTH_URL
+delete process.env.NEXTAUTH_URL
+
+/** Cabeçalhos da requisição atual (RSC/rotas); fora de uma requisição, vazio. */
+async function currentHeaders(): Promise<Headers> {
+    try {
+        const { headers } = await import("next/headers")
+        return new Headers(await headers())
+    } catch {
+        return new Headers()
+    }
+}
+
+export const { handlers, auth, signIn, signOut } = NextAuth(async (request) => {
+    // Configuração por requisição: cookies `Secure` (e prefixo `__Secure-`) só quando o acesso é HTTPS.
+    const requestHeaders = request?.headers ?? (await currentHeaders())
+    const secure = requestProtocol(requestHeaders, request?.url ?? appOrigin()) === "https"
     return {
     secret: process.env.AUTH_SECRET,
     trustHost: true,
+    useSecureCookies: secure,
     pages: { signIn: "/login", error: "/login" },
     session: { strategy: "jwt", maxAge: 8 * 60 * 60 },
-    // Somente Google. Credenciais OAuth no ambiente: o login é pré-requisito para abrir /integracoes.
-    providers: [Google({
-        clientId: process.env.AUTH_GOOGLE_ID,
-        clientSecret: process.env.AUTH_GOOGLE_SECRET,
-        authorization: { params: { prompt: "select_account" } },
-    })],
+    // Métodos por protocolo (integração Autenticação): a rota `/api/auth/*` recusa o método
+    // desabilitado antes do Auth.js; `authorize` confere de novo. Credenciais OAuth no ambiente.
+    providers: [
+        Google({
+            clientId: process.env.AUTH_GOOGLE_ID,
+            clientSecret: process.env.AUTH_GOOGLE_SECRET,
+            authorization: { params: { prompt: "select_account" } },
+        }),
+        Credentials({
+            credentials: { identifier: {}, password: {} },
+            authorize: async (raw, authRequest) => {
+                const parsed = loginSchema.safeParse(raw)
+                if (!parsed.success) return null
+                const { methods } = await requestAuthContext(authRequest.headers, authRequest.url)
+                if (!methods.includes("password")) return null
+                await dbConnect()
+                const { users } = accessModels()
+                const user = await users.findOne({ email: parsed.data.identifier }).select("+passwordHash")
+                const valid = await verifyPassword(user?.passwordHash || await getDummyHash(), parsed.data.password)
+                if (!valid || !user?.passwordHash || !user.active) return null
+                await users.updateOne({ _id: user._id }, { $set: { lastLoginAt: new Date() } })
+                return { id: user.id as string, name: user.name, email: user.email, sessionVersion: user.sessionVersion }
+            },
+        }),
+    ],
     callbacks: {
         signIn: async ({ account, profile }) => {
+            if (account?.provider === "credentials") return true
             if (account?.provider !== "google" || !account.providerAccountId) return loginErrorPath("falha")
             try {
                 await dbConnect()
@@ -44,15 +87,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => {
                 return loginErrorPath("falha")
             }
         },
-        jwt: async ({ token, account }) => {
+        jwt: async ({ token, account, user }) => {
             await dbConnect()
             if (account) {
-                // Primeiro token: troca o `sub` do Google pelo ID do usuário vinculado em `signIn`.
-                if (account.provider !== "google" || !account.providerAccountId) return null
-                const linked = await accessModels().users.findOne({ googleSub: account.providerAccountId, active: true })
-                if (!linked) return null
-                token.sub = linked.id as string
-                token.sessionVersion = linked.sessionVersion
+                if (account.provider === "credentials") {
+                    // `authorize` já validou senha, conta ativa e método; o token guarda o usuário e a versão.
+                    const sessionVersion = user && "sessionVersion" in user ? user.sessionVersion : undefined
+                    if (!user?.id || typeof sessionVersion !== "number") return null
+                    token.sub = user.id
+                    token.sessionVersion = sessionVersion
+                } else {
+                    // Primeiro token Google: troca o `sub` do Google pelo ID do usuário vinculado em `signIn`.
+                    if (account.provider !== "google" || !account.providerAccountId) return null
+                    const linked = await accessModels().users.findOne({ googleSub: account.providerAccountId, active: true })
+                    if (!linked) return null
+                    token.sub = linked.id as string
+                    token.sessionVersion = linked.sessionVersion
+                }
                 delete token.picture
             }
             if (!token.sub || typeof token.sessionVersion !== "number" || !OBJECT_ID.test(token.sub)) return null

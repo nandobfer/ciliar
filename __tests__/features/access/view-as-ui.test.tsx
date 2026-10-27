@@ -17,7 +17,7 @@ describe("header e Visualizar como copiados do Shekinah", () => {
     it("sem simulação mostra só o header neutro e o popover, nunca um diálogo/faixa de aviso", () => {
         mount()
         const trigger = screen.getByRole("button", { name: "Visualizar como outro perfil ou usuário" })
-        expect(trigger.parentElement?.className).toBe("flex h-12 shrink-0 items-center justify-end border-b border-border px-4")
+        expect(trigger.parentElement?.className).toBe("flex h-14 shrink-0 items-center justify-end border-b border-border bg-card px-4")
         expect(screen.queryByRole("status")).toBeNull()
         fireEvent.click(trigger)
         expect(screen.getByRole("listbox", { name: "Perfis" })).toBeTruthy()

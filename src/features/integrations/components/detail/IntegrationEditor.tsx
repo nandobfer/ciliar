@@ -14,6 +14,7 @@ import { AiEditorForm } from "@/features/ai/components/AiEditorForm"
 import { aiProviderOfIntegration } from "@/lib/ai/providers"
 import { AiProviderEditorForm } from "@/features/ai/components/AiProviderEditorForm"
 import { PlatformEditorForm } from "@/features/platform/components/PlatformEditorForm"
+import { AuthenticationEditorForm } from "@/features/authentication/components/AuthenticationEditorForm"
 import { CronsEditorForm } from "./CronsEditorForm"
 import { EditorForm } from "./EditorForm"
 import { ExplorerPane } from "./ExplorerPane"
@@ -84,6 +85,8 @@ export function IntegrationEditor({ id, data }: { id: IntegrationId; data: Integ
                     />
                 ) : id === "platform" ? (
                     <PlatformEditorForm key="form" def={def} data={data} />
+                ) : id === "authentication" ? (
+                    <AuthenticationEditorForm key="form" def={def} data={data} />
                 ) : id === "ai" ? (
                     <AiEditorForm
                         key="form"

@@ -75,7 +75,7 @@ describe('listIntegrations', () => {
   it('lista todas as integrações do catálogo, sem flags de permissão', async () => {
     mocks.loadStoredIntegration.mockResolvedValue(null)
     const items = await listIntegrations()
-    expect(items.map((item) => item.id)).toEqual(['pusher', 'internal_api', 'crons', 'ai', 'ai_opencode', 'ai_gemini', 'ai_anthropic', 'ai_openai', 'ai_deepseek', 'ai_jev', 'smtp', 'storage_s3', 'platform'])
+    expect(items.map((item) => item.id)).toEqual(['pusher', 'internal_api', 'crons', 'ai', 'ai_opencode', 'ai_gemini', 'ai_anthropic', 'ai_openai', 'ai_deepseek', 'ai_jev', 'smtp', 'storage_s3', 'platform', 'authentication'])
     // Provedores de IA são filhos do hub "Provedores de IA" (fora da lista principal na tela).
     expect(items.filter((item) => item.parent === 'ai').map((item) => item.id)).toEqual(['ai_opencode', 'ai_gemini', 'ai_anthropic', 'ai_openai', 'ai_deepseek', 'ai_jev'])
     expect(items.find((item) => item.id === 'ai_gemini')?.configured).toBe(false)

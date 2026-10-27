@@ -53,16 +53,26 @@ export async function resolveGoogleAccount(identity: GoogleIdentity, attempt = 0
     if (byEmail) {
         if (byEmail.googleSub) return denied("conta-vinculada")
         if (!byEmail.active) return denied("inativo")
+        // Senha do cadastro público sem e-mail verificado: quem criou pode não ser o dono do e-mail.
+        // O vínculo Google (e-mail verificado) descarta essa senha e encerra as sessões abertas com ela.
+        const dropPassword = byEmail.passwordUnverified === true
         try {
-            const linked = await users.updateOne({ _id: byEmail._id, active: true, googleSub: null }, { $set: { googleSub: sub, lastLoginAt: now } })
+            const update = dropPassword
+                ? { $set: { googleSub: sub, lastLoginAt: now, passwordSetAt: null, passwordUnverified: false }, $unset: { passwordHash: "" }, $inc: { sessionVersion: 1 } }
+                : { $set: { googleSub: sub, lastLoginAt: now } }
+            const linked = await users.updateOne({ _id: byEmail._id, active: true, googleSub: null }, update)
             if (!linked.modifiedCount) return attempt === 0 ? resolveGoogleAccount(identity, 1) : denied("falha")
         } catch (error) {
             if (isDuplicate(error)) return attempt === 0 ? resolveGoogleAccount(identity, 1) : denied("conta-vinculada")
             throw error
         }
         await audits.create({ actorId: byEmail.id as string, action: "user.google_link", targetId: byEmail.id as string, before: null, after: { email }, simulation: null })
+        if (dropPassword) {
+            await audits.create({ actorId: byEmail.id as string, action: "user.unverified_password_dropped", targetId: byEmail.id as string, before: { senha: true }, after: { senha: false }, simulation: null })
+            logger.warn({ action: "auth.unverified-password-dropped", actorId: byEmail.id }, "Senha não verificada descartada no vínculo Google")
+        }
         logger.info({ action: "auth.google-link", actorId: byEmail.id }, "Conta Google vinculada ao usuário existente")
-        return { status: "ok", userId: byEmail.id as string, sessionVersion: byEmail.sessionVersion, outcome: "linked" }
+        return { status: "ok", userId: byEmail.id as string, sessionVersion: byEmail.sessionVersion + (dropPassword ? 1 : 0), outcome: "linked" }
     }
 
     // Cadastro público: atribui o perfil padrão (autoridade) dentro do fence compartilhado.

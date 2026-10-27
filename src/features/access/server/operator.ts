@@ -1,5 +1,6 @@
 import type { Connection } from "mongoose"
-import { identitySchema } from "../schemas"
+import { identitySchema, passwordSchema } from "../schemas"
+import { hashPassword } from "@/features/auth/server/password"
 import { accessModels } from "./models"
 import { assertTransactionTopology } from "./access"
 import { DomainError } from "@/lib/api/route"
@@ -7,10 +8,12 @@ import { DomainError } from "@/lib/api/route"
 export const OPERATOR_ADMIN = "__administrator__"
 /**
  * Exclusivo do CLI, nunca exposto em uma rota HTTP nem chamado durante startup. Pré-autoriza um
- * e-mail Google (sem senha): a conta é vinculada no primeiro "Entrar com Google" com e-mail verificado.
+ * e-mail: a conta é vinculada no primeiro "Entrar com Google" com e-mail verificado e, com a senha
+ * opcional, também entra por e-mail e senha.
  */
-export async function createOperatorUser(connection: Connection, raw: unknown, selectedRoles: string[]) {
+export async function createOperatorUser(connection: Connection, raw: unknown, selectedRoles: string[], password?: string) {
     const data = identitySchema.parse(raw)
+    const secret = password ? { passwordHash: await hashPassword(passwordSchema.parse(password)), passwordSetAt: new Date() } : {}
     if (!selectedRoles.length || new Set(selectedRoles).size !== selectedRoles.length) throw new DomainError(400, "Selecione ao menos um perfil, sem repetições")
     if (connection.name !== "ciliar" && process.env.NODE_ENV !== "test") throw new DomainError(400, "O cadastro operacional deve usar o banco ciliar")
     await assertTransactionTopology(connection)
@@ -28,8 +31,8 @@ export async function createOperatorUser(connection: Connection, raw: unknown, s
                 roleIds.push(admin.id as string)
             }
             if (roleIds.some(id => !/^[a-f\d]{24}$/i.test(id)) || new Set(roleIds).size !== roleIds.length || await models.roles.countDocuments({ _id: { $in: roleIds }, ativo: true }).session(session) !== roleIds.length) throw new DomainError(400, "Perfil inexistente, repetido ou inativo")
-            const [user] = await models.users.create([{ name: data.nome, email: data.email, active: true, roles: roleIds, signupSource: "cli" }], { session })
-            await models.audits.create([{ actorId: "operator-cli", action: "user.create", targetId: user!.id as string, after: { nome: data.nome, email: data.email, cargos: roleIds, ativo: true }, simulation: null }], { session })
+            const [user] = await models.users.create([{ name: data.nome, email: data.email, active: true, roles: roleIds, signupSource: "cli", ...secret }], { session })
+            await models.audits.create([{ actorId: "operator-cli", action: "user.create", targetId: user!.id as string, after: { nome: data.nome, email: data.email, cargos: roleIds, ativo: true, senha: !!password }, simulation: null }], { session })
             return { id: user!.id as string }
         }, { readPreference: "primary", writeConcern: { w: "majority" } })
     } catch (error) {

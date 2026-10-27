@@ -32,7 +32,7 @@ export function useResendInvite() {
 export function useAccessMutation() {
     const client = useQueryClient()
     return useMutation({
-        mutationFn: async ({ path, method, data }: { path: string; method: "post" | "patch" | "delete"; data: unknown }) => (await api.request({ url: path, method, data })).data,
+        mutationFn: async ({ path, method, data }: { path: string; method: "post" | "patch" | "put" | "delete"; data?: unknown }) => (await api.request({ url: path, method, data })).data,
         onSuccess: async () => {
             await Promise.all(["users", "roles", "assignable-roles", "session", "view-as-options"].map(key => client.invalidateQueries({ queryKey: [key] })))
             toast.success("Alteração salva")

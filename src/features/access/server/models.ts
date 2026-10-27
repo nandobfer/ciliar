@@ -7,6 +7,10 @@ export interface UserRecord {
     sessionVersion: number; accessVersion: number;
     /** `sub` da conta Google vinculada; ausente enquanto o convite estiver pendente. Nunca sai do servidor. */
     googleSub?: string | null; signupSource?: SignupSource; lastLoginAt?: Date | null;
+    /** Hash Argon2id da senha (login por e-mail e senha). Nunca sai do servidor. */
+    passwordHash?: string | null; passwordSetAt?: Date | null;
+    /** Senha criada no cadastro público sem verificar o e-mail: o vínculo Google a descarta. */
+    passwordUnverified?: boolean;
     legalAcceptance?: LegalAcceptance | null; createdAt: Date; updatedAt: Date;
 }
 const userSchema = new Schema<UserRecord>({
@@ -16,6 +20,8 @@ const userSchema = new Schema<UserRecord>({
     accessVersion: { type: Number, default: 0 },
     googleSub: { type: String, select: false }, signupSource: { type: String, enum: ["invite", "public", "cli"], default: "invite" },
     lastLoginAt: { type: Date, default: null },
+    passwordHash: { type: String, select: false }, passwordSetAt: { type: Date, default: null },
+    passwordUnverified: { type: Boolean, default: false },
     legalAcceptance: { type: new Schema<LegalAcceptance>({ version: { type: Number, required: true }, acceptedAt: { type: Date, required: true } }, { _id: false }), default: null },
 }, { collection: "users", timestamps: true })
 userSchema.index({ email: 1 }, { unique: true })

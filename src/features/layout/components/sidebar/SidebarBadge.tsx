@@ -20,7 +20,7 @@ export function SidebarBadge({ count, label, collapsed }: SidebarBadgeProps) {
 
     if (collapsed) {
         return (
-            <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary ring-2 ring-primary/25" data-testid="sidebar-badge-dot">
+            <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-white ring-2 ring-white/25" data-testid="sidebar-badge-dot">
                 <span className="sr-only">{label}</span>
             </span>
         )
@@ -32,7 +32,7 @@ export function SidebarBadge({ count, label, collapsed }: SidebarBadgeProps) {
             initial={reduceMotion ? false : { scale: 0.7, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
-            className="inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-[11px] font-semibold leading-none text-primary-foreground tabular-nums"
+            className="inline-flex min-w-5 items-center justify-center rounded-full bg-white px-1.5 py-0.5 text-[11px] font-semibold leading-none text-sidebar tabular-nums"
         >
             <span aria-hidden>{formatBadge(count)}</span>
             <span className="sr-only">{label}</span>

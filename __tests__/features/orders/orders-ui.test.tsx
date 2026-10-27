@@ -24,7 +24,7 @@ afterEach(cleanup)
 describe("orçamento público", () => {
     it("aplica tema do negócio e mostra dados, horas, histórico e aceite com nome obrigatório", () => {
         render(<PublicQuotePage token="test" initial={quote()} error={null} />)
-        expect(document.documentElement.classList.contains("light")).toBe(true)
+        expect(document.documentElement.classList.contains("dark")).toBe(false)
         expect(screen.getByText("Identidade visual")).toBeTruthy()
         expect(screen.getByText(/1:30 h/)).toBeTruthy()
         expect(screen.getByText(/Versão 1/)).toBeTruthy()

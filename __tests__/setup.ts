@@ -15,6 +15,14 @@ vi.mock('@/lib/integrations/store', () => ({
   invalidateStoredIntegrations: vi.fn(),
 }))
 
+// Métodos de login/endereços de acesso (integração Autenticação): o cache conectaria ao Mongo pela
+// `MONGODB_URI` dummy na checagem de origem e no login. Nos testes vale o padrão (só Google e só o
+// `APP_ORIGIN`); quem testa os métodos redefine `cachedAuthSettings` (vi.mocked(...).mockResolvedValue).
+vi.mock('@/features/authentication/server/state', async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>
+  const schemas = await import('@/features/authentication/schemas')
+  return { ...actual, cachedAuthSettings: vi.fn(async () => schemas.DEFAULT_AUTH_SETTINGS) }
+})
 // Silencia console durante os testes — use DEBUG=1 para ver logs
 if (!process.env.DEBUG) {
   vi.spyOn(console, 'error').mockImplementation(() => {})

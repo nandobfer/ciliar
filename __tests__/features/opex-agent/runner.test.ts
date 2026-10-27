@@ -297,6 +297,29 @@ describe('runner: acesso do usuário real', () => {
     expect(JSON.stringify(options.messages)).toContain('Suporte')
   })
 
+  it('com a documentação no turno, as instruções mandam consultá-la (linguagem da tela para o prestador); sem ela, não', async () => {
+    const docTool = { ...fakeTool, name: 'search_app_docs', group: 'docs' }
+    mocks.parts = [{ type: 'text-delta', id: 'x', text: 'Ok' }, { type: 'finish', finishReason: 'stop', totalUsage: {} }]
+
+    mocks.resolveScopeAccess.mockResolvedValue(accessFixture(['opex.use', 'businesses.use']))
+    mocks.enabledOpexTools.mockReturnValue([fakeTool, docTool])
+    await runTurn(await newSession(), 'Como funciona o orçamento?')
+    const provider = (mocks.streamText.mock.calls[0]![0] as { instructions: string }).instructions
+    expect(provider).toContain('search_app_docs')
+    expect(provider).toContain('linguagem da tela')
+    expect(provider.indexOf('Seja útil')).toBeLessThan(provider.indexOf('search_app_docs'))
+
+    mocks.refreshSessionTitle.mockClear()
+    mocks.resolveScopeAccess.mockResolvedValue(accessFixture(['admin.access', 'opex.use']))
+    await runTurn(await newSession(), 'Como funciona o orçamento?')
+    expect((mocks.streamText.mock.calls[1]![0] as { instructions: string }).instructions).toContain('detalhes técnicos')
+
+    mocks.refreshSessionTitle.mockClear()
+    mocks.enabledOpexTools.mockReturnValue([fakeTool])
+    await runTurn(await newSession(), 'Oi')
+    expect((mocks.streamText.mock.calls[2]![0] as { instructions: string }).instructions).not.toContain('search_app_docs')
+  })
+
   it('sessão de login revogada ou sem opex.use recusa a mensagem sem gravar nada', async () => {
     const sessionId = await newSession()
     mocks.resolveScopeAccess.mockRejectedValueOnce(Object.assign(new Error('Sessão expirada'), { status: 401, code: 'UNAUTHORIZED' }))

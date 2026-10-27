@@ -60,6 +60,8 @@ export interface BusinessDto {
     version: number
     createdAt: string
     updatedAt: string
+    /** Último acesso do usuário REAL ao espaço do negócio (`null` = nunca); só na listagem. */
+    lastAccessedAt?: string | null
 }
 
 export interface BusinessDetailDto extends BusinessDto {

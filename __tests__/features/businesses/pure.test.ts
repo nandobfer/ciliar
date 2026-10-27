@@ -32,6 +32,8 @@ describe("permissões e rotas do prestador", () => {
         expect(routePermissions(`/api/businesses/${id}`, "DELETE")).toEqual(["businesses.use", "businesses.delete"])
         expect(routePermissions(`/api/businesses/${id}/restore`, "POST")).toEqual(["businesses.use", "businesses.archive"])
         expect(routePermissions(`/api/businesses/${id}/interview`, "GET")).toEqual([])
+        // Último acesso: dono ou suporte (o serviço confere o negócio visível).
+        expect(routePermissions(`/api/businesses/${id}/access`, "POST")).toEqual([])
         expect(routePermissions("/api/businesses/search", "GET")).toEqual(["businesses.view_all"])
         expect(routePermissions(`/api/interview/sessions/${id}/messages`, "POST")).toEqual(["businesses.use", "businesses.create"])
         expect(routePermissions("/api/ai/features/business-interviewer/script", "PUT")).toEqual(["integrations.ai.edit"])

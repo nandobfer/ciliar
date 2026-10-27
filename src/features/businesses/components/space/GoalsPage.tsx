@@ -182,7 +182,7 @@ function GoalTimeline({ current, history, onSelect }: { current: GoalItemDto | n
                                     aria-hidden
                                     className={cn(
                                         "absolute -left-[21px] top-4 h-2.5 w-2.5 rounded-full ring-4 ring-background",
-                                        tone === "primary" ? "bg-primary shadow-[0_0_8px_hsl(var(--primary))]" : tone === "warning" ? "bg-warning" : "bg-muted-foreground/60",
+                                        tone === "primary" ? "bg-primary" : tone === "warning" ? "bg-warning" : "bg-muted-foreground/60",
                                     )}
                                 />
                                 <button type="button" onClick={() => onSelect(goal)} className="group w-full rounded-lg px-3 py-2 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">

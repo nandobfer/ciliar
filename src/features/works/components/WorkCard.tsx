@@ -60,7 +60,7 @@ export function WorkCardView({ work, overview = false, moving = false, dragging 
                     </p>
                 )}
                 {overview && !isFixedWorkColumn(work.column) && (
-                    <p className="flex min-w-0 items-center gap-1 text-violet-400">
+                    <p className="flex min-w-0 items-center gap-1 text-violet-600 dark:text-violet-400">
                         <Layers className="h-3 w-3 shrink-0" aria-hidden />
                         <span className="truncate">{work.columnName}</span>
                     </p>

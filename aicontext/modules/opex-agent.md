@@ -118,8 +118,9 @@ Conectar/desconectar o Google e trocar as agendas não viram ferramentas (creden
   requisição (`timeZone` = fuso do navegador, `x-ciliar-timezone`, usado no progresso das metas). O
   acesso nunca é guardado pronto: `resolveScopeAccess` relê conta ativa, versão da
   sessão de login, perfis e simulação (`resolveAccess`) e exige `opex.use` (desde o M1 sem
-  `admin.access`: o prestador também conversa). As ferramentas fora dos grupos `context`, `files`,
-  `businesses` e `business-*` (M2) exigem também `admin.access` (`canUseOpexTool`).
+  `admin.access`: o prestador também conversa). As ferramentas fora dos grupos sem painel
+  (`OPEX_NO_PANEL_GROUPS`: `context`, `files`, `docs`, negócios e seus módulos) exigem também
+  `admin.access` (`canUseOpexTool`).
 - **Antes de cada ferramenta** (`server/authorize.ts`): relê o acesso, confere que o agente segue
   ativo e a ferramenta segue ligada, confere as permissões do catálogo e as que dependem da entrada
   (`authorize` da ferramenta, ex.: `integrations.{id}.edit`). A execução roda em
@@ -173,7 +174,8 @@ chamando o serviço real com o `AccessContext` revalidado (nunca HTTP).
 |---|---|---|
 | Contexto (sempre) | `get_app_overview` | — |
 | Arquivos do chat | `list_chat_files`, `read_chat_file` | — |
-| Negócios (M1/M2) | `list_businesses`, `get_business`, `get_business_interview`, `update_business` (ficha, tema, contato, prazos, `removeLogo`), `set_business_logo` (imagem do chat), `restore_business`, `archive_business`*, `delete_business`* (só arquivado) | `businesses.use` (leitura também `businesses.view_all`); não há `create_business` (só pela entrevista) |
+| Documentação do app | `list_app_docs`, `read_app_doc` (inteiro, por seção ou em janelas), `search_app_docs` | — (o público de cada arquivo é filtrado na execução; ver abaixo) |
+| Negócios (M1/M2) | `list_businesses` (do último acessado, `lastAccessedAt`, como o seletor do cabeçalho), `get_business`, `get_business_interview`, `update_business` (ficha, tema, contato, prazos, `removeLogo`), `set_business_logo` (imagem do chat), `restore_business`, `archive_business`*, `delete_business`* (só arquivado) | `businesses.use` (leitura também `businesses.view_all`); não há `create_business` (só pela entrevista) |
 | Atividades do negócio (M2) | `list_activities`, `get_activity` (histórico do valor/hora), `create_activity`, `update_activity`, `restore_activity`, `archive_activity`*, `delete_activity`* | `businesses.use` (leitura também `businesses.view_all`) |
 | Metas do negócio (M2) | `list_goals` (atual + linha do tempo), `get_current_goal`, `get_goal_progress` (fuso do navegador do turno), `create_goal` (nova atual; a anterior vai para o histórico), `update_goal` (nova versão), `restore_goal` (arquivada → atual), `archive_goal`* (a anterior volta a valer), `delete_goal`* (só arquivada) | idem |
 | Documentos do negócio (M2) | `list_documents`, `get_document`, `create_document` (arquivo do chat copiado para o negócio), `update_document` (metadados), `restore_document`, `archive_document`*, `delete_document`* | idem |
@@ -181,12 +183,13 @@ chamando o serviço real com o `AccessContext` revalidado (nunca HTTP).
 | Clientes e Pedidos (M3) | ver "Ferramentas M3" acima | idem |
 | Trabalhos (M4) | ver "Ferramentas M4" acima: colunas, trabalhos, horas, notas/anexos/sucesso | idem |
 | Memórias dos agentes | `list_agent_memories`, `get_agent_memory`, `create_agent_memory`, `update_agent_memory`, `delete_agent_memory`* (`agent` = enum de `src/features/ai/agents.ts`, inclusive o próprio Agente Opex) | `ai_memories.view` / `ai_memories.edit` |
-| Usuários | `list_users`, `get_user`, `create_user`* (convite sem senha, `sendInvite`), `resend_user_invite`, `update_user`*, `delete_user`* | `users.view/create/edit/delete` |
+| Usuários | `list_users`, `get_user` (com `loginMethods`), `create_user`* (convite sem senha, `sendInvite`), `resend_user_invite`, `update_user`*, `delete_user`*, `set_user_password`* (outro usuário; `redact` da senha, nunca devolvida; encerra as sessões), `remove_user_password`* | `users.view/create/edit/delete` |
 | Perfis | `list_permission_catalog`, `list_roles`, `get_role`, `create_role`*, `update_role`* (com `businessLimit`), `reorder_roles`*, `delete_role`* | `roles.view/edit` (+ `users.edit` para membros) |
 | Integrações | `list_integrations`, `get_integration`, `update_integration`*, `test_integration`, `list_integration_logs` | `integrations.{id}.view/edit/test/logs` |
 | Tokens da API interna | `list_api_tokens`, `create_api_token`*, `revoke_api_token`* | `integrations.internal_api.tokens` |
 | Rotinas | `list_routines`, `run_routine` | `integrations.crons.view/run` |
 | Plataforma | `get_platform_settings`, `update_platform_settings`* (perfil padrão = autoridade; prazos; documentos), `get_legal_terms`, `update_legal_terms`* (publica nova versão; todos reaceitam) | `integrations.platform.view/edit` |
+| Autenticação | `get_auth_settings` (métodos por protocolo, endereços extras, Google configurado), `update_auth_settings`* (http/https: google e/ou password, ao menos um; lista completa de endereços; só o informado muda) | `integrations.authentication.view/edit` |
 
 `*` `destructive` (por padrão pede Confirmar/Cancelar; ajustável por ferramenta). Regra testada: exclusão, credencial, senha,
 token e mudança de autoridade são destrutivas (`update_*` inclusive: `update_legal_terms` é
@@ -194,6 +197,30 @@ destrutiva porque bloqueia todos os usuários até o novo aceite). `create_user`
 senha (login só Google); `resend_user_invite` é `write`. Nenhuma ferramenta devolve `googleSub`.
 Sem o aceite dos termos vigentes o agente recusa (`TERMS_ACCEPTANCE_REQUIRED`). A configuração do
 próprio agente não tem ferramenta.
+
+## Documentação viva (`aicontext/`)
+
+O agente responde perguntas sobre como o app funciona consultando este diretório **em tempo real**
+(CIL-5), sem cópia do conteúdo no código nem cache.
+
+- Grupo `docs` (sem painel, risco `read`): `list_app_docs` (caminho, título, seções, data),
+  `read_app_doc` (`path`, `section` opcional pelo título, `offset`/`limit` até 100 mil caracteres) e
+  `search_app_docs` (palavras-chave sem diferença de acentos/maiúsculas; trechos com documento,
+  seção e linha). Pura: `app-docs.ts`; disco: `server/app-docs.ts`; ferramentas: `server/tools/docs.ts`.
+- **Leitura do disco a cada chamada** (`process.cwd()/aicontext`): só `README.md` e
+  `modules/<nome>.md`; `..`, caminhos absolutos, outras extensões e links simbólicos são recusados;
+  até 512 KB por arquivo. Em produção o Dockerfile copia `aicontext/` para a imagem (cada deploy
+  leva a versão atual); no `app-dev` o Compose Watch sincroniza o diretório.
+- **Público por arquivo** (`APP_DOC_AUDIENCE`): quem usa o agente (inclusive o prestador) lê os
+  módulos de funcionalidade; `access.md`, `integrations.md` e `deployment.md` exigem `admin.access`.
+  **Arquivo fora do mapa conta como restrito**; o teste `app-docs.test.ts` falha se algum `.md` real
+  não estiver classificado. Restrito, inexistente ou inválido dão o mesmo erro (não revela existência).
+  O filtro usa as permissões efetivas do turno (respeita "Visualizar como").
+- **Instruções**: além da linha no padrão, o runner acrescenta sempre (mesmo com instruções
+  personalizadas) a regra `appDocsInstructions` quando alguma ferramenta `docs` está no turno:
+  consultar antes de responder, responder conforme a documentação e dizer quando ela não cobre o
+  assunto. Sem `admin.access`, explicar na linguagem da tela, sem coleções, arquivos, chaves de
+  permissão, rotas ou infraestrutura.
 
 ## APIs
 
@@ -221,8 +248,9 @@ próprios serviços (ator real, com a simulação).
 
 ## Testes
 
-`__tests__/features/opex-agent/`: `pure`, `files`, `runner` (catálogo do turno por permissões,
-simulação no contexto, sessão revogada, 404 entre usuários), `confirmations` (revalidação, contexto
+`__tests__/features/opex-agent/`: `pure`, `files`, `app-docs` (seções, busca, público, caminhos
+inválidos e link simbólico, leitura em tempo real, mapa completo, ferramentas no `aicontext` real), `runner` (catálogo do turno por permissões,
+simulação no contexto, regra da documentação nas instruções, sessão revogada, 404 entre usuários), `confirmations` (revalidação, contexto
 de acesso, segredo sem chave), `tools` (catálogo × implementações, permissões conhecidas no Perfix,
 regra de destrutivas, redação, autorização, canal e rotas), `tools-persistence` (serviços reais em
 `MongoMemoryReplSet`) e `opex-ui` (cards, token com copiar, árvore de ferramentas).

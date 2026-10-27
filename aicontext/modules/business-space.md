@@ -47,31 +47,43 @@ telas em `components/space/`; hooks em `hooks/useBusinessSpace.ts`). Base do M1 
 
 - `theme.ts` é cópia do `crm-marketing-campanhas/src/lib/companies/theme.ts` (contraste WCAG ≥ 4,5:1,
   branco ou `#111111`; inválida/sem contraste → `#0B57C4`; CSS só dos trios HSL calculados, sem
-  injeção). **Diferença decidida**: só os destaques mudam (`--primary`, `--primary-foreground`, `--ring`,
-  `--sidebar-primary`, `--sidebar-primary-foreground` e `--chart-1` — primeira cor dos gráficos, como
-  `hsl(...)`); o fundo da sidebar continua neutro.
+  injeção). Como no crm: `--primary`, `--primary-foreground`, `--ring` e a **sidebar em degradê** (`--sidebar` =
+  primária, `--sidebar-primary` = primária 18% mais escura, foregrounds por contraste); além do crm, `--chart-1`
+  (primeira cor dos gráficos, `hsl(...)`) e o modo claro/escuro.
 - `BusinessThemeController` (montado no `AppLayoutShell`): com `/negocios/[id]/…` aberto, injeta
-  `<style id="ciliar-business-theme">` com `:root, :root.light { … }` (vale nos portais) e, no modo
-  claro, troca `.dark` por `.light` no `<html>`. Fora do espaço (telas globais, `/negocios`,
-  `/negocios/novo`, administração) volta ao escuro padrão. O `BusinessSpaceLayout` aplica o mesmo tema
+  `<style id="ciliar-business-theme">` com `:root, :root.dark { … }` (vale nos portais) e, no modo
+  **escuro**, põe `.dark` no `<html>` (o app é claro por padrão). Fora do espaço (telas globais, `/negocios`,
+  `/negocios/novo`, administração) volta ao claro padrão. O `BusinessSpaceLayout` aplica o mesmo tema
   no `style` do contêiner.
 - **Cards de `/negocios`**: cada card recebe `businessThemeStyle(business.theme)` no próprio `style`
   (só a primária, escopada ao card; a página, a sidebar e os diálogos seguem o padrão; o modo
   claro/escuro do negócio não é aplicado na lista). Faixa superior e borda na cor primária; botão
   **Abrir**, iniciais do avatar e foco seguem a cor; cor inválida/sem contraste → `#0B57C4`.
   Arquivados mantêm a cor do negócio, esmaecidos (`opacity-80`).
-- **Modo claro**: tokens em `html.light` (`globals.css`), copiados do `:root` do crm (o Opex não tem modo
-  claro); sidebar neutra (fundo do card, acento/borda dos tokens claros).
+- **Modo escuro**: tokens em `.dark` (`globals.css`, o antigo escuro do Ciliar); o claro é o `:root` (cópia do crm).
+  Vale em todas as páginas do negócio (espaço, orçamento público e portfólio público), como antes.
+- **Padrão Claro** (27/10/2026): negócio novo nasce `light` (`DEFAULT_BUSINESS_THEME`, modelo, `resolveTheme` e as
+  normalizações de `businesses`/`orders`/`portfolio` só caem em `dark` quando o modo gravado é `dark`); a ficha mostra
+  **Claro** em primeiro lugar. A migração de boot `business-theme-light` (marcador em `app_migrations`) levou UMA VEZ
+  para Claro quem ficou no Escuro do padrão antigo, sem mexer em `version` nem auditoria; a escolha manual de depois vale.
 - **Pré-visualização ao vivo**: `theme-preview.ts` (store externo); a ficha publica o rascunho e o limpa ao
   sair. Portfólio (M5), link do orçamento (M3) e e-mails reutilizam `theme.ts`.
 
 ## Navegação
 
-- Com um negócio aberto, a barra lateral ganha a seção **Negócio** (`space-nav.ts`): Dashboard, Ficha,
-  Atividades, Metas, Documentos e Sucessos. `/negocios/[id]` entra em `persistentHrefs` (a casca não
-  remonta entre as páginas; o layout anima o conteúdo).
+- Com um negócio aberto, as páginas dele viram **abas abaixo do cabeçalho** (`BusinessSpaceTabs`, itens de
+  `space-nav.ts`): Dashboard, Ficha e os módulos visíveis (`canSeeSpaceSection`); barra ativa deslizante (`layoutId`,
+  movimento reduzido respeitado), rolagem horizontal no celular. A barra lateral fica só com os itens globais. O nome
+  do negócio aparece no seletor do cabeçalho (o layout não repete mais avatar/nome). `/negocios/[id]` entra em
+  `persistentHrefs` (a casca não remonta entre as páginas; o layout anima o conteúdo).
+- **Último acesso / ordem do seletor**: o `BusinessSpaceLayout` chama `POST /api/businesses/[id]/access`
+  (`recordBusinessAccess`, `useRecordBusinessAccess`) ao abrir um negócio; coleção `business_accesses`
+  `{ userId, businessId, accessedAt }` (único por usuário+negócio), sempre do **ator real** (na simulação também), sem
+  auditoria nem versão, só de negócio visível (dono ou suporte; senão 404); sai junto na exclusão/expurgo.
+  `GET /api/businesses` devolve `lastAccessedAt`; ordem pura em `recent-access.ts` (`sortByRecentAccess`,
+  `searchBusinesses`, `formatAccessTime`, cópia do `company-hub.ts` do crm). `list_businesses` do agente usa a mesma ordem.
 - **Rolagem**: como o `<main>` da casca é o mesmo entre as páginas, o `BusinessSpaceLayout` volta o
-  `APP_SCROLL_CONTAINER_ID` ao topo a cada troca de rota, e os links do espaço (itens da sidebar com
+  `APP_SCROLL_CONTAINER_ID` ao topo a cada troca de rota, e os links do espaço (abas com
   `NavItemDef.scroll: false`, atalhos do dashboard) usam `scroll={false}` para o Next não rolar até o
   segmento novo (era o que abria a Ficha no meio da página).
 - Não há página da transcrição (decisão P55): a entrevista fica na API `GET /api/businesses/[id]/interview`

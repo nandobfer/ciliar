@@ -46,15 +46,15 @@ export function SidebarNavItem({ item, href, active, collapsed, badgeCount, redu
                         className={cn(
                             "relative flex w-full items-center gap-3 rounded-[4px] px-3 py-2 text-sm transition-colors",
                             active
-                                ? "bg-sidebar-accent font-semibold text-sidebar-accent-foreground"
-                                : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+                                ? "bg-black/20 font-semibold text-sidebar-foreground shadow-inner"
+                                : "text-sidebar-foreground/75 hover:bg-white/10 hover:text-sidebar-foreground",
                             collapsed && "justify-center px-0 py-2.5",
                         )}
                     >
                         {active && (
                             <motion.span
                                 layoutId={reduceMotion ? undefined : "sidebar-active-bar"}
-                                className="absolute bottom-1.5 left-0 top-1.5 w-[3px] rounded-r bg-primary shadow-[0_0_10px_hsl(var(--primary))]"
+                                className="absolute bottom-1.5 left-0 top-1.5 w-[3px] rounded-r bg-white"
                             />
                         )}
                         <Icon className="h-5 w-5 shrink-0" aria-hidden />

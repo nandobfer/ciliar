@@ -22,7 +22,7 @@ export function protectRoute<P>(handler: (request: NextRequest, context: P) => P
             const session = await auth()
             if (!session?.user?.id) throw new DomainError(401, "Entre para continuar", "UNAUTHORIZED")
             const path = request.nextUrl.pathname
-            if (!["GET", "HEAD", "OPTIONS"].includes(request.method)) assertMutationOrigin(request)
+            if (!["GET", "HEAD", "OPTIONS"].includes(request.method)) await assertMutationOrigin(request)
             const context = await resolveAccess(session.user.id, request.headers.get("x-perfix-view-as") ?? "none", null, session.user.sessionVersion)
             context.timeZone = normalizeTimeZone(request.headers.get(TIME_ZONE_HEADER))
             // Própria conta: sessão e aceite dos termos. Não exige `admin.access` (cadastro público).

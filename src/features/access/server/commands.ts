@@ -10,6 +10,7 @@ import { accessModels } from "./models"
 import { auditAccess, authorityTransaction, conflict, denied, requirePermissions, roleRows } from "./access"
 import type { AccessContext } from "./context"
 import { sendInviteEmail } from "./invite"
+import { hashPassword } from "@/features/auth/server/password"
 
 export function parseInput<T>(schema: z.ZodType<T>, raw: unknown): T {
     const result = schema.safeParse(raw)
@@ -19,11 +20,14 @@ export function parseInput<T>(schema: z.ZodType<T>, raw: unknown): T {
 const missing = () => new DomainError(404, "Registro não encontrado", "NOT_FOUND")
 
 /**
- * Pré-cadastro (convite): cria a conta sem senha com os perfis escolhidos. Quando a pessoa entrar com
- * o Google usando esse e-mail (verificado), a conta é vinculada e mantém os perfis do convite.
+ * Pré-cadastro (convite): cria a conta com os perfis escolhidos e, opcionalmente, a senha inicial.
+ * Quando a pessoa entrar com o Google usando esse e-mail (verificado), a conta é vinculada e mantém
+ * os perfis do convite.
  */
 export async function createUser(context: AccessContext, raw: unknown): Promise<{ id: string; convite: InviteResult }> {
     const data = parseInput(createUserSchema, raw)
+    // Senha inicial opcional (login por e-mail e senha): hash fora da transação.
+    const password = data.password ? { passwordHash: await hashPassword(data.password), passwordSetAt: new Date() } : {}
     let created: { id: string }
     try {
         created = await authorityTransaction(context, ["users.create"], async (current, session) => {
@@ -31,8 +35,8 @@ export async function createUser(context: AccessContext, raw: unknown): Promise<
             if (data.cargos.some(id => !rows.some(role => role.id === id && role.ativo))) throw new DomainError(400, "Perfil inexistente ou inativo")
             const assignment = evaluateRoleAssignment({ catalog, callerCargos: current.roles, requested: data.cargos, current: [], loaded: rows })
             if (assignment.status !== "ok") throw denied("Um ou mais perfis não podem ser atribuídos")
-            const [user] = await accessModels().users.create([{ name: data.nome, email: data.email, active: data.ativo, roles: assignment.cargos, signupSource: "invite" }], { session })
-            await auditAccess(current, "user.create", user!.id as string, null, { nome: data.nome, email: data.email, ativo: data.ativo, cargos: assignment.cargos }, session)
+            const [user] = await accessModels().users.create([{ name: data.nome, email: data.email, active: data.ativo, roles: assignment.cargos, signupSource: "invite", ...password }], { session })
+            await auditAccess(current, "user.create", user!.id as string, null, { nome: data.nome, email: data.email, ativo: data.ativo, cargos: assignment.cargos, senha: !!data.password }, session)
             return { id: user!.id as string }
         })
     } catch (error) {

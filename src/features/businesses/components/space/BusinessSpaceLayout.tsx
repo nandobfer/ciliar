@@ -13,12 +13,11 @@ import { ErrorState } from "@/components/feedback/ErrorState"
 import { apiErrorMessage } from "@/lib/api"
 import { APP_SCROLL_CONTAINER_ID } from "@/hooks/usePageVirtualizer"
 import { useAppSession } from "@/features/access/components/AccessProvider"
-import { BUSINESS_TYPE_LABELS, businessSpaceHref } from "../../constants"
+import { BUSINESS_TYPE_LABELS } from "../../constants"
 import { businessThemeStyle } from "../../theme"
 import type { BusinessDetailDto } from "../../types"
-import { useBusiness, useRestoreBusiness } from "../../hooks/useBusinesses"
+import { useBusiness, useRecordBusinessAccess, useRestoreBusiness } from "../../hooks/useBusinesses"
 import { useBusinessSpaceRealtime } from "../../hooks/useBusinessSpace"
-import { BusinessAvatar } from "../BusinessAvatar"
 import { useThemePreview } from "./theme-preview"
 
 interface BusinessSpaceValue {
@@ -42,8 +41,9 @@ export function businessSubtitle(business: Pick<BusinessDetailDto, "type" | "sub
 
 /**
  * Layout do espaço do negócio (`/negocios/[id]/…`): carrega a ficha, aplica o tema no contêiner
- * (a regra `:root` fica no `BusinessThemeController`), mostra a identidade do negócio e os avisos de
- * somente leitura (suporte) e de arquivado (com Restaurar). As páginas leem o negócio pelo contexto.
+ * (a regra `:root` fica no `BusinessThemeController`), registra o último acesso (ordem do seletor do
+ * cabeçalho) e mostra os avisos de somente leitura (suporte) e de arquivado (com Restaurar). O nome do
+ * negócio e as abas ficam no cabeçalho da casca. As páginas leem o negócio pelo contexto.
  */
 export function BusinessSpaceLayout({ id, children }: { id: string; children: ReactNode }) {
     const pathname = usePathname()
@@ -54,6 +54,7 @@ export function BusinessSpaceLayout({ id, children }: { id: string; children: Re
     const restore = useRestoreBusiness()
     const preview = useThemePreview()
     useBusinessSpaceRealtime(session?.user.id ?? null, !session?.access.simulation)
+    useRecordBusinessAccess(id, query.isSuccess)
 
     // As páginas do espaço compartilham o `<main>` da casca (`persistentHrefs`): sem isto a página nova
     // herdaria a rolagem da anterior. Os links do espaço usam `scroll={false}` (o Next não rola até o segmento).
@@ -81,16 +82,6 @@ export function BusinessSpaceLayout({ id, children }: { id: string; children: Re
         <BusinessSpaceContext.Provider value={{ business, editable: business.editable }}>
             {/* Ocupa a altura da área de conteúdo: o Kanban de Trabalhos (M4) cresce até o fim da tela. */}
             <div style={businessThemeStyle(theme)} className="flex min-h-full flex-col gap-6">
-                {/* No dashboard o nome do negócio é o título da página (ver `BusinessDashboardPage`). */}
-                {pathname !== businessSpaceHref(business.id) && (
-                    <div className="flex items-center gap-3">
-                        <BusinessAvatar business={business} className="h-11 w-11" />
-                        <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold">{business.name}</p>
-                            <p className="truncate text-xs text-muted-foreground">{businessSubtitle(business)}</p>
-                        </div>
-                    </div>
-                )}
                 {!business.own && (
                     <Alert>
                         <Eye className="h-4 w-4" aria-hidden />

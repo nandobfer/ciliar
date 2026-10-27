@@ -59,12 +59,12 @@ export type BusinessStatus = (typeof BUSINESS_STATUSES)[number]
 
 // ── Espaço do negócio (M2) ────────────────────────────────────────────────────
 
-/** Tema do negócio: cor primária e modo (padrão: a cor do Ciliar, escuro). */
-export const BUSINESS_THEME_MODES = ["dark", "light"] as const
+/** Tema do negócio: cor primária e modo (padrão: a cor do Ciliar, claro como o app). */
+export const BUSINESS_THEME_MODES = ["light", "dark"] as const
 export type BusinessThemeMode = (typeof BUSINESS_THEME_MODES)[number]
 export const BUSINESS_THEME_MODE_LABELS: Record<BusinessThemeMode, string> = { dark: "Escuro", light: "Claro" }
 export const DEFAULT_BUSINESS_PRIMARY = "#0B57C4"
-export const DEFAULT_BUSINESS_THEME = { primaryColor: DEFAULT_BUSINESS_PRIMARY, mode: "dark" as BusinessThemeMode }
+export const DEFAULT_BUSINESS_THEME = { primaryColor: DEFAULT_BUSINESS_PRIMARY, mode: "light" as BusinessThemeMode }
 
 /** Prazos usados pelo M3 (alerta de prazo e validade do link do orçamento), em dias. */
 export const DEFAULT_DEADLINE_ALERT_DAYS = 3

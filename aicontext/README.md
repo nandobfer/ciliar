@@ -20,4 +20,8 @@ ganhou o Agente Opex (chat com ferramentas) copiado do Opex.
 - [Calendário](modules/calendar.md) (CIL-4): Dia/Semana/Mês com prazos, períodos, horas e expediente, alerta de conflito de prazo (sobreposição e capacidade, nunca bloqueia) e Google Agenda opcional nos dois sentidos.
 - [Docker e deploy](modules/deployment.md): infraestrutura copiada, Compose dev/produção e ambiente.
 
+Este diretório é também a documentação viva consultada em tempo real pelo Agente Opex
+(`list_app_docs`/`read_app_doc`/`search_app_docs`): módulo novo deve ser classificado em
+`APP_DOC_AUDIENCE` (`src/features/opex-agent/app-docs.ts`); fora do mapa, só a administração lê.
+
 Leia também `AGENTS.md`. Alterações devem manter este contexto e testes Vitest atualizados.

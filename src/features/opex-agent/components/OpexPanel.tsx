@@ -35,7 +35,7 @@ export function OpexPanel({ maximized, onToggleMaximize, onClose }: OpexPanelPro
     return (
         <div className="flex h-full min-h-0 flex-col">
             <header className="flex items-center gap-2.5 border-b bg-gradient-to-r from-primary/15 via-transparent to-transparent px-3 py-2.5">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[0_0_16px_-4px_hsl(var(--primary))]" aria-hidden>
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm" aria-hidden>
                     <Bot className="h-4.5 w-4.5" />
                 </span>
                 <div className="min-w-0 flex-1">

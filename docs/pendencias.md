@@ -46,7 +46,7 @@ Nenhuma pendência. Todos os módulos (M0–M5) estão definidos.
 | P32 | M0 | Termos de uso e política de privacidade formam **uma versão conjunta**, com um único aceite. |
 | P33 | M0 | Sem versão publicada, o cadastro público fica indisponível e ninguém é bloqueado; a primeira publicação passa a exigir o aceite de todos. |
 | P34 | M0 | A conta do cadastro público é criada no primeiro login (perfil padrão) e fica bloqueada até o aceite. |
-| P35 | M0 | Senhas antigas são removidas pelo comando `pnpm auth:migrate-google` (idempotente). |
+| P35 | M0 | Senhas antigas são removidas pelo comando `pnpm auth:migrate-google` (idempotente). (Superada na CIL-6: o comando saiu, pois apagaria as senhas novas; o login por e-mail e senha voltou, configurável por protocolo.) |
 | P36 | M0 | Prazo padrão de exclusão definitiva: 30 dias por tipo (1 a 3650). |
 | P37 | M0 | Convite por e-mail marcado por padrão quando há SMTP; "Reenviar convite" para convites pendentes. |
 | P38 | M0 | Até o M1, quem entra sem `admin.access` vê "Sem acesso" depois do aceite. (Superada no M1: o prestador vai para `/negocios`.) |
