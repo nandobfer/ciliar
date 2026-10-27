@@ -202,6 +202,7 @@ puro `src/features/businesses/permissions.ts` (servidor e navegador).
 | Pedidos | `orders.view` · `orders.edit` (rascunho, título IA) · `orders.send`* (enviar, copiar, revogar o link) · `orders.decide` (aceitar, recusar, reabrir, cancelar) |
 | Trabalhos | `works.view` · `works.edit` (mover, editar, horas, notas, anexos, arquivar) · `works.columns` · `works.payment`* · `works.delete`* |
 | Portfólio | `portfolio.view` · `portfolio.edit` (conteúdo, indexação, itens avulsos, inclusive excluir) · `portfolio.publish`* (publicar, despublicar, endereço) |
+| Calendário | `calendar.view` (página, aba e Google Agenda; os eventos seguem `orders.view`/`works.view`, criar/mover usam `orders.edit`/`works.edit`) |
 | Suporte | `businesses.view_all`* (lê todos os módulos de outros usuários; sem `viewKey`: não ganha `businesses.use`) |
 
 \* sensível.
@@ -232,6 +233,9 @@ puro `src/features/businesses/permissions.ts` (servidor e navegador).
   uma única vez (marcador em `app_migrations`), todo perfil com `businesses.use` (exceto `*`) ganha todas
   as chaves novas, com `version + 1` e auditoria `role.permissions_migrated` (ator `system`). Ninguém perde
   acesso; depois o administrador reduz o que quiser (a migração não roda de novo).
+- **Migração** `grant-calendar-permission` (CIL-4, 27/10/2026): uma única vez, todo perfil com
+  `businesses.use` (exceto `*`) ganha `calendar.view` (mesmo padrão: marcador, `version + 1`, auditoria).
+  `/calendario` e `/api/calendar/**` não exigem o painel; ver [calendar.md](calendar.md).
 - Regressão corrigida: o `AccessProvider` tratava como tela do prestador só `/negocios/*`, então
   `/clientes`, `/pedidos` e `/trabalhos` exigiam `admin.access` ("Sem acesso" no perfil sem o painel).
 - Testes: `__tests__/features/businesses/permissions-pure.test.ts` e `permissions.test.ts`

@@ -27,7 +27,11 @@ Endereços de Pusher/S3 e outros serviços também devem ser acessíveis de dent
 O banco deve ser replica set para administração de acessos. Não reconfigure o Mongo compartilhado.
 Configure `AUTH_SECRET` novo e `APP_ORIGIN` com a origem pública canônica (HTTPS em produção).
 Login somente Google: `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` (cliente OAuth "Aplicativo da Web" no
-Google Cloud) com URI de redirecionamento `${APP_ORIGIN}/api/auth/callback/google`. Na tela de
+Google Cloud) com URI de redirecionamento `${APP_ORIGIN}/api/auth/callback/google`. O Calendário (CIL-4)
+usa o mesmo cliente para o Google Agenda: cadastre também `${APP_ORIGIN}/api/calendar/google/callback`,
+habilite a Google Calendar API e inclua os escopos `calendar.events` e `calendar.calendarlist.readonly`
+na tela de consentimento (sensíveis: sem a verificação do app, só usuários de teste conectam). As
+notificações push chegam em `${APP_ORIGIN}/api/public/calendar/google/notify` (exige HTTPS público). Na tela de
 consentimento, use `${APP_ORIGIN}/privacidade` e `${APP_ORIGIN}/termos`. Sem elas o login fica
 desabilitado com aviso. Não há mais Argon2/`@node-rs/argon2`.
 

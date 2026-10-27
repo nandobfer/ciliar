@@ -110,6 +110,13 @@ Sucesso, Arquivar/Restaurar/Excluir; abas; resumo à direita):
 - Tempo real: `business-space-updated { businessId, kind: "works" }` (só invalidação);
   `WorksRealtime` na casca relê trabalhos em `works`, `orders` (aceite pelo link) e `successes`.
 
+## Calendário (CIL-4)
+
+- Prazo e período (aceite → prazo) dos trabalhos em andamento aparecem no calendário; arrastar o
+  prazo usa o `PATCH` da W1. O detalhe mostra o alerta de conflito ao alterar o prazo (horas restantes =
+  estimadas − apontadas). W1, mover, Pago/sair de Pago, arquivar/restaurar, excluir e purgar marcam o
+  trabalho para o Google Agenda (`markWorkCalendar`); ver [calendar.md](calendar.md).
+
 ## Auditoria
 
 `business.work.{create,move,pay,payment_edit,unpay,update,archive,restore,delete,purge,convert_success}`,

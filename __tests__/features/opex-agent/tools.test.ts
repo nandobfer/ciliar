@@ -62,7 +62,7 @@ describe('catálogo e registro de ferramentas', () => {
   })
 
   it('só existem ferramentas de negócios (clientes e pedidos inclusive), usuários, perfis, integrações (tokens e rotinas), plataforma, arquivos e contexto', () => {
-    expect(OPEX_TOOL_GROUPS).toEqual(['context', 'files', 'businesses', 'business-activities', 'business-goals', 'business-documents', 'business-successes', 'clients', 'orders', 'work-columns', 'works', 'work-time', 'work-notes', 'portfolio', 'portfolio-items', 'memories', 'users', 'roles', 'integrations', 'api-tokens', 'routines', 'platform'])
+    expect(OPEX_TOOL_GROUPS).toEqual(['context', 'files', 'businesses', 'business-activities', 'business-goals', 'business-documents', 'business-successes', 'clients', 'orders', 'work-columns', 'works', 'work-time', 'work-notes', 'portfolio', 'portfolio-items', 'calendar', 'memories', 'users', 'roles', 'integrations', 'api-tokens', 'routines', 'platform'])
     expect(OPEX_TOOLS.some((tool) => tool.name === 'create_business')).toBe(false)
     expect(OPEX_TOOLS.some((tool) => /task|preview|workbench|central|service|finance/.test(tool.name))).toBe(false)
   })
@@ -176,7 +176,7 @@ describe('ferramentas ligadas e permissões', () => {
   })
 
   it('árvore da configuração: um módulo por grupo, folhas por ferramenta e destrutivas como sensíveis', () => {
-    expect(OPEX_TOOL_TREE.map((branch) => branch.label)).toEqual(['Contexto', 'Arquivos do chat', 'Negócios', 'Atividades do negócio', 'Metas do negócio', 'Documentos do negócio', 'Sucessos do negócio', 'Clientes', 'Pedidos', 'Colunas dos trabalhos', 'Trabalhos', 'Horas dos trabalhos', 'Notas, anexos e sucesso dos trabalhos', 'Portfólio', 'Itens avulsos do portfólio', 'Memórias dos agentes', 'Usuários', 'Perfis', 'Integrações', 'Tokens da API interna', 'Rotinas', 'Plataforma'])
+    expect(OPEX_TOOL_TREE.map((branch) => branch.label)).toEqual(['Contexto', 'Arquivos do chat', 'Negócios', 'Atividades do negócio', 'Metas do negócio', 'Documentos do negócio', 'Sucessos do negócio', 'Clientes', 'Pedidos', 'Colunas dos trabalhos', 'Trabalhos', 'Horas dos trabalhos', 'Notas, anexos e sucesso dos trabalhos', 'Portfólio', 'Itens avulsos do portfólio', 'Calendário', 'Memórias dos agentes', 'Usuários', 'Perfis', 'Integrações', 'Tokens da API interna', 'Rotinas', 'Plataforma'])
     expect(opexToolTreeCatalog.keys).toEqual(OPEX_TOOL_CATALOG.map((tool) => tool.name))
     const users = OPEX_TOOL_TREE.find((branch) => branch.id === 'tools_users')!
     expect(users.children).toEqual(expect.arrayContaining([expect.objectContaining({ key: 'delete_user', sensitive: true })]))

@@ -70,6 +70,17 @@ Grupos sem painel (`portfolio`, `portfolio-items`; chaves `portfolio.*` sobre `b
 | Itens avulsos do portfólio | `create_portfolio_item`, `update_portfolio_item` (imagens do chat: `fileIds`/`addFileIds`, `removeImageIds`), `restore_portfolio_item` | write |
 | Itens avulsos do portfólio | `archive_portfolio_item`, `delete_portfolio_item` | destructive |
 
+### Ferramentas CIL-4: Calendário
+
+Grupo sem painel `calendar`, em `server/tools/calendar.ts`. Regras em [calendar.md](calendar.md).
+
+| Grupo | Ferramentas | Risco |
+|---|---|---|
+| Calendário | `list_calendar_events` (período ≤ 62 dias, negócio e tipos; expediente, conflitos e estado do Google; `calendar.view` ou `businesses.view_all`), `check_deadline_conflict` (data + minutos ou pedido/trabalho; `calendar.view`/`orders.view`/`works.view`/`view_all`) | read |
+| Calendário | `sync_google_calendar` (`businesses.use` + `calendar.view`) | write |
+
+Conectar/desconectar o Google e trocar as agendas não viram ferramentas (credencial).
+
 - Item **"Agente Opex"** (ícone `Bot`) no rodapé da barra lateral (`AppLayoutShell` passa
   `sidebarFooterItems` ao `AppShell`), **só com a permissão `opex.use`** (ramo "Agente Opex" do catálogo).
 - Popover ancorado no item, abertura com spring de escala (Framer Motion, respeitando movimento

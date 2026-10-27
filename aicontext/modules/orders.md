@@ -84,6 +84,15 @@ Revogar link de `sent` volta a `draft`. Transição inválida: `ORDER_INVALID_TR
 - `logic.ts`: alerta dos abertos por `deadlineAlertDays` do negócio (padrão 3), Vence hoje /
   Vence em X dias / Atrasado; aceitos e cancelados não têm alerta de pedido.
 
+## Calendário (CIL-4)
+
+- O `OrderForm` aceita `initialDueDate` (novo pedido pelo calendário, em diálogo) e mostra o alerta de
+  conflito de prazo ao definir/alterar a data; o diálogo de envio e o aceite manual também mostram. O
+  alerta nunca bloqueia ([calendar.md](calendar.md)).
+- Arrastar o prazo no calendário usa o mesmo `PATCH` (Rascunho sem versão; Enviado continua Enviado com
+  versão publicada). Mudanças de prazo/status/título marcam o pedido para o Google Agenda
+  (`markOrderCalendar` → `markCalendarDirty`, depois do commit; sem conexão não faz nada).
+
 ## Ferramentas, auditoria e testes
 
 Grupos `clients` e `orders` sem painel, registrados no catálogo e seleção do Agente Opex.

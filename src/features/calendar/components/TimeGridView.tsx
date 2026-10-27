@@ -41,7 +41,7 @@ export function TimeGridView({ days, today, timeZone, events, conflicts, windows
     // Começa no início do expediente (ou às 7h).
     useEffect(() => {
         const first = Math.min(7 * 60, ...days.flatMap((day) => (windows.get(day) ?? []).map(([start]) => start)))
-        scroller.current?.scrollTo({ top: Math.max(0, (first / 60) * HOUR_HEIGHT - 8) })
+        scroller.current?.scrollTo?.({ top: Math.max(0, (first / 60) * HOUR_HEIGHT - 8) })
         // Só ao montar: navegar entre semanas mantém a rolagem.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])

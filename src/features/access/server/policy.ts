@@ -66,7 +66,7 @@ export function businessRoutePermissions(path: string, method: string): string[]
     if (path === "/api/orders" || path === "/api/works" || path === "/api/works/payment-methods") return read ? [] : null // requireModuleRead no serviço
     // Calendário: eventos e conflito conferem no serviço (calendário, pedidos/trabalhos ou suporte); o Google exige só calendar.view.
     if (path === "/api/calendar/events" || path === "/api/calendar/conflict") return read ? [] : null
-    if (/^\/api\/calendar\/google(?:\/(?:connect|calendars|settings|sync|republish))?$/.test(path)) return ["businesses.use", "calendar.view"]
+    if (/^\/api\/calendar\/google(?:\/(?:connect|callback|calendars|settings|sync|republish))?$/.test(path)) return ["businesses.use", "calendar.view"]
     const match = new RegExp(`^/api/businesses/(${ID})(?:/(.*))?$`, "i").exec(path)
     if (!match) return null
     const tail = match[2] ?? ""
