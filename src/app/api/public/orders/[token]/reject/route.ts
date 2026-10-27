@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic"
 
 /** POST /api/public/orders/[token]/reject — recusa pelo cliente (motivo opcional; data/hora e IP). */
 export const POST = withRoute<{ token: string }>(async ({ req, params }) => {
-    assertMutationOrigin(req)
+    await assertMutationOrigin(req)
     const ip = clientIp(req)
     checkRateLimit(`quote:decide:${ip ?? "?"}`, Date.now(), QUOTE_DECISION_LIMIT)
     checkRateLimit(`quote:decide-token:${ip ?? "?"}:${hashQuoteToken(params.token)}`, Date.now(), QUOTE_DECISION_LIMIT)

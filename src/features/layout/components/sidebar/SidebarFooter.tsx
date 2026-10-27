@@ -1,6 +1,8 @@
 "use client"
 
-import { LogOut } from "lucide-react"
+import { useState } from "react"
+import { KeyRound, LogOut } from "lucide-react"
+import { PasswordChangeDialog } from "@/features/auth/components/PasswordChange"
 import { cn } from "@/lib/utils"
 import { useAppSession } from "@/features/access/components/AccessProvider"
 import { SIDEBAR_FOCUS_RING } from "./sidebar-styles"
@@ -19,11 +21,13 @@ interface SidebarFooterProps {
     version?: string
 }
 
-/** Rodapé do menu (cópia do crm-marketing-campanhas): a pessoa logada, o perfil e Sair; versão do app. */
+/** Rodapé do menu (cópia do crm-marketing-campanhas): a pessoa logada, o perfil, Alterar senha e Sair; versão do app. */
 export function SidebarFooter({ collapsed, ownerName, version }: SidebarFooterProps) {
     const { session, logout } = useAppSession()
     const name = session?.user.name || ownerName
     const role = session?.access.roles[0]?.nome ?? ""
+    const [changing, setChanging] = useState(false)
+    const passwordLabel = session?.user.hasPassword ? "Alterar senha" : "Criar senha"
 
     return (
         <div className="shrink-0 space-y-1 border-t border-white/15 p-2">
@@ -37,6 +41,17 @@ export function SidebarFooter({ collapsed, ownerName, version }: SidebarFooterPr
                         <span className="truncate text-[11px] opacity-80">{[role, version && `v${version}`].filter(Boolean).join(" · ")}</span>
                     </span>
                 )}
+                {!collapsed && session && (
+                    <button
+                        type="button"
+                        onClick={() => setChanging(true)}
+                        className={cn("rounded-[4px] p-1.5 opacity-80 hover:bg-white/15 hover:opacity-100", SIDEBAR_FOCUS_RING)}
+                        aria-label={passwordLabel}
+                        title={passwordLabel}
+                    >
+                        <KeyRound className="h-4 w-4" />
+                    </button>
+                )}
                 {!collapsed && (
                     <button
                         type="button"
@@ -49,6 +64,7 @@ export function SidebarFooter({ collapsed, ownerName, version }: SidebarFooterPr
                     </button>
                 )}
             </div>
+            {changing && <PasswordChangeDialog hasPassword={session?.user.hasPassword === true} onClose={() => setChanging(false)} onDone={() => { setChanging(false); logout() }} />}
         </div>
     )
 }

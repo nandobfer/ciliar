@@ -17,6 +17,7 @@ import { docTools } from "./docs"
 import { memoryTools } from "./memories"
 import { integrationTools } from "./integrations"
 import { platformTools } from "./platform"
+import { authenticationTools } from "./authentication"
 import { roleTools } from "./roles"
 import { userTools } from "./users"
 
@@ -44,6 +45,7 @@ export const OPEX_TOOLS: readonly OpexTool[] = [
     ...integrationTools,
     ...apiTokenTools,
     ...platformTools,
+    ...authenticationTools,
 ] as readonly OpexTool[]
 
 export function findOpexTool(name: string): OpexTool | undefined {

@@ -10,6 +10,10 @@ import { testAiHub, testAnthropic, testDeepseek, testGemini, testJev, testOpenai
 import { verifyConnection } from "@/lib/email/mailer"
 import { checkBucket } from "@/lib/storage/s3"
 import { signupAvailability } from "@/features/platform/server/settings"
+import { loadAuthSettings } from "@/features/authentication/server/state"
+import { AUTH_METHOD_LABELS } from "@/features/authentication/constants"
+import { ACCESS_PROTOCOLS } from "@/features/auth/request-origin"
+import { appOrigin } from "@/features/auth/server/origin"
 import { describeFetchError, fail, type IntegrationTester } from "./types"
 
 // ---------------------------------------------------------------------------
@@ -132,6 +136,29 @@ const testPlatform: IntegrationTester = async ({ emit }) => {
     return "Cadastro público disponível"
 }
 
+// ---------------------------------------------------------------------------
+// Autenticação: métodos por protocolo e credenciais do Google no ambiente
+// ---------------------------------------------------------------------------
+
+const testAuthentication: IntegrationTester = async ({ emit }) => {
+    await dbConnect()
+    emit("step", "Conferindo os métodos de login de cada protocolo")
+    const { settings } = await loadAuthSettings()
+    const google = !!process.env.AUTH_GOOGLE_ID && !!process.env.AUTH_GOOGLE_SECRET
+    const problems: string[] = []
+    for (const protocol of ACCESS_PROTOCOLS) {
+        const methods = settings.methods[protocol]
+        emit("info", `${protocol.toUpperCase()}: ${methods.map((method) => AUTH_METHOD_LABELS[method].label).join(" + ")}`)
+        if (methods.includes("google") && !google) {
+            if (methods.length === 1) problems.push(`${protocol.toUpperCase()} só tem Google, sem AUTH_GOOGLE_ID/AUTH_GOOGLE_SECRET no ambiente: ninguém consegue entrar`)
+            else emit("warn", `${protocol.toUpperCase()}: Google habilitado sem AUTH_GOOGLE_ID/AUTH_GOOGLE_SECRET no ambiente`)
+        }
+    }
+    emit("info", `Endereços aceitos: ${[new URL(appOrigin()).hostname, ...settings.extraHosts].join(", ")}`)
+    if (problems.length) fail(problems.join(". "))
+    return "Métodos de login configurados"
+}
+
 export const INTEGRATION_TESTERS: Record<IntegrationId, IntegrationTester> = {
     pusher: testPusher,
     internal_api: testInternalApi,
@@ -146,4 +173,5 @@ export const INTEGRATION_TESTERS: Record<IntegrationId, IntegrationTester> = {
     smtp: testSmtp,
     storage_s3: testStorage,
     platform: testPlatform,
+    authentication: testAuthentication,
 }

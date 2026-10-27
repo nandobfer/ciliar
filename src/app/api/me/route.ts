@@ -6,8 +6,8 @@ import { onboardingState } from "@/features/businesses/server/onboarding"
 
 export const GET = protectRoute(async () => {
     const context = currentAccess()
-    const user = await accessModels().users.findById(context.userId).orFail()
+    const user = await accessModels().users.findById(context.userId).select("+passwordHash").orFail()
     // Sem o aceite dos termos o onboarding ainda não vale (o aceite vem antes).
     const onboarding = context.legalAcceptanceRequired ? { required: false, interviewId: null, archived: 0 } : await onboardingState(context)
-    return NextResponse.json({ success: true, data: { user: { id: user.id, name: user.name, email: user.email, legalAcceptanceRequired: context.legalAcceptanceRequired, legalVersion: context.legalVersion }, access: context.dto, onboarding } })
+    return NextResponse.json({ success: true, data: { user: { id: user.id, name: user.name, email: user.email, legalAcceptanceRequired: context.legalAcceptanceRequired, legalVersion: context.legalVersion, hasPassword: !!user.passwordHash }, access: context.dto, onboarding } })
 })

@@ -9,8 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run --config vitest.config.ts",
-    "user:create": "tsx scripts/create-user.ts",
-    "auth:migrate-google": "tsx scripts/migrate-google-auth.ts"
+    "user:create": "tsx scripts/create-user.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.82",
@@ -28,6 +27,7 @@
     "@hookform/resolvers": "^5.2.2",
     "@inquirer/prompts": "^8.7.3",
     "@nandobfer/perfix": "github:nandobfer/Perfix#2ceef0948fcbc99f6943589048b365665912def8",
+    "@node-rs/argon2": "^2.2.2",
     "@opencode/client": "2.0.24",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",

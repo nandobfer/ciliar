@@ -4,6 +4,8 @@ import { dbConnect } from "@/lib/db"
 import { objectId } from "@/features/access/schemas"
 import { userRows } from "@/features/access/server/access"
 import { createUser, deleteUser, resendInvite, updateUser } from "@/features/access/server/commands"
+import { removeUserPassword, setUserPassword } from "@/features/access/server/passwords"
+import { passwordSchema } from "@/features/access/schemas"
 import { accessModels } from "@/features/access/server/models"
 import type { AccessContext } from "@/features/access/server/context"
 import { defineTool, OpexToolError } from "./define"
@@ -23,6 +25,7 @@ function slimUser(user: UserRow) {
         roles: user.cargos.map((role) => ({ id: role.id, name: role.nome })),
         manageable: user.gerenciavel,
         invitePending: user.convitePendente,
+        loginMethods: { google: user.metodos.google, password: user.metodos.senha },
         lastLoginAt: user.ultimoAcesso,
         acceptedLegalVersion: user.termosAceitos,
     }
@@ -122,6 +125,26 @@ export const userTools = [
             if (!current) throw new OpexToolError("Usuário não encontrado")
             await deleteUser(access, found.id, current.accessVersion)
             return { ok: true, id: found.id, name: found.nome, email: found.email }
+        },
+    }),
+    defineTool("set_user_password", {
+        input: z.object({ user: userRef, password: passwordSchema.describe("Nova senha (12 a 128 caracteres)") }),
+        summarize: (input) => `Definir uma nova senha para ${input.user} e encerrar as sessões dele`,
+        // A senha nunca aparece no card de confirmação nem no histórico do chat.
+        redact: (input) => ({ user: input.user, password: "[oculta]" }),
+        execute: async ({ user, password }, { access }) => {
+            const found = await findUser(access, user)
+            await setUserPassword(access, found.id, { password })
+            return { ok: true, id: found.id, email: found.email, passwordSet: true }
+        },
+    }),
+    defineTool("remove_user_password", {
+        input: z.object({ user: userRef }),
+        summarize: (input) => `Remover a senha de ${input.user} e encerrar as sessões dele`,
+        execute: async ({ user }, { access }) => {
+            const found = await findUser(access, user)
+            const result = await removeUserPassword(access, found.id)
+            return { ok: true, id: found.id, email: found.email, passwordSet: false, googleLinked: result.google }
         },
     }),
 ]

@@ -7,7 +7,6 @@ import { createOperatorUser, OPERATOR_ADMIN } from "@/features/access/server/ope
 import { createUser, updateUser, deleteUser, createRole, updateRole, deleteRole, reorderRoles } from "@/features/access/server/commands"
 import { assertTransactionTopology, resolveAccess, userRows, roleRows } from "@/features/access/server/access"
 import type { AccessContext } from "@/features/access/server/context"
-import { removeLegacyPasswords } from "@/features/access/server/migrations"
 import { platformModels } from "@/features/platform/server/models"
 import { updatePlatformSettings } from "@/features/platform/server/settings"
 import { DEFAULT_PLATFORM_SETTINGS } from "@/features/platform/schemas"
@@ -59,9 +58,9 @@ describe("persistência transacional de usuários e perfis", () => {
         expect(user.googleSub).toBeUndefined()
         expect(user.signupSource).toBe("invite")
         const dto = (await userRows(context)).find(row => row.id === result.id)!
-        expect(dto).toMatchObject({ convitePendente: true, ultimoAcesso: null, termosAceitos: null })
+        expect(dto).toMatchObject({ convitePendente: true, metodos: { google: false, senha: false }, ultimoAcesso: null, termosAceitos: null })
         expect(JSON.stringify(dto)).not.toMatch(/googleSub|password/)
-        await expect(createUser(context, { ...newUser("senha@example.test", [role.id]), password: "Senha antiga 123!" })).rejects.toMatchObject({ status: 400 })
+        await expect(createUser(context, { ...newUser("curta@example.test", [role.id]), password: "curta" })).rejects.toMatchObject({ status: 400 })
     })
     it("envia o convite por e-mail só com SMTP configurado e nunca desfaz o cadastro por falha no envio", async () => {
         const role = await createRole(context, roleData("Leitor"))
@@ -194,19 +193,6 @@ describe("Visualizar como", () => {
         await expect(createUser(context, newUser("negado@example.test", [role.id]))).rejects.toMatchObject({ status: 403 })
         await models.users.updateOne({ _id: actorId }, { $inc: { sessionVersion: 1 } })
         await expect(resolveAccess(actorId, "none", null, 0)).rejects.toMatchObject({ status: 401 })
-    })
-})
-describe("migração para o login Google", () => {
-    it("remove senhas e troca obrigatória antigas de forma idempotente, preservando perfis e auditoria", async () => {
-        await models.users.collection.updateOne({ _id: new mongoose.Types.ObjectId(actorId) }, { $set: { passwordHash: "$argon2id$antigo", mustChangePassword: true } })
-        const auditsBefore = await models.audits.countDocuments()
-        expect(await removeLegacyPasswords(mongoose.connection)).toEqual({ updated: 1 })
-        const raw = await models.users.collection.findOne({ _id: new mongoose.Types.ObjectId(actorId) })
-        expect(raw).not.toHaveProperty("passwordHash")
-        expect(raw).not.toHaveProperty("mustChangePassword")
-        expect(raw?.roles).toEqual([context.roles[0]!.id])
-        expect(await models.audits.countDocuments()).toBe(auditsBefore + 1)
-        expect(await removeLegacyPasswords(mongoose.connection)).toEqual({ updated: 0 })
     })
 })
 describe("cadastro operacional", () => {

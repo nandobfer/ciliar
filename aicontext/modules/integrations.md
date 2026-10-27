@@ -3,8 +3,10 @@
 ## Catálogo
 
 `src/lib/integrations/catalog.ts` é a fonte única. A listagem tem exatamente Pusher, API interna,
-Crons, Provedores de IA, SMTP, Storage S3 e **Plataforma** (`platform`, M0: página própria
-`/integracoes/plataforma`, dados em `/api/platform/*`, ver `platform.md`). Os filhos `ai_opencode`, `ai_gemini`, `ai_anthropic`,
+Crons, Provedores de IA, SMTP, Storage S3, **Plataforma** (`platform`, M0: página própria
+`/integracoes/plataforma`, dados em `/api/platform/*`, ver `platform.md`) e **Autenticação**
+(`authentication`, CIL-6: página própria `/integracoes/autenticacao`, métodos de login por protocolo
+HTTP/HTTPS e endereços de acesso adicionais em `/api/authentication/settings`, ver `access.md`). Os filhos `ai_opencode`, `ai_gemini`, `ai_anthropic`,
 `ai_openai`, `ai_deepseek` e `ai_jev` ficam somente no hub `/integracoes/ia` (Anthropic, OpenAI e
 DeepSeek copiados do Opex: API key em Campos privados, teste lista os modelos de texto, variante =
 nível de raciocínio). Não há GitHub, Clientes, Google Drive nem features de tarefas.
@@ -51,7 +53,8 @@ de simulação limpam caches e desconectam/recriam assinaturas.
 
 ## Rotas
 
-- `/integracoes`, `/integracoes/[id]`, `/integracoes/ia`, `/integracoes/ia/[provider]`.
+- `/integracoes`, `/integracoes/[id]`, `/integracoes/ia`, `/integracoes/ia/[provider]`, `/integracoes/plataforma`,
+  `/integracoes/autenticacao` (`/api/authentication/settings`).
 - `/api/integrations`, `/api/integrations/[id]`: lista, detalhe e PATCH.
 - `/api/integrations/[id]/{test,logs,openapi,explore}`.
 - `/api/integrations/internal_api/tokens`, `/api/integrations/internal_api/tokens/[tokenId]`.
@@ -64,4 +67,5 @@ SMTP testa sem enviar e-mail; Storage S3 testa sem gravar objeto. Configuração
 somente na tela, sem novas variáveis de ambiente. Não há dados simulados nem sucesso fictício.
 SMTP também envia os convites de usuário (opcional). Plataforma testa a disponibilidade do
 cadastro público (perfil padrão válido + termos publicados). Exceção às variáveis: as credenciais
-OAuth do Google (`AUTH_GOOGLE_ID/SECRET`) ficam no ambiente, pois o login precede a tela.
+OAuth do Google (`AUTH_GOOGLE_ID/SECRET`) ficam no ambiente, pois o login precede a tela. Autenticação
+testa se cada protocolo tem um método utilizável (Google exige as credenciais no ambiente).
