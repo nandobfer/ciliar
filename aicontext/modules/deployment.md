@@ -14,6 +14,11 @@ de deploy foram adaptados para Ciliar; nenhum serviço, volume, dado ou segredo 
 - Args públicos `NEXT_PUBLIC_*` preservados; `.env*`, `.git`, caches, worktrees e dados locais não
   entram no contexto. Segredos de runtime vêm do `.env` via Compose, nunca de build args.
 - Projeto `ciliar-${PORT}`, `PORT=3101` neste ambiente. Não compartilha containers com Opex.
+- **Prévias** (Opex, worktrees `worktrees/cil-N`, projeto `ciliar-cil-N`, porta da faixa 4001–4098) são
+  acessadas em `http://<IP público>:<PORT>` (hoje `http://217.77.3.47:<PORT>`), nunca por `localhost`:
+  o `.env` da prévia usa `APP_ORIGIN=http://217.77.3.47:<PORT>`. Login Google e Google Agenda exigem as
+  URLs de retorno desse endereço no Google Cloud; na prévia, o login por e-mail e senha (CIL-6) é o
+  caminho garantido.
 - `app`: produção, restart always, limite de 2 CPUs/4 GiB.
 - `app-dev`: perfil `dev`, limite de 3 CPUs/6 GiB, mesmo Compose Watch/hot reload da origem.
 - Ambos usam as redes externas existentes `mongodb-network` e `soketi-network`. Não cria nem

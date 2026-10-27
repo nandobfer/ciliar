@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/toast"
 import { MotionProvider } from "@/components/motion/MotionProvider"
 import { CtrlEnterSubmit } from "@/components/ctrl-enter-submit"
 import { EditorModeShortcut } from "@/components/editor-mode-shortcut"
+import { ChunkReloadGuard } from "@/components/ChunkReloadGuard"
 
 const inter = localFont({
     src: "./fonts/inter-latin-variable.woff2",
@@ -34,6 +35,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         // Claro por padrão; o modo escuro (`.dark` no <html>) vem do negócio aberto, das páginas públicas dele e do login.
         <html lang="pt-BR" suppressHydrationWarning>
             <body className={cn("min-h-screen bg-background font-sans antialiased", inter.variable)}>
+                <ChunkReloadGuard />
                 <CtrlEnterSubmit />
                 <EditorModeShortcut />
                 <QueryProvider>
