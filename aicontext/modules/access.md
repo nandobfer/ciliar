@@ -3,10 +3,12 @@
 ## Origens e arquitetura
 
 - Login: `LoginPage`, `LoginForm`, `LoginParticleBackground` copiados do Opex, mantendo composição,
-  animação e partículas conectadas do tsParticles. Nome Ciliar, movimento reduzido. Desde o M0 o
-  cartão tem só **"Entrar com Google"** (limpa simulação/cache/Pusher da aba antes) e links para
-  `/termos` e `/privacidade`. `?erro=` (motivos em `features/auth/login-errors.ts`) e `?error=` do
-  Auth.js viram aviso; sem `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` o botão fica desabilitado com aviso.
+  animação e partículas conectadas do tsParticles. Nome Ciliar, movimento reduzido. Desde a CIL-6 o
+  cartão mostra **só os métodos habilitados para o protocolo de acesso** (ver "Login por e-mail e senha e
+  métodos por protocolo"): o formulário de e-mail e senha (com "Criar conta") e/ou **"Entrar com Google"**
+  (os dois limpam simulação/cache/Pusher da aba antes), e links para `/termos` e `/privacidade`. `?erro=`
+  (motivos em `features/auth/login-errors.ts`) e `?error=` do Auth.js viram aviso; com o Google habilitado
+  e sem `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` o botão fica desabilitado com aviso.
   Cor vem do token `--primary`; hidratação lê o tema com snapshot de servidor neutro.
 - Regras/UX de usuários e perfis: referência somente leitura no Shekinah. Árvore de permissões
   e resumo, RoleChip e paleta de tokens foram copiados de lá. Nenhum NestJS, bridge ou domínio de clube.
@@ -16,11 +18,12 @@
   todo chat de agente; ver `opex-agent.md`); ramo **Memórias dos agentes** com `ai_memories.view` e
   `ai_memories.edit` (ver `ai-memories.md`); a configuração do agente usa
   `integrations.ai.view`/`integrations.ai.edit`.
-- Auth.js `next-auth@5.0.0-beta.32`, provider **Google** (único) e JWT, sem adapter; `src/auth.ts`.
+- Auth.js `next-auth@5.0.0-beta.32`, providers **Google** e **Credentials** (e-mail e senha, CIL-6) e JWT,
+  sem adapter; `src/auth.ts` com configuração **por requisição** (`useSecureCookies` = acesso HTTPS).
   Credenciais OAuth no ambiente (`AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET`): o login é pré-requisito
   para abrir `/integracoes`, então não ficam na tela. `prompt=select_account`. Cookie HttpOnly,
-  Secure em HTTPS, SameSite padrão do Auth.js, expiração de 8h. Não há e-mail/senha, Argon2,
-  recuperação de senha, MFA nem outros provedores.
+  Secure só em HTTPS, SameSite padrão do Auth.js, expiração de 8h. Não há recuperação de senha por
+  e-mail, MFA nem outros provedores.
 
 ## Login Google, vínculo e cadastro público (M0)
 
@@ -40,6 +43,75 @@
 Recusas redirecionam para `/login?erro=<código>`; exceções viram `falha` (logadas, sem detalhes).
 O callback `jwt` troca o `sub` do Google pelo ObjectId do usuário vinculado e segue revalidando
 conta ativa e `sessionVersion` em todo token.
+
+## Login por e-mail e senha e métodos por protocolo (CIL-6, 27/10/2026)
+
+**Integração "Autenticação"** (`authentication`, página própria `/integracoes/autenticacao`, permissões
+`integrations.authentication.view|edit|test|logs`; módulo `src/features/authentication`):
+
+- Coleção singleton `auth_settings` (`_id: "global"`): `methods: { http: AuthMethod[], https: AuthMethod[] }`
+  (`google` e/ou `password`, **qualquer combinação, ao menos um por protocolo**), `extraHosts` (até 20),
+  `version`, `updatedBy`. Sem registro (ou inválido) vale o padrão **só Google nos dois protocolos**.
+- `GET/PUT /api/authentication/settings` (fora de `/api/auth/*`, que é do Auth.js): `authorityTransaction`
+  com fence, versão otimista (409 `VERSION_CONFLICT`, rascunho preservado), Zod e auditoria
+  `auth_settings.update`. Salvar limpa o cache em memória (`cachedAuthSettings`, 5 s) lido pelo login.
+- Tela (`AuthenticationEditorForm`): card **Métodos de autenticação** com os blocos HTTP e HTTPS (caixas
+  Google / E-mail e senha; o último método marcado fica travado), avisos de Google sem credenciais no
+  ambiente e de Google por HTTP (o Google só aceita retorno HTTP em localhost), marca "Seu acesso atual" e
+  confirmação ao mudar os métodos do protocolo em uso; card **Endereços de acesso adicionais** (host sem
+  protocolo nem porta, ex.: `217.77.3.47`; o host do `APP_ORIGIN` aparece fixo como oficial).
+- Teste da integração: falha se um protocolo só tem Google sem credenciais OAuth; lista os endereços aceitos.
+
+**Protocolo e origem** (`src/features/auth/request-origin.ts`, puro): protocolo = primeiro valor de
+`X-Forwarded-Proto` (`http`/`https`), senão o da conexão; host = `X-Forwarded-Host`, senão `Host`. O host
+(sem porta) precisa ser o do `APP_ORIGIN` ou estar em `extraHosts` (**qualquer porta**); fora disso a
+origem cai no `APP_ORIGIN` com `allowed: false`. `requestAuthContext(headers, url)` (`auth/server/origin.ts`)
+devolve a origem resolvida e os métodos do protocolo (vazio em host não permitido).
+
+- `assertMutationOrigin` (agora **assíncrona**) aceita `Origin` igual ao `APP_ORIGIN` (como antes) ou igual
+  à origem resolvida de um host permitido, sempre com `x-ciliar-request: 1`.
+- Rota `/api/auth/[...nextauth]`: recusa host não permitido (403 `HOST_NOT_ALLOWED`); confere o método de
+  `signin|callback/google` e `callback/credentials` (`auth-paths.ts`) **antes do Auth.js** — desabilitado no
+  protocolo responde no formato do `signIn` do navegador (`{ url: …/login?erro=metodo-indisponivel&error=MetodoIndisponivel }`,
+  403) ou redireciona (303); limita tentativas de senha por IP (`cf-connecting-ip`/`x-real-ip`) e por e-mail
+  (429 `RateLimited`); entrega ao Auth.js a requisição na **origem resolvida** (cookies e retorno do Google no
+  próprio endereço de acesso). `AUTH_URL`/`NEXTAUTH_URL` são removidas na carga de `src/auth.ts` (fariam o
+  Auth.js reescrever tudo para uma origem); `AUTH_URL` só serve de fallback do `APP_ORIGIN`.
+- Risco residual documentado: num acesso direto à porta, `X-Forwarded-Proto` pode ser forjado; com a lista
+  só de hosts isso não é distinguível, mas o navegador descarta o cookie `Secure` por HTTP e o atacante só
+  alcança métodos já liberados para HTTPS.
+
+**`/login`** (`src/app/login/page.tsx`, servidor): resolve protocolo/host por `headers()`, passa `methods`,
+`signupAvailable` (método `password` + `signupAvailability()` da Plataforma) e o aviso. **E-mail e senha** (e o
+"Criar conta") só aparecem com o método `password`; **"Entrar com Google"** só com `google`; com os dois, um
+divisor "ou". Host não permitido: só o aviso "Este endereço de acesso não está autorizado. Acesse por …".
+Credenciais inválidas: "E-mail ou senha incorretos." (`credentialsErrorMessage`).
+
+**Senha** (`passwordSchema`: 12 a 128; Argon2id `memoryCost 19456`, `timeCost 2`, da base do Opex em
+`auth/server/password.ts`, com hash falso para conta inexistente):
+
+- Provider `Credentials` (`authorize`): Zod, método `password` habilitado na requisição, conta ativa **com
+  senha**, `lastLoginAt`; o callback `jwt` aceita o primeiro token do `credentials` (usuário + `sessionVersion`
+  do `authorize`) e segue revalidando conta ativa e versão em todo token.
+- Admin: senha inicial no cadastro e "Definir/Redefinir/Remover senha" na edição (acima).
+- Própria conta: botão **"Alterar senha"/"Criar senha"** (`KeyRound`) no rodapé da sidebar → `PasswordChangeDialog`
+  → `POST /api/me/password` (`changeOwnPassword`: limite de tentativas, exige a atual quando existe, nova
+  diferente, update condicionado à `sessionVersion`, auditoria `user.password_changed`/`user.password_created`).
+  Encerra todas as sessões; a tela faz logout. `/api/me` devolve `user.hasPassword` (nunca o hash).
+- **Cadastro público por senha**: `POST /api/public/auth/signup` (origem + marcador, método `password` no
+  protocolo, limite por IP) → `signupWithPassword` com as mesmas regras do cadastro Google (fence,
+  `signupAvailability`, perfil padrão, falha fechado 409 `SIGNUP_UNAVAILABLE`, `signupSource: "public"`,
+  auditoria `user.signup` ator `password-signup`, aceite dos termos no primeiro acesso); e-mail já usado →
+  409 `SIGNUP_EMAIL_TAKEN`. O navegador entra em seguida com `signIn("credentials")`.
+- **Sequestro prévio**: o cadastro por senha não verifica o e-mail, então grava `passwordUnverified: true`.
+  Se o dono do e-mail entrar depois com o Google (e-mail verificado), `resolveGoogleAccount` vincula a conta,
+  **remove essa senha** e encerra as sessões (auditoria `user.unverified_password_dropped`). Senhas definidas
+  pelo admin, pelo CLI ou pela própria pessoa logada não são descartadas.
+- Agente Opex: `get_auth_settings`/`update_auth_settings` (grupo Autenticação) e `set_user_password`/
+  `remove_user_password` (Usuários); a senha tem `redact` e nunca volta ao modelo.
+- Testes: `__tests__/features/auth/{request-origin,auth-route,auth,login}.test.*`,
+  `__tests__/features/authentication/authentication.test.ts` (MongoMemoryReplSet) e `access/users.test.tsx`.
+  O `__tests__/setup.ts` fixa `cachedAuthSettings` no padrão (não conecta ao Mongo); quem testa os métodos o redefine.
 
 ## Termos de uso e política de privacidade
 
@@ -90,7 +162,8 @@ Agente Opex correspondente.
 Coleções exclusivas no banco `ciliar`: `users`, `roles`, `role_hierarchy`, `access_audit` (e as da
 plataforma, `platform_settings` e `legal_versions`). E-mail normalizado/único; `googleSub` único
 parcial e não selecionado por padrão (nunca sai do servidor, nem pela API nem pelo agente).
-`signupSource` (`invite`/`public`/`cli`), `lastLoginAt` e `legalAcceptance`. Não há senha.
+`signupSource` (`invite`/`public`/`cli`), `lastLoginAt` e `legalAcceptance`. Senha (CIL-6): `passwordHash`
+(Argon2id, `select: false`, nunca sai do servidor), `passwordSetAt` e `passwordUnverified`.
 Histórico antigo de integrações com ator `local` é preservado; ações humanas usam o ator real.
 
 Alterações de autoridade exigem replica set (ou mongos), transação, majority write concern,
@@ -120,12 +193,15 @@ Busca tem o debounce original de 500 ms e status permite selecionar ativos/inati
 
 `/usuarios`: busca, status, paginação de 20 itens, cadastro em etapas Geral/Perfis, edição,
 exclusão confirmada e resumo de permissões. E-mail somente leitura depois de cadastrado.
-Cadastro = **convite** (pré-cadastro sem senha do e-mail Google, com os perfis escolhidos; o
-perfil padrão não se aplica). "Enviar convite por e-mail" vem marcado com SMTP configurado
+Cadastro = **convite** (pré-cadastro do e-mail, com os perfis escolhidos e **senha inicial opcional**,
+12 a 128 caracteres com confirmação; o perfil padrão não se aplica). "Enviar convite por e-mail" vem marcado com SMTP configurado
 (`GET /api/users/invite`), desabilitado sem SMTP; o envio é depois do commit e falha não desfaz a
-conta (aviso). A listagem marca **Convite pendente** (sem `googleSub`); a edição tem "Reenviar
+conta (aviso). A listagem marca **Convite pendente** (sem `googleSub` e sem senha); a edição tem "Reenviar
 convite" (`POST /api/users/[id]/invite`, `users.create`, só ativo, pendente e na hierarquia).
-Auditoria `user.invite`. Rascunho é preservado em erro.
+Auditoria `user.invite`. Rascunho é preservado em erro. A edição tem o bloco **Senha** (`UserPasswordSection`):
+"Definir/Redefinir senha" (`PUT /api/users/[id]/password`) e "Remover senha" (`DELETE`, com aviso quando não
+há Google vinculado), ambos `users.edit` + hierarquia, nunca para a própria conta, encerrando as sessões
+(`sessionVersion + 1`); auditoria `user.password_set`/`user.password_removed` sem valores.
 
 Os componentes da árvore (`PermissionTree`, `PermissionModuleCard`, `PermissionTreeNode`) aceitam
 `tree`, `catalog`, `lockedKeys` e `renderLeafMeta` (padrão: catálogo de acesso) e são reaproveitados
@@ -173,16 +249,14 @@ Sem efeito no navegador de outro usuário: não é sessão de impersonação.
 pnpm user:create
 ```
 
-`scripts/create-user.ts`: terminal interativo obrigatório; sem argumentos nem pipe. Nome, e-mail
-da conta Google e seleção de perfis ativos (sem senha): pré-autoriza o e-mail, vinculado no primeiro
-"Entrar com Google". Seleção explícita de Administrador cria o perfil reservado dentro da transação,
+`scripts/create-user.ts`: terminal interativo obrigatório; sem argumentos nem pipe. Nome, e-mail,
+**senha opcional** (mascarada, com confirmação; Enter pula) e seleção de perfis ativos: pré-autoriza o
+e-mail, vinculado no primeiro "Entrar com Google", e com senha também entra por e-mail e senha. Seleção explícita de Administrador cria o perfil reservado dentro da transação,
 inclusive no banco vazio. Não sobrescreve duplicados, não mostra stack/URI/credenciais em erro.
 Ator `operator-cli`, `signupSource: "cli"`, conexão fechada ao terminar. Não há bootstrap no startup.
 
-`pnpm auth:migrate-google` (`scripts/migrate-google-auth.ts` → `removeLegacyPasswords`): confirmação
-interativa, remove `passwordHash`/`mustChangePassword` antigos de todos os usuários (idempotente,
-audita `users.legacy_passwords_removed`). Os usuários atuais, inclusive administradores, passam a
-entrar com o Google usando o mesmo e-mail (vínculo automático).
+O antigo `pnpm auth:migrate-google` (removia as senhas do login anterior) **foi excluído na CIL-6**: rodá-lo
+apagaria as senhas novas.
 
 Usa `MONGODB_URI` do `.env`; somente banco `ciliar` fora dos testes. Fora do Docker, mapeia somente
 `SCRIPT_MONGODB_HOST` (default mongodb) para localhost; porta opcional em `SCRIPT_MONGODB_PORT`.

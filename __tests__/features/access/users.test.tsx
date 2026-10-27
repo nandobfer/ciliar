@@ -20,7 +20,7 @@ import { UsersPage } from "@/features/access/components/UsersPage"
 const role: RoleDto = { id: "b".repeat(24), slug: "leitor", nome: "Leitor", descricao: "Somente leitura", cor: "roxo", ativo: true, permissoes: ["admin.access"], escopos: [], posicao: 1, version: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
 beforeEach(() => {
     vi.clearAllMocks(); state.mutateAsync.mockResolvedValue({ success: true, data: { id: "c".repeat(24), convite: "nao-solicitado" } }); state.roles = [role]; state.smtp = false
-    state.users = [{ id: "d".repeat(24), nome: "Maria", email: "maria@example.test", ativo: true, version: 0, roleIds: [role.id], cargos: [role], gerenciavel: true, convitePendente: false, ultimoAcesso: null, termosAceitos: 1 }]
+    state.users = [{ id: "d".repeat(24), nome: "Maria", email: "maria@example.test", ativo: true, version: 0, roleIds: [role.id], cargos: [role], gerenciavel: true, convitePendente: false, metodos: { google: true, senha: false }, ultimoAcesso: null, termosAceitos: 1 }]
 })
 afterEach(() => { cleanup(); vi.restoreAllMocks() })
 const mount = (permissions: string[]) => render(<PermissionsProvider permissions={permissions} roles={[]} realIsAdmin={permissions.includes("*")}><UsersPage /></PermissionsProvider>)
@@ -50,13 +50,13 @@ describe("cadastro de usuários", () => {
         fireEvent.click(screen.getByRole("button", { name: "Limpar filtros" }))
         expect(screen.getByRole("table", { name: "Usuários" })).toBeTruthy()
     })
-    it("pré-cadastra em etapas, sem senha, com seleção explícita de perfil (convite por e-mail indisponível sem SMTP)", async () => {
+    it("pré-cadastra em etapas, sem senha (opcional), com seleção explícita de perfil (convite por e-mail indisponível sem SMTP)", async () => {
         mount(["*"]); fireEvent.click(screen.getByRole("button", { name: "Novo Usuário" }))
-        expect(screen.queryByLabelText(/Senha/)).toBeNull()
+        expect(screen.getByLabelText("Senha inicial (opcional, 12 a 128 caracteres)")).toBeTruthy()
         expect(screen.getByText("Configure o SMTP em Integrações para enviar convites por e-mail.")).toBeTruthy()
         expect((screen.getByRole("checkbox", { name: "Enviar convite por e-mail" }) as HTMLButtonElement).disabled).toBe(true)
         fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "Nova Pessoa" } })
-        fireEvent.change(screen.getByLabelText("E-mail da conta Google"), { target: { value: "nova@example.test" } })
+        fireEvent.change(screen.getByLabelText("E-mail"), { target: { value: "nova@example.test" } })
         fireEvent.click(screen.getByRole("button", { name: "Definir Perfis" }))
         await waitFor(() => expect(screen.getByRole("button", { name: "Criar Usuário" })).toBeTruthy())
         fireEvent.click(screen.getByRole("checkbox", { name: /Leitor/ }))
@@ -68,15 +68,40 @@ describe("cadastro de usuários", () => {
         mount(["*"]); fireEvent.click(screen.getByRole("button", { name: "Novo Usuário" }))
         await waitFor(() => expect((screen.getByRole("checkbox", { name: "Enviar convite por e-mail" }) as HTMLInputElement).checked).toBe(true))
         fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "Nova Pessoa" } })
-        fireEvent.change(screen.getByLabelText("E-mail da conta Google"), { target: { value: "nova@example.test" } })
+        fireEvent.change(screen.getByLabelText("E-mail"), { target: { value: "nova@example.test" } })
         fireEvent.click(screen.getByRole("button", { name: "Definir Perfis" }))
         await waitFor(() => expect(screen.getByRole("button", { name: "Criar Usuário" })).toBeTruthy())
         fireEvent.click(screen.getByRole("checkbox", { name: /Leitor/ }))
         fireEvent.click(screen.getByRole("button", { name: "Criar Usuário" }))
         await waitFor(() => expect(state.mutateAsync).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ enviarConvite: true }) })))
     })
+    it("senha inicial opcional: valida tamanho e confirmação e só então envia", async () => {
+        mount(["*"]); fireEvent.click(screen.getByRole("button", { name: "Novo Usuário" }))
+        fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "Nova Pessoa" } })
+        fireEvent.change(screen.getByLabelText("E-mail"), { target: { value: "nova@example.test" } })
+        fireEvent.change(screen.getByLabelText("Senha inicial (opcional, 12 a 128 caracteres)"), { target: { value: "curta" } })
+        fireEvent.click(screen.getByRole("button", { name: "Definir Perfis" }))
+        expect(await screen.findByText("Use de 12 a 128 caracteres")).toBeTruthy()
+        fireEvent.change(screen.getByLabelText("Senha inicial (opcional, 12 a 128 caracteres)"), { target: { value: "senha-muito-segura" } })
+        fireEvent.change(screen.getByLabelText("Confirme a senha"), { target: { value: "senha-muito-segura" } })
+        fireEvent.click(screen.getByRole("button", { name: "Definir Perfis" }))
+        await waitFor(() => expect(screen.getByRole("button", { name: "Criar Usuário" })).toBeTruthy())
+        fireEvent.click(screen.getByRole("checkbox", { name: /Leitor/ }))
+        fireEvent.click(screen.getByRole("button", { name: "Criar Usuário" }))
+        await waitFor(() => expect(state.mutateAsync).toHaveBeenCalledWith({ path: "/users", method: "post", data: expect.objectContaining({ email: "nova@example.test", password: "senha-muito-segura" }) }))
+    })
+    it("edição define a senha de outro usuário pela rota própria", async () => {
+        mount(["*"])
+        fireEvent.click(within(screen.getByRole("group", { name: "Ações de Maria" })).getByRole("button", { name: "Editar" }))
+        expect(await screen.findByText(/Sem senha: entra só com o Google/)).toBeTruthy()
+        fireEvent.click(screen.getByRole("button", { name: "Definir senha" }))
+        fireEvent.change(screen.getByLabelText("Nova senha (12 a 128 caracteres)"), { target: { value: "senha-muito-segura" } })
+        fireEvent.change(screen.getByLabelText("Confirme a senha"), { target: { value: "senha-muito-segura" } })
+        fireEvent.click(screen.getByRole("button", { name: "Salvar senha" }))
+        await waitFor(() => expect(state.mutateAsync).toHaveBeenCalledWith({ path: `/users/${"d".repeat(24)}/password`, method: "put", data: { password: "senha-muito-segura" } }))
+    })
     it("marca convite pendente na listagem e permite reenviar na edição", async () => {
-        state.users = [{ ...state.users[0]!, convitePendente: true }]
+        state.users = [{ ...state.users[0]!, convitePendente: true, metodos: { google: false, senha: false } }]
         mount(["*"])
         expect(screen.getByText("Convite pendente")).toBeTruthy()
         fireEvent.click(within(screen.getByRole("group", { name: "Ações de Maria" })).getByRole("button", { name: "Editar" }))

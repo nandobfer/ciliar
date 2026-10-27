@@ -47,15 +47,15 @@ Detalhes de imagens prontas e deploy: [Docker e deploy](aicontext/modules/deploy
 - Crons: mesmo editor e motor, com a rotina de verificação de integrações e rotinas HTTP
   configuráveis. Rotinas de tarefas/GitHub/desenvolvimento do Opex não fazem parte desta base.
 - Login do Opex com tsParticles; Auth.js somente com Google (cadastro público com perfil padrão,
-  convite por e-mail pré-cadastrado e aceite versionado dos termos/LGPD). Sem e-mail/senha.
+  convite por e-mail pré-cadastrado e aceite versionado dos termos/LGPD). Desde a CIL-6 também e-mail e senha
+  (Argon2id), com os métodos escolhidos por protocolo (HTTP/HTTPS) em Integrações › Autenticação.
 - Perfix para perfis/hierarquia, usuários e **Visualizar como** por perfil/usuário, isolado por aba.
 - APIs de configuração protegidas por sessão/permissão. Bearer de sistema e cron secret têm
   contratos independentes e não autorizam gerenciamento administrativo.
 
 O primeiro administrador é pré-autorizado explicitamente por `pnpm user:create` em terminal
-interativo (nome, e-mail Google e perfis; sem senha) e entra com o Google usando esse e-mail.
-Não há conta padrão nem criação automática. Ao migrar do login antigo, rode uma vez
-`pnpm auth:migrate-google` para remover as senhas guardadas.
+interativo (nome, e-mail, perfis e senha opcional) e entra com o Google usando esse e-mail ou com
+a senha. Não há conta padrão nem criação automática.
 Se a URI usa hostname Docker no host, ajuste `SCRIPT_MONGODB_HOST`/`SCRIPT_MONGODB_PORT`.
 Veja [Autenticação e acessos](aicontext/modules/access.md) para regras e configuração.
 

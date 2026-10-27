@@ -4,20 +4,22 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import type { ReactNode } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
-const state = vi.hoisted(() => ({ signIn: vi.fn(), resetPusher: vi.fn(), reduced: false, options: {} as { particles?: { move?: { enable?: boolean }; links?: { enable?: boolean }; color?: { value?: string } }; interactivity?: { events?: { onClick?: { enable?: boolean } } } } }))
+const state = vi.hoisted(() => ({ signIn: vi.fn(), resetPusher: vi.fn(), replace: vi.fn(), refresh: vi.fn(), post: vi.fn(), reduced: false, options: {} as { particles?: { move?: { enable?: boolean }; links?: { enable?: boolean }; color?: { value?: string } }; interactivity?: { events?: { onClick?: { enable?: boolean } } } } }))
 vi.mock("next-auth/react", () => ({ signIn: state.signIn }))
+vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: state.replace, refresh: state.refresh }) }))
+vi.mock("@/lib/api", async (importOriginal) => ({ ...(await importOriginal<object>()), api: { post: state.post } }))
 vi.mock("@/lib/pusher/client", () => ({ resetPusherClient: state.resetPusher }))
 vi.mock("framer-motion", async () => ({ ...(await import("../../helpers/framer-motion")).framerMotionMock(), useReducedMotion: () => state.reduced }))
 vi.mock("@tsparticles/react", () => ({ default: ({ options }: { options: typeof state.options }) => { state.options = options; return <div data-testid="particles" /> }, ParticlesProvider: ({ children }: { children: ReactNode }) => children }))
 vi.mock("@tsparticles/slim", () => ({ loadSlim: vi.fn() }))
 import { LoginPage } from "@/features/auth/components/LoginPage"
-import { loginErrorMessage, LOGIN_ERROR_MESSAGES } from "@/features/auth/login-errors"
+import { credentialsErrorMessage, loginErrorMessage, LOGIN_ERROR_MESSAGES } from "@/features/auth/login-errors"
 
 afterEach(cleanup)
 beforeEach(() => { vi.clearAllMocks(); state.reduced = false; sessionStorage.clear(); document.documentElement.style.setProperty("--primary", "215 89% 41%") })
 const mount = (props: Parameters<typeof LoginPage>[0] = {}) => render(<QueryClientProvider client={new QueryClient()}><LoginPage {...props} /></QueryClientProvider>)
 
-describe("login original do Opex no Ciliar, somente com Google", () => {
+describe("login original do Opex no Ciliar (padrão: só Google)", () => {
     it("mantém identidade e partículas conectadas usando o tema, sem campos de senha", async () => {
         mount()
         expect(screen.getByRole("heading", { name: "Ciliar" })).toBeTruthy()
@@ -56,5 +58,73 @@ describe("login original do Opex no Ciliar, somente com Google", () => {
         expect(loginErrorMessage(undefined, "AccessDenied")).toBe(LOGIN_ERROR_MESSAGES.falha)
         expect(loginErrorMessage(undefined, "Configuration")).toMatch(/configuração/)
         expect(loginErrorMessage()).toBeUndefined()
+    })
+})
+
+describe("métodos por protocolo no /login", () => {
+    it("só e-mail e senha: formulário e cadastro, sem o botão do Google", async () => {
+        mount({ methods: ["password"], signupAvailable: true })
+        expect(screen.queryByRole("button", { name: "Entrar com Google" })).toBeNull()
+        expect(screen.getByLabelText("E-mail")).toBeTruthy()
+        expect(screen.getByLabelText("Senha")).toBeTruthy()
+        fireEvent.click(screen.getByRole("button", { name: "Criar conta" }))
+        expect(screen.getByLabelText("Nome")).toBeTruthy()
+        expect(screen.getByLabelText("Confirme a senha")).toBeTruthy()
+    })
+    it("só Google: nada de e-mail, senha ou cadastro com senha", () => {
+        mount({ methods: ["google"], signupAvailable: true })
+        expect(screen.getByRole("button", { name: "Entrar com Google" })).toBeTruthy()
+        expect(screen.queryByLabelText("Senha")).toBeNull()
+        expect(screen.queryByRole("button", { name: "Criar conta" })).toBeNull()
+    })
+    it("os dois métodos aparecem juntos; sem cadastro público não há Criar conta", () => {
+        mount({ methods: ["google", "password"], signupAvailable: false })
+        expect(screen.getByRole("button", { name: "Entrar com Google" })).toBeTruthy()
+        expect(screen.getByLabelText("Senha")).toBeTruthy()
+        expect(screen.getByText("ou")).toBeTruthy()
+        expect(screen.queryByRole("button", { name: "Criar conta" })).toBeNull()
+    })
+    it("sem métodos (endereço não autorizado) mostra só o aviso", () => {
+        mount({ methods: [], notice: "Este endereço de acesso não está autorizado." })
+        expect(screen.getByText("Este endereço de acesso não está autorizado.")).toBeTruthy()
+        expect(screen.queryByRole("button", { name: "Entrar com Google" })).toBeNull()
+        expect(screen.queryByLabelText("Senha")).toBeNull()
+    })
+    it("entra com e-mail e senha e vai ao destino seguro", async () => {
+        state.signIn.mockResolvedValue({ ok: true, error: undefined })
+        mount({ methods: ["password"], nextPath: "/usuarios" })
+        fireEvent.change(screen.getByLabelText("E-mail"), { target: { value: "Pessoa@Example.test" } })
+        fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "senha-muito-segura" } })
+        fireEvent.click(screen.getByRole("button", { name: "Entrar" }))
+        await waitFor(() => expect(state.signIn).toHaveBeenCalledWith("credentials", { identifier: "pessoa@example.test", password: "senha-muito-segura", redirect: false }))
+        await waitFor(() => expect(state.replace).toHaveBeenCalledWith("/usuarios"))
+        expect(state.resetPusher).toHaveBeenCalled()
+    })
+    it("credenciais inválidas mostram a mensagem de erro e não navegam", async () => {
+        state.signIn.mockResolvedValue({ ok: false, error: "CredentialsSignin" })
+        mount({ methods: ["password"] })
+        fireEvent.change(screen.getByLabelText("E-mail"), { target: { value: "pessoa@example.test" } })
+        fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "errada" } })
+        fireEvent.click(screen.getByRole("button", { name: "Entrar" }))
+        expect(await screen.findByText(LOGIN_ERROR_MESSAGES.credenciais)).toBeTruthy()
+        expect(state.replace).not.toHaveBeenCalled()
+    })
+    it("método recusado pelo servidor vira mensagem própria", () => {
+        expect(credentialsErrorMessage("MetodoIndisponivel")).toBe(LOGIN_ERROR_MESSAGES["metodo-indisponivel"])
+        expect(credentialsErrorMessage("RateLimited")).toBe(LOGIN_ERROR_MESSAGES["muitas-tentativas"])
+        expect(loginErrorMessage("metodo-indisponivel")).toBe(LOGIN_ERROR_MESSAGES["metodo-indisponivel"])
+    })
+    it("cria a conta com senha e entra com ela", async () => {
+        state.post.mockResolvedValue({ data: { success: true } })
+        state.signIn.mockResolvedValue({ ok: true, error: undefined })
+        mount({ methods: ["password"], signupAvailable: true })
+        fireEvent.click(screen.getByRole("button", { name: "Criar conta" }))
+        fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "Pessoa Nova" } })
+        fireEvent.change(screen.getByLabelText("E-mail"), { target: { value: "nova@example.test" } })
+        fireEvent.change(screen.getByLabelText("Senha (12 a 128 caracteres)"), { target: { value: "senha-muito-segura" } })
+        fireEvent.change(screen.getByLabelText("Confirme a senha"), { target: { value: "senha-muito-segura" } })
+        fireEvent.click(screen.getAllByRole("button", { name: "Criar conta" }).find((button) => button.getAttribute("type") === "submit")!)
+        await waitFor(() => expect(state.post).toHaveBeenCalledWith("/public/auth/signup", { nome: "Pessoa Nova", email: "nova@example.test", password: "senha-muito-segura" }))
+        await waitFor(() => expect(state.signIn).toHaveBeenCalledWith("credentials", { identifier: "nova@example.test", password: "senha-muito-segura", redirect: false }))
     })
 })

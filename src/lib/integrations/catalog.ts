@@ -3,7 +3,8 @@
  *
  * Integrações ativas: Pusher, API interna, Crons, Provedores de IA (hub `ai`
  * com os provedores `ai_opencode`, `ai_gemini`, `ai_anthropic`, `ai_openai`, `ai_deepseek` e `ai_jev`, que só aparecem dentro do hub),
- * SMTP, Storage S3 e Plataforma (configuração da plataforma, com página própria).
+ * SMTP, Storage S3, Plataforma (configuração da plataforma, com página própria) e Autenticação
+ * (métodos de login por protocolo, com página própria).
  * Sem integrações fora do escopo inicial do Ciliar.
  *
  * Fonte única dos metadados: nome, descrição, ambiente padrão e campos. É módulo PURO (sem
@@ -18,7 +19,7 @@
 import { PUBLIC_API_SPEC_PATH } from "@/lib/public-api/paths"
 import type { Schedule } from "./schedule"
 
-export const INTEGRATION_IDS = ["pusher", "internal_api", "crons", "ai", "ai_opencode", "ai_gemini", "ai_anthropic", "ai_openai", "ai_deepseek", "ai_jev", "smtp", "storage_s3", "platform"] as const
+export const INTEGRATION_IDS = ["pusher", "internal_api", "crons", "ai", "ai_opencode", "ai_gemini", "ai_anthropic", "ai_openai", "ai_deepseek", "ai_jev", "smtp", "storage_s3", "platform", "authentication"] as const
 
 export type IntegrationId = (typeof INTEGRATION_IDS)[number]
 
@@ -515,6 +516,17 @@ export const INTEGRATIONS: readonly IntegrationDef[] = [
         publicFields: [],
         secretFields: [],
     },
+    {
+        // Campos próprios (métodos por protocolo e endereços de acesso adicionais) ficam em
+        // `auth_settings` e na rota `/api/authentication/settings`, não no PATCH genérico.
+        id: "authentication",
+        name: "Autenticação",
+        description: "Métodos de login por protocolo (HTTP e HTTPS) e endereços de acesso",
+        defaultEnvironment: "interno",
+        streamsDebugOverPusher: true,
+        publicFields: [],
+        secretFields: [],
+    },
 ]
 
 const BY_ID = new Map<string, IntegrationDef>(INTEGRATIONS.map((def) => [def.id, def]))
@@ -545,6 +557,7 @@ const CUSTOM_PATHS: Partial<Record<IntegrationId, string>> = {
     ai_deepseek: `${INTEGRATIONS_BASE_PATH}/ia/deepseek`,
     ai_jev: `${INTEGRATIONS_BASE_PATH}/ia/jev`,
     platform: `${INTEGRATIONS_BASE_PATH}/plataforma`,
+    authentication: `${INTEGRATIONS_BASE_PATH}/autenticacao`,
 }
 
 export function integrationPath(id: IntegrationId): string {

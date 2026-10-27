@@ -1,5 +1,10 @@
 # M0 — Acesso público (Google, cadastro, convite, perfil padrão)
 
+> **Atualização CIL-6 (27/10/2026):** o login por **e-mail e senha** voltou, junto do Google. Os métodos
+> disponíveis são escolhidos por protocolo (HTTP/HTTPS) em Integrações › Autenticação (padrão: só Google).
+> Senha: definida pelo admin (cadastro/edição), pelo próprio usuário ("Alterar/Criar senha"), pelo
+> `pnpm user:create` (opcional) ou no cadastro público com senha. Regras em `aicontext/modules/access.md`.
+
 Pré-requisito do M1: hoje o Ciliar só tem login e-mail/senha (Argon2id) e contas criadas pelo
 admin/CLI. O produto passa a aceitar prestadores vindos de fora.
 

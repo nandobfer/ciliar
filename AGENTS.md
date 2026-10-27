@@ -13,11 +13,13 @@ Leia `aicontext/README.md` e o guia do módulo antes de desenvolver.
   Clientes + Pedidos (M3), Trabalhos (M4) e Portfólio (M5), por solicitação do usuário. Exceção ao tema padrão: o espaço do negócio,
   seu orçamento público e o portfólio público usam a cor e o modo do negócio (`aicontext/modules/business-space.md`,
   `aicontext/modules/orders.md` e `aicontext/modules/portfolio.md`).
-- Auth.js nativo no Next, **somente Google** (sem e-mail/senha). Cadastro público com o perfil
-  padrão da Plataforma, convite (pré-cadastro do e-mail) e vínculo automático por e-mail verificado.
+- Auth.js nativo no Next com **Google e e-mail/senha** (Argon2id, CIL-6); os métodos de cada protocolo
+  (HTTP/HTTPS) e os endereços de acesso extras ficam em Integrações › Autenticação (padrão: só Google),
+  conferidos no servidor. Cadastro público (Google ou senha) com o perfil padrão da Plataforma, convite
+  (pré-cadastro do e-mail, senha inicial opcional) e vínculo automático por e-mail verificado.
   Aceite versionado dos termos/política é conferido no servidor. Toda API administrativa exige
   sessão válida e autorização Perfix no servidor, inclusive chamadas diretas.
-- O CLI `pnpm user:create` (pré-autoriza um e-mail Google) é a única entrada de bootstrap do
+- O CLI `pnpm user:create` (pré-autoriza um e-mail, com senha opcional) é a única entrada de bootstrap do
   primeiro Administrador; não crie contas no startup.
 - Nunca confunda o ator real com o alvo da simulação. Marcador explícito por requisição/aba;
   auditoria preserva o ator real. Preserve o histórico antigo do ator `local`. **Exceção (M1):** na

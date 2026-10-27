@@ -18,12 +18,14 @@ describe("catálogo e validação de acessos", () => {
         expect(can(new Set(["*"]), "users.edit")).toBe(true)
         expect(can(new Set(["users.view"]), "users.edit")).toBe(false)
     })
-    it("normaliza e-mail, rejeita perfis duplicados e não aceita mais senha no cadastro", () => {
+    it("normaliza e-mail, rejeita perfis duplicados e aceita só senha inicial de 12 a 128 caracteres", () => {
         const good = { nome: "Nome", email: "  PESSOA@EXEMPLO.COM  ", ativo: true, cargos: ["a".repeat(24)] }
         expect(createUserSchema.parse(good).email).toBe("pessoa@exemplo.com")
         expect(createUserSchema.safeParse({ ...good, enviarConvite: true }).success).toBe(true)
         expect(createUserSchema.safeParse({ ...good, cargos: [...good.cargos, ...good.cargos] }).success).toBe(false)
-        expect(createUserSchema.safeParse({ ...good, password: "Senha forte 123!" }).success).toBe(false)
+        expect(createUserSchema.safeParse({ ...good, password: "Senha forte 123!" }).success).toBe(true)
+        expect(createUserSchema.safeParse({ ...good, password: "curta" }).success).toBe(false)
+        expect(createUserSchema.safeParse({ ...good, password: "x".repeat(129) }).success).toBe(false)
         expect(createUserSchema.safeParse({ ...good, unknown: true }).success).toBe(false)
     })
     it("não aceita wildcard, concessões desconhecidas, ou edição de slug pelo formulário", () => {
@@ -39,11 +41,11 @@ describe("catálogo e validação de acessos", () => {
     })
 })
 describe("origem, canais e CLI", () => {
-    it("rejeita CSRF, origem ausente e marcador ausente", () => {
+    it("rejeita CSRF, origem ausente e marcador ausente", async () => {
         vi.stubEnv("APP_ORIGIN", "https://ciliar.example")
         const request = (origin?: string, marker?: string) => new Request("https://ciliar.example/api/users", { method: "POST", headers: { ...(origin ? { origin } : {}), ...(marker ? { "x-ciliar-request": marker } : {}) } })
-        expect(() => assertMutationOrigin(request("https://ciliar.example", "1"))).not.toThrow()
-        for (const req of [request(), request("https://evil.example", "1"), request("https://ciliar.example")]) expect(() => assertMutationOrigin(req)).toThrow(/Origem/)
+        await expect(assertMutationOrigin(request("https://ciliar.example", "1"))).resolves.toBeUndefined()
+        for (const req of [request(), request("https://evil.example", "1"), request("https://ciliar.example")]) await expect(assertMutationOrigin(req)).rejects.toThrow(/Origem/)
         expect(appOrigin()).toBe("https://ciliar.example")
     })
     it("separa canal administrativo de canais restritos e nunca autoriza canais desconhecidos", () => {
@@ -76,8 +78,13 @@ describe("política das rotas administrativas", () => {
         ["GET", "/api/users/invite", ["users.create"]], ["POST", "/api/users/aaaaaaaaaaaaaaaaaaaaaaaa/invite", ["users.create"]],
         ["GET", "/api/integrations/platform", ["integrations.platform.view"]],
     ])("protege %s %s", (method, path, expected) => expect(routePermissions(path as string, method as string)).toEqual(expected))
-    it("falha fechado para rota administrativa desconhecida (inclusive a antiga troca de senha)", () => {
+    it("falha fechado para rota administrativa desconhecida; senhas e autenticação têm chaves explícitas", () => {
         expect(() => routePermissions("/api/nova-rota", "GET")).toThrow()
-        expect(() => routePermissions("/api/me/password", "POST")).toThrow()
+        expect(() => routePermissions("/api/users/aaaaaaaaaaaaaaaaaaaaaaaa/senha", "PUT")).toThrow()
+        expect(routePermissions("/api/me/password", "POST")).toEqual([])
+        expect(routePermissions("/api/users/aaaaaaaaaaaaaaaaaaaaaaaa/password", "PUT")).toEqual(["users.edit"])
+        expect(routePermissions("/api/users/aaaaaaaaaaaaaaaaaaaaaaaa/password", "DELETE")).toEqual(["users.edit"])
+        expect(routePermissions("/api/authentication/settings", "GET")).toEqual(["integrations.authentication.view"])
+        expect(routePermissions("/api/authentication/settings", "PUT")).toEqual(["integrations.authentication.edit"])
     })
 })

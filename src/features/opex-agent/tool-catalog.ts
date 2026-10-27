@@ -1028,6 +1028,23 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         access: { all: ["users.delete"] },
         description: "Exclui um usuário (não é possível excluir a própria conta nem o último administrador ativo).",
     },
+    {
+        name: "set_user_password",
+        group: "users",
+        label: "Definir senha do usuário",
+        risk: "destructive",
+        access: { all: ["users.edit"] },
+        description:
+            "Define ou redefine a senha (12 a 128 caracteres) de OUTRO usuário da sua hierarquia para o login por e-mail e senha e encerra as sessões dele. A própria senha não muda por aqui. A senha nunca é devolvida nem guardada no histórico.",
+    },
+    {
+        name: "remove_user_password",
+        group: "users",
+        label: "Remover senha do usuário",
+        risk: "destructive",
+        access: { all: ["users.edit"] },
+        description: "Remove a senha de OUTRO usuário (ele passa a entrar só com o Google, se vinculado) e encerra as sessões dele.",
+    },
 
     // ── Perfis ────────────────────────────────────────────────────────────────
     {
@@ -1214,6 +1231,26 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         access: { all: ["integrations.platform.edit"] },
         description:
             "Publica uma nova versão (imutável) dos termos de uso e/ou da política de privacidade; o texto omitido é mantido da versão vigente. Todos os usuários, inclusive você, ficam bloqueados até aceitar a nova versão no próximo acesso.",
+    },
+
+    // ── Autenticação ────────────────────────────────────────────────────────────────
+    {
+        name: "get_auth_settings",
+        group: "authentication",
+        label: "Ler métodos de autenticação",
+        risk: "read",
+        access: { all: ["integrations.authentication.view"] },
+        description:
+            "Métodos de login habilitados por protocolo de acesso (http e https: google e/ou password = e-mail e senha), os endereços de acesso adicionais (hosts sem porta) além do oficial e se o Google tem credenciais no ambiente.",
+    },
+    {
+        name: "update_auth_settings",
+        group: "authentication",
+        label: "Configurar métodos de autenticação",
+        risk: "destructive",
+        access: { all: ["integrations.authentication.edit"] },
+        description:
+            "Altera os métodos de login de HTTP e/ou HTTPS (qualquer combinação de google e password, ao menos um por protocolo) e/ou a lista COMPLETA de endereços de acesso adicionais (domínio ou IP, sem protocolo nem porta). Só os campos informados mudam.",
     },
 ]
 

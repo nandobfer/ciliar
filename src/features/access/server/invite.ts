@@ -18,7 +18,7 @@ export async function sendInviteEmail(to: string, name: string): Promise<InviteR
     const html = [
         `<p>Olá, ${escapeHtml(name)}!</p>`,
         "<p>Você foi convidado para o <strong>Ciliar</strong>.</p>",
-        `<p>Para entrar, acesse <a href="${escapeHtml(link)}">${escapeHtml(link)}</a> e use <strong>Entrar com Google</strong> com a conta Google deste e-mail (${escapeHtml(to)}).</p>`,
+        `<p>Para entrar, acesse <a href="${escapeHtml(link)}">${escapeHtml(link)}</a> e use <strong>Entrar com Google</strong> com a conta Google deste e-mail (${escapeHtml(to)}) ou, se um administrador definiu uma senha para você, entre com este e-mail e a senha (quando o login por e-mail e senha estiver disponível).</p>`,
         "<p>Se você não esperava este convite, ignore esta mensagem.</p>",
     ].join("")
     try {

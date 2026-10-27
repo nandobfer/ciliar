@@ -89,11 +89,11 @@ export async function auditAccess(context: Pick<AccessContext, "userId" | "dto">
 
 export async function userRows(context: AccessContext) {
     const roles = await roleRows()
-    return (await accessModels().users.find().select("+googleSub").sort({ name: 1, _id: 1 })).map(user => {
+    return (await accessModels().users.find().select("+googleSub +passwordHash").sort({ name: 1, _id: 1 })).map(user => {
         const cargos = roles.filter(role => user.roles.includes(role.id))
         return { id: user.id as string, nome: user.name, email: user.email, ativo: user.active, version: user.accessVersion, cargos,
             roleIds: [...user.roles], gerenciavel: cargos.length === user.roles.length && canManageUser(context.roles, cargos),
-            convitePendente: !user.googleSub, ultimoAcesso: user.lastLoginAt ? user.lastLoginAt.toISOString() : null,
+            convitePendente: !user.googleSub && !user.passwordHash, metodos: { google: !!user.googleSub, senha: !!user.passwordHash }, ultimoAcesso: user.lastLoginAt ? user.lastLoginAt.toISOString() : null,
             termosAceitos: user.legalAcceptance?.version ?? null }
     })
 }

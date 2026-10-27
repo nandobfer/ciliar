@@ -13,11 +13,13 @@ export function requiresPanel(path: string): boolean {
 
 /** Lista explícita de capacidades. Rotas desconhecidas nunca recebem autorização por padrão. */
 export function routePermissions(path: string, method: string): string[] {
-    if (path === "/api/me" || path === "/api/me/legal" || path === "/api/me/legal/accept" || path.startsWith("/api/access/view-as")) return []
+    if (path === "/api/me" || path === "/api/me/legal" || path === "/api/me/legal/accept" || path === "/api/me/password" || path.startsWith("/api/access/view-as")) return []
     if (path === "/api/users/assignable-roles") return [] // requireAny no handler
     if (path === "/api/users") return [method === "GET" ? "users.view" : "users.create"]
     if (path === "/api/users/invite") return ["users.create"]
     if (/^\/api\/users\/[a-f\d]{24}\/invite$/i.test(path)) return ["users.create"]
+    if (/^\/api\/users\/[a-f\d]{24}\/password$/i.test(path)) return ["users.edit"]
+    if (path === "/api/authentication/settings") return [`integrations.authentication.${method === "GET" ? "view" : "edit"}`]
     if (/^\/api\/users\/[a-f\d]{24}$/i.test(path)) return [method === "GET" ? "users.view" : method === "DELETE" ? "users.delete" : "users.edit"]
     if (path === "/api/platform/settings" || path === "/api/platform/legal") return [`integrations.platform.${method === "GET" ? "view" : "edit"}`]
     if (/^\/api\/roles(?:\/|$)/.test(path)) return [method === "GET" ? "roles.view" : "roles.edit"]

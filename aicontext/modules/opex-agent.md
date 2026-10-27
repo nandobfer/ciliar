@@ -172,12 +172,13 @@ chamando o serviço real com o `AccessContext` revalidado (nunca HTTP).
 | Clientes e Pedidos (M3) | ver "Ferramentas M3" acima | idem |
 | Trabalhos (M4) | ver "Ferramentas M4" acima: colunas, trabalhos, horas, notas/anexos/sucesso | idem |
 | Memórias dos agentes | `list_agent_memories`, `get_agent_memory`, `create_agent_memory`, `update_agent_memory`, `delete_agent_memory`* (`agent` = enum de `src/features/ai/agents.ts`, inclusive o próprio Agente Opex) | `ai_memories.view` / `ai_memories.edit` |
-| Usuários | `list_users`, `get_user`, `create_user`* (convite sem senha, `sendInvite`), `resend_user_invite`, `update_user`*, `delete_user`* | `users.view/create/edit/delete` |
+| Usuários | `list_users`, `get_user` (com `loginMethods`), `create_user`* (convite sem senha, `sendInvite`), `resend_user_invite`, `update_user`*, `delete_user`*, `set_user_password`* (outro usuário; `redact` da senha, nunca devolvida; encerra as sessões), `remove_user_password`* | `users.view/create/edit/delete` |
 | Perfis | `list_permission_catalog`, `list_roles`, `get_role`, `create_role`*, `update_role`* (com `businessLimit`), `reorder_roles`*, `delete_role`* | `roles.view/edit` (+ `users.edit` para membros) |
 | Integrações | `list_integrations`, `get_integration`, `update_integration`*, `test_integration`, `list_integration_logs` | `integrations.{id}.view/edit/test/logs` |
 | Tokens da API interna | `list_api_tokens`, `create_api_token`*, `revoke_api_token`* | `integrations.internal_api.tokens` |
 | Rotinas | `list_routines`, `run_routine` | `integrations.crons.view/run` |
 | Plataforma | `get_platform_settings`, `update_platform_settings`* (perfil padrão = autoridade; prazos; documentos), `get_legal_terms`, `update_legal_terms`* (publica nova versão; todos reaceitam) | `integrations.platform.view/edit` |
+| Autenticação | `get_auth_settings` (métodos por protocolo, endereços extras, Google configurado), `update_auth_settings`* (http/https: google e/ou password, ao menos um; lista completa de endereços; só o informado muda) | `integrations.authentication.view/edit` |
 
 `*` `destructive` (por padrão pede Confirmar/Cancelar; ajustável por ferramenta). Regra testada: exclusão, credencial, senha,
 token e mudança de autoridade são destrutivas (`update_*` inclusive: `update_legal_terms` é
