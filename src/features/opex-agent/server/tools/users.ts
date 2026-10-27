@@ -128,7 +128,7 @@ export const userTools = [
         },
     }),
     defineTool("set_user_password", {
-        input: z.object({ user: userRef, password: passwordSchema.describe("Nova senha (12 a 128 caracteres)") }),
+        input: z.object({ user: userRef, password: passwordSchema.describe("Nova senha") }),
         summarize: (input) => `Definir uma nova senha para ${input.user} e encerrar as sessões dele`,
         // A senha nunca aparece no card de confirmação nem no histórico do chat.
         redact: (input) => ({ user: input.user, password: "[oculta]" }),

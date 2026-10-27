@@ -1035,7 +1035,7 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         risk: "destructive",
         access: { all: ["users.edit"] },
         description:
-            "Define ou redefine a senha (12 a 128 caracteres) de OUTRO usuário da sua hierarquia para o login por e-mail e senha e encerra as sessões dele. A própria senha não muda por aqui. A senha nunca é devolvida nem guardada no histórico.",
+            "Define ou redefine a senha de OUTRO usuário da sua hierarquia para o login por e-mail e senha e encerra as sessões dele. A própria senha não muda por aqui. A senha nunca é devolvida nem guardada no histórico.",
     },
     {
         name: "remove_user_password",

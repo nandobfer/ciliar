@@ -18,13 +18,15 @@ describe("catálogo e validação de acessos", () => {
         expect(can(new Set(["*"]), "users.edit")).toBe(true)
         expect(can(new Set(["users.view"]), "users.edit")).toBe(false)
     })
-    it("normaliza e-mail, rejeita perfis duplicados e aceita só senha inicial de 12 a 128 caracteres", () => {
+    it("normaliza e-mail, rejeita perfis duplicados e aceita senha inicial de qualquer tamanho até 128", () => {
         const good = { nome: "Nome", email: "  PESSOA@EXEMPLO.COM  ", ativo: true, cargos: ["a".repeat(24)] }
         expect(createUserSchema.parse(good).email).toBe("pessoa@exemplo.com")
         expect(createUserSchema.safeParse({ ...good, enviarConvite: true }).success).toBe(true)
         expect(createUserSchema.safeParse({ ...good, cargos: [...good.cargos, ...good.cargos] }).success).toBe(false)
         expect(createUserSchema.safeParse({ ...good, password: "Senha forte 123!" }).success).toBe(true)
-        expect(createUserSchema.safeParse({ ...good, password: "curta" }).success).toBe(false)
+        expect(createUserSchema.safeParse({ ...good, password: "curta" }).success).toBe(true)
+        expect(createUserSchema.safeParse({ ...good, password: "1" }).success).toBe(true)
+        expect(createUserSchema.safeParse({ ...good, password: "" }).success).toBe(false)
         expect(createUserSchema.safeParse({ ...good, password: "x".repeat(129) }).success).toBe(false)
         expect(createUserSchema.safeParse({ ...good, unknown: true }).success).toBe(false)
     })

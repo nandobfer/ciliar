@@ -38,7 +38,7 @@ export function PasswordChangeDialog({ hasPassword, onClose, onDone }: { hasPass
                 </DialogHeader>
                 <form className="space-y-4" onSubmit={event => { event.preventDefault(); mutation.mutate() }}>
                     {hasPassword && <Field id="current-password" label="Senha atual"><Input id="current-password" type="password" autoComplete="current-password" value={currentPassword} onChange={event => setCurrent(event.target.value)} disabled={mutation.isPending} /></Field>}
-                    <Field id="new-password" label="Nova senha (12 a 128 caracteres)"><Input id="new-password" type="password" autoComplete="new-password" value={newPassword} onChange={event => setNew(event.target.value)} disabled={mutation.isPending} /></Field>
+                    <Field id="new-password" label="Nova senha"><Input id="new-password" type="password" autoComplete="new-password" value={newPassword} onChange={event => setNew(event.target.value)} disabled={mutation.isPending} /></Field>
                     <Field id="confirm-password" label="Confirme a nova senha"><Input id="confirm-password" type="password" autoComplete="new-password" value={confirmation} onChange={event => setConfirmation(event.target.value)} disabled={mutation.isPending} /></Field>
                     <DialogFooter>
                         <Button type="button" variant="outline" disabled={mutation.isPending} onClick={onClose}>Cancelar</Button>

@@ -89,7 +89,8 @@ devolve a origem resolvida e os métodos do protocolo (vazio em host não permit
 divisor "ou". Host não permitido: só o aviso "Este endereço de acesso não está autorizado. Acesse por …".
 Credenciais inválidas: "E-mail ou senha incorretos." (`credentialsErrorMessage`).
 
-**Senha** (`passwordSchema`: 12 a 128; Argon2id `memoryCost 19456`, `timeCost 2`, da base do Opex em
+**Senha** (`passwordSchema`: não vazia e **sem tamanho mínimo**, por decisão do usuário; teto técnico de 128,
+o mesmo do `loginSchema`, para nunca criar senha que não entra; Argon2id `memoryCost 19456`, `timeCost 2`, da base do Opex em
 `auth/server/password.ts`, com hash falso para conta inexistente):
 
 - Provider `Credentials` (`authorize`): Zod, método `password` habilitado na requisição, conta ativa **com
@@ -197,7 +198,7 @@ Busca tem o debounce original de 500 ms e status permite selecionar ativos/inati
 `/usuarios`: busca, status, paginação de 20 itens, cadastro em etapas Geral/Perfis, edição,
 exclusão confirmada e resumo de permissões. E-mail somente leitura depois de cadastrado.
 Cadastro = **convite** (pré-cadastro do e-mail, com os perfis escolhidos e **senha inicial opcional**,
-12 a 128 caracteres com confirmação; o perfil padrão não se aplica). "Enviar convite por e-mail" vem marcado com SMTP configurado
+sem tamanho mínimo, com confirmação; o perfil padrão não se aplica). "Enviar convite por e-mail" vem marcado com SMTP configurado
 (`GET /api/users/invite`), desabilitado sem SMTP; o envio é depois do commit e falha não desfaz a
 conta (aviso). A listagem marca **Convite pendente** (sem `googleSub` e sem senha); a edição tem "Reenviar
 convite" (`POST /api/users/[id]/invite`, `users.create`, só ativo, pendente e na hierarquia).

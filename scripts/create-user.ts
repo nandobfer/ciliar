@@ -17,7 +17,7 @@ async function main() {
     const parsed = identitySchema.safeParse({ nome, email })
     if (!parsed.success) throw new OperatorInputError(parsed.error.issues.map(issue => issue.message).join("\n"))
     // Senha opcional (login por e-mail e senha, ex.: acesso só por HTTP). Enter vazio = sem senha.
-    const secret = await password({ message: "Senha (opcional, 12 a 128 caracteres; Enter para pular):", mask: "*" })
+    const secret = await password({ message: "Senha (opcional; Enter para pular):", mask: "*" })
     if (secret) {
         const valid = passwordSchema.safeParse(secret)
         if (!valid.success) throw new OperatorInputError(valid.error.issues.map(issue => issue.message).join("\n"))
