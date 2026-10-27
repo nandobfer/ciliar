@@ -154,6 +154,8 @@ export interface GoogleOAuthStateRecord {
     viewAsHeader: string
     codeVerifier: string
     returnTo: string
+    /** Origem (endereço de acesso permitido) que iniciou: vira a `redirect_uri` e o destino do retorno. */
+    origin: string | null
     timeZone: string
     createdAt: Date
 }
@@ -166,6 +168,7 @@ const oauthStateSchema = new Schema<GoogleOAuthStateRecord>(
         viewAsHeader: { type: String, default: "none" },
         codeVerifier: { type: String, required: true },
         returnTo: { type: String, default: "/calendario" },
+        origin: { type: String, default: null },
         timeZone: { type: String, default: "America/Sao_Paulo" },
         createdAt: { type: Date, default: () => new Date() },
     },

@@ -7,12 +7,12 @@ import { parseInput } from "@/features/access/server/commands"
 import { denied, resolveAccess } from "@/features/access/server/access"
 import type { AccessContext } from "@/features/access/server/context"
 import { can } from "@/features/access/catalog"
-import { appOrigin } from "@/features/auth/server/origin"
+import { appOrigin, requestAuthContext } from "@/features/auth/server/origin"
 import { auditBusiness, businessOwnerOf } from "@/features/businesses/server/access"
 import { CALENDAR_AUDIT, GOOGLE_CALENDAR_CALLBACK_PATH, GOOGLE_OAUTH_STATE_TTL_MS } from "../../constants"
 import { googleConnectSchema, googleRepublishSchema, googleSettingsSchema } from "../../schemas"
 import type { GoogleCalendarItemDto, GoogleConnectionDto, GoogleSyncResultDto } from "../../types"
-import { calendarModels } from "../models"
+import { calendarModels, type GoogleOAuthStateRecord } from "../models"
 import { authorizationUrl, calendarApi, emailFromIdToken, exchangeCode, GoogleApiError, googleOAuthConfigured, revokeToken } from "./client"
 import { accessTokenOf, connectionDto, loadConnection, publishCalendarChanged, recordGoogleFailure, type ConnectionDoc } from "./connection"
 import { ensureChannel, stopChannel } from "./channel"
@@ -38,7 +38,21 @@ function requireCalendar(access: AccessContext): void {
     if (!can(access.effective, "businesses.use") || !can(access.effective, "calendar.view")) throw denied("Seu perfil não permite usar o Calendário (calendar.view).")
 }
 
-const redirectUri = () => `${appOrigin()}${GOOGLE_CALENDAR_CALLBACK_PATH}`
+const redirectUri = (origin?: string | null) => `${origin || appOrigin()}${GOOGLE_CALENDAR_CALLBACK_PATH}`
+
+/**
+ * Origem da conexão: a do endereço de acesso quando ele é permitido (`APP_ORIGIN` ou um endereço extra
+ * da integração Autenticação, CIL-6), para o retorno do Google chegar com o cookie da sessão; senão,
+ * o `APP_ORIGIN`. A origem é guardada no estado e reaproveitada na troca do código e no redirecionamento.
+ */
+export async function connectOriginOf(headers: Headers, url: string): Promise<string> {
+    try {
+        const { resolved } = await requestAuthContext(headers, url)
+        return resolved.allowed ? resolved.origin : appOrigin()
+    } catch {
+        return appOrigin()
+    }
+}
 
 /** Destino interno seguro depois do retorno (`/calendario` por padrão). */
 export function safeReturnTo(value: string | null | undefined): string {
@@ -53,7 +67,7 @@ export async function getGoogleConnection(access: AccessContext): Promise<Google
 }
 
 /** Início da conexão: devolve a URL do Google (o navegador navega até ela). */
-export async function startGoogleConnect(access: AccessContext, raw: unknown): Promise<{ url: string }> {
+export async function startGoogleConnect(access: AccessContext, raw: unknown, origin: string | null = null): Promise<{ url: string }> {
     requireCalendar(access)
     if (!googleOAuthConfigured()) throw new DomainError(503, "Login com Google não configurado no servidor (AUTH_GOOGLE_ID/AUTH_GOOGLE_SECRET).", "GOOGLE_NOT_CONFIGURED")
     const input = parseInput(googleConnectSchema, raw ?? {})
@@ -67,9 +81,10 @@ export async function startGoogleConnect(access: AccessContext, raw: unknown): P
         viewAsHeader: access.viewAsHeader || "none",
         codeVerifier,
         returnTo: safeReturnTo(input.returnTo),
+        origin,
         timeZone: normalizeTimeZone(access.timeZone),
     })
-    return { url: authorizationUrl({ redirectUri: redirectUri(), state, codeChallenge: base64url(sha256(codeVerifier)) }) }
+    return { url: authorizationUrl({ redirectUri: redirectUri(origin), state, codeChallenge: base64url(sha256(codeVerifier)) }) }
 }
 
 export interface ConnectCallback {
@@ -83,11 +98,23 @@ export interface ConnectCallback {
  * sessão (o mesmo ator real), a simulação guardada e as permissões; troca o código pelo token e grava
  * a conexão cifrada. Devolve o destino e o resultado para a tela.
  */
-export async function finishGoogleConnect(session: { userId: string; sessionVersion: number }, params: ConnectCallback): Promise<{ returnTo: string; result: "connected" | "cancelled" | "error"; message?: string }> {
+export interface ConnectOutcome {
+    returnTo: string
+    result: "connected" | "cancelled" | "error"
+    message?: string
+    /** Origem que iniciou a conexão (destino do redirecionamento); `null` = `APP_ORIGIN`. */
+    origin: string | null
+}
+
+export async function finishGoogleConnect(session: { userId: string; sessionVersion: number }, params: ConnectCallback): Promise<ConnectOutcome> {
     await dbConnect()
-    if (!params.state) return { returnTo: "/calendario", result: "error", message: "Retorno do Google sem estado." }
+    if (!params.state) return { returnTo: "/calendario", result: "error", message: "Retorno do Google sem estado.", origin: null }
     const state = await calendarModels().oauthStates.findOneAndDelete({ stateHash: sha256(params.state).toString("hex") }).lean()
-    if (!state || Date.now() - new Date(state.createdAt).getTime() > GOOGLE_OAUTH_STATE_TTL_MS) return { returnTo: "/calendario", result: "error", message: "A conexão expirou. Tente de novo." }
+    if (!state || Date.now() - new Date(state.createdAt).getTime() > GOOGLE_OAUTH_STATE_TTL_MS) return { returnTo: "/calendario", result: "error", message: "A conexão expirou. Tente de novo.", origin: null }
+    return { ...(await completeGoogleConnect(session, params, state)), origin: state.origin ?? null }
+}
+
+async function completeGoogleConnect(session: { userId: string; sessionVersion: number }, params: ConnectCallback, state: GoogleOAuthStateRecord): Promise<Omit<ConnectOutcome, "origin">> {
     const returnTo = safeReturnTo(state.returnTo)
     if (state.realActorId !== session.userId) return { returnTo, result: "error", message: "A conexão foi iniciada por outra sessão." }
     if (params.error || !params.code) return { returnTo, result: "cancelled" }
@@ -101,7 +128,7 @@ export async function finishGoogleConnect(session: { userId: string; sessionVers
     }
     let tokens
     try {
-        tokens = await exchangeCode({ code: params.code, codeVerifier: state.codeVerifier, redirectUri: redirectUri() })
+        tokens = await exchangeCode({ code: params.code, codeVerifier: state.codeVerifier, redirectUri: redirectUri(state.origin) })
     } catch (error) {
         return { returnTo, result: "error", message: error instanceof GoogleApiError ? "O Google recusou a conexão. Tente de novo." : "Falha ao conectar com o Google." }
     }

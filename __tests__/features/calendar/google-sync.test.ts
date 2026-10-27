@@ -27,7 +27,7 @@ import { getWork, updateWork } from "@/features/works/server/works"
 import { calendarModels } from "@/features/calendar/server/models"
 import { listCalendarEvents } from "@/features/calendar/server/range"
 import { checkDeadlineConflict } from "@/features/calendar/server/conflict"
-import { disconnectGoogle, finishGoogleConnect, getGoogleConnection, listGoogleCalendars, republishGoogle, startGoogleConnect, syncGoogleNow, updateGoogleSettings } from "@/features/calendar/server/google/service"
+import { connectOriginOf, disconnectGoogle, finishGoogleConnect, getGoogleConnection, listGoogleCalendars, republishGoogle, startGoogleConnect, syncGoogleNow, updateGoogleSettings } from "@/features/calendar/server/google/service"
 import { processPublishQueue } from "@/features/calendar/server/google/publish"
 import { syncConnection } from "@/features/calendar/server/google/sync"
 import { ensureChannel, handleGoogleNotification } from "@/features/calendar/server/google/channel"
@@ -196,7 +196,7 @@ const linkOf = (kind: string, refId: string) => calendar.links.findOne({ kind, r
 describe("conexão (OAuth)", () => {
     it("estado de uso único, sessão do mesmo ator, tokens cifrados e nunca devolvidos; auditoria", async () => {
         const { result, state } = await connect()
-        expect(result).toEqual({ returnTo: "/calendario", result: "connected" })
+        expect(result).toEqual({ returnTo: "/calendario", result: "connected", origin: null })
         const stored = await calendar.connections.findOne({ ownerId: ana.userId }).lean()
         expect(stored).toMatchObject({ googleEmail: "ana@gmail.test", status: "choose_calendar", connectedBy: ana.userId })
         expect(JSON.stringify(stored)).not.toContain("refresh-secret-1")
@@ -208,6 +208,18 @@ describe("conexão (OAuth)", () => {
         expect(JSON.stringify(audit)).not.toContain("refresh-secret-1")
         // Reusar o estado não funciona.
         expect((await finishGoogleConnect({ userId: ana.userId, sessionVersion: ana.sessionVersion }, { state, code: "x", error: null })).result).toBe("error")
+    })
+    it("origem da conexão: o endereço de acesso permitido vira a redirect_uri e o destino do retorno; host desconhecido usa o APP_ORIGIN", async () => {
+        expect(await connectOriginOf(new Headers({ host: "localhost:3101" }), "http://localhost:3101/api/calendar/google/connect")).toBe("http://localhost:3101")
+        expect(await connectOriginOf(new Headers({ host: "evil.example.test" }), "http://evil.example.test/api/calendar/google/connect")).toBe("http://localhost:3101")
+        const extra = "http://ciliar.lan:4013"
+        const { url } = await startGoogleConnect(ana, {}, extra)
+        const params = new URL(url).searchParams
+        expect(params.get("redirect_uri")).toBe(`${extra}/api/calendar/google/callback`)
+        const outcome = await finishGoogleConnect({ userId: ana.userId, sessionVersion: ana.sessionVersion }, { state: params.get("state"), code: "code-1", error: null })
+        expect(outcome).toMatchObject({ result: "connected", origin: extra })
+        const exchange = vi.mocked(fetch).mock.calls.filter(([target]) => String(target).endsWith("/token")).at(-1)!
+        expect(new URLSearchParams(String((exchange[1] as RequestInit).body)).get("redirect_uri")).toBe(`${extra}/api/calendar/google/callback`)
     })
     it("retorno com outra sessão é recusado; cancelado no Google não grava nada", async () => {
         const { url } = await startGoogleConnect(ana, {})

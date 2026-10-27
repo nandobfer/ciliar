@@ -17,7 +17,7 @@ export const GET = withRoute(async ({ req }) => {
     const access = currentAccess()
     const params = req.nextUrl.searchParams
     const outcome = await finishGoogleConnect({ userId: access.userId, sessionVersion: access.sessionVersion }, { state: params.get("state"), code: params.get("code"), error: params.get("error") })
-    const url = new URL(outcome.returnTo, appOrigin())
+    const url = new URL(outcome.returnTo, outcome.origin || appOrigin())
     url.searchParams.set("google", outcome.result === "connected" ? "conectado" : outcome.result === "cancelled" ? "cancelado" : "erro")
     if (outcome.message) url.searchParams.set("mensagem", outcome.message)
     const response = NextResponse.redirect(url)

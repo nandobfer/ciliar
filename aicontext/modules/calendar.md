@@ -146,6 +146,15 @@ depois).
 - `GET /api/calendar/google/callback` (protegida; navegação sem o cabeçalho da aba) confere a mesma
   sessão, relê o acesso com a simulação guardada, troca o código e grava os tokens **cifrados com
   AES-256-GCM** em `calendar_google_connections`, um por dono. Volta com `?google=conectado|cancelado|erro`.
+- **Origem (CIL-6):** a `redirect_uri` usa o endereço de acesso quando ele é permitido (`APP_ORIGIN` ou
+  um endereço extra de Integrações › Autenticação, `connectOriginOf` via `requestAuthContext`); host
+  desconhecido usa o `APP_ORIGIN`. A origem fica no estado e é reaproveitada na troca do código e no
+  redirecionamento final, para o retorno chegar com o cookie da sessão. Cada endereço usado precisa da
+  URL de retorno cadastrada no Google Cloud. A notificação push e os links publicados seguem o
+  `APP_ORIGIN`.
+- Conectar a agenda **não depende dos métodos de login**: com o Google desligado no protocolo (ou com
+  login por e-mail e senha) a conexão continua disponível — é um OAuth separado, só com `calendar.view`
+  e a sessão.
 - A conta conectada pode ser outra conta Google, diferente da do login. Trocar de conta apaga os
   vínculos anteriores.
 - Os tokens nunca vão para o DTO, os logs ou a auditoria.
