@@ -16,8 +16,8 @@ const NOTIFY_LIMIT = 600
  * API do Google.
  */
 export const POST = withRoute(async ({ req }) => {
-    checkRateLimit(`calendar:notify:${(req.headers.get("x-goog-channel-id") ?? "?").slice(0, 100)}`, Date.now(), NOTIFY_LIMIT)
     await dbConnect()
-    await handleGoogleNotification(req.headers)
+    // Conta no limitador só depois de validar canal + token (cabeçalhos inventados não ocupam o limitador).
+    await handleGoogleNotification(req.headers, { onVerified: (channelId) => checkRateLimit(`calendar:notify:${channelId}`, Date.now(), NOTIFY_LIMIT) })
     return new NextResponse(null, { status: 200, headers: { "Cache-Control": "no-store" } })
 })

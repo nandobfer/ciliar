@@ -1,4 +1,10 @@
-import { dayEnd, dayKeyOf, dayStart, eachDayKey, hmToMinutes, localToInstant, MINUTE_MS, weekdayOfKey } from "./time"
+import { addDaysToKey, dayEnd, dayKeyOf, dayStart, eachDayKey, hmToMinutes, localToInstant, MINUTE_MS, weekdayOfKey } from "./time"
+
+/**
+ * Horizonte do cálculo de capacidade (dias a partir do início): o expediente é montado dia a dia, então
+ * um prazo absurdo (ano 9999) travaria o processo. Além dele, a capacidade não é calculada.
+ */
+export const CONFLICT_HORIZON_DAYS = 366
 
 /**
  * Alerta de conflito de prazo (CIL-4) — módulo PURO, testável isolado. Dois níveis, NUNCA bloqueia:
@@ -124,10 +130,13 @@ export const hasAvailability = (availabilities: readonly (readonly AvailabilityW
  * Dia sem janela vale o dia inteiro (24 h, ou 23/25 na virada do horário de verão).
  */
 export function availabilityIntervals(availabilities: readonly (readonly AvailabilityWindow[])[], from: number, toKey: string, timeZone: string): Interval[] {
-    const end = dayEnd(toKey, timeZone)
+    const fromKey = dayKeyOf(from, timeZone)
+    const capKey = addDaysToKey(fromKey, CONFLICT_HORIZON_DAYS)
+    const lastKey = toKey < capKey ? toKey : capKey
+    const end = dayEnd(lastKey, timeZone)
     if (end <= from) return []
     const raw: Interval[] = []
-    for (const key of eachDayKey(dayKeyOf(from, timeZone), toKey)) {
+    for (const key of eachDayKey(fromKey, lastKey)) {
         const weekday = weekdayOfKey(key)
         for (const days of availabilities) {
             for (const day of days) {
@@ -155,7 +164,9 @@ export function workOccupationMinutes(work: ConflictWork, input: Pick<DeadlineCo
     const limit = dayEnd(dueDate, input.timeZone)
     if (limit <= start) return 0
     const period = availabilityIntervals(input.availabilities, start, work.dueDate, input.timeZone)
-    const total = intervalsMinutes(period)
+    // Prazo além do horizonte: o expediente do período inteiro é estimado pelo do horizonte, na proporção do tempo corrido.
+    const capEnd = dayEnd(addDaysToKey(dayKeyOf(start, input.timeZone), CONFLICT_HORIZON_DAYS), input.timeZone)
+    const total = workEnd > capEnd ? (intervalsMinutes(period) * (workEnd - start)) / (capEnd - start) : intervalsMinutes(period)
     // Sem expediente no período, a proporção usa o tempo corrido.
     if (!total) return Math.round((remaining * (limit - start)) / (workEnd - start))
     return Math.round((remaining * minutesBetween(period, start, limit)) / total)
@@ -176,7 +187,8 @@ export function deadlineConflict(input: DeadlineConflictInput): DeadlineConflict
         .map((work) => ({ id: work.id, businessId: work.businessId, code: work.code, title: work.title, startKey: work.startKey, dueDate: work.dueDate! }))
     let capacity: ConflictCapacity | null = null
     const required = Math.max(0, Math.round(input.estimatedMinutes ?? 0))
-    if (required > 0) {
+    // Prazo além do horizonte: sem capacidade calculável (só a sobreposição).
+    if (required > 0 && dueDate <= addDaysToKey(today, CONFLICT_HORIZON_DAYS)) {
         const intervals = availabilityIntervals(input.availabilities, input.now, dueDate, input.timeZone)
         const availableMinutes = Math.round(intervalsMinutes(intervals))
         const worksMinutes = others.reduce((sum, work) => sum + workOccupationMinutes(work, input, dueDate), 0)

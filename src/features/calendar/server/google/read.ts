@@ -19,6 +19,19 @@ export interface GoogleReadResult {
 }
 
 const cache = new Map<string, { at: number; value: GoogleReadResult }>()
+/** Teto de entradas do cache em memória (processo persistente): a mais antiga sai primeiro. */
+export const GOOGLE_READ_CACHE_MAX = 200
+
+/** Grava no cache descartando as entradas vencidas e, acima do teto, as mais antigas (o Map mantém a ordem de inserção). */
+function storeGoogleRead(key: string, value: GoogleReadResult, now = Date.now()) {
+    for (const [existing, entry] of cache) if (now - entry.at >= GOOGLE_READ_CACHE_MS) cache.delete(existing)
+    cache.delete(key)
+    cache.set(key, { at: now, value })
+    while (cache.size > GOOGLE_READ_CACHE_MAX) cache.delete(cache.keys().next().value!)
+}
+
+/** Tamanho atual do cache (diagnóstico e testes). */
+export const googleReadCacheSize = () => cache.size
 
 export function clearGoogleReadCache(ownerId?: string): void {
     if (!ownerId) return cache.clear()
@@ -120,7 +133,7 @@ export async function readGoogleEvents(ownerId: string, rawFrom: number, rawTo: 
         }
         await recordGoogleSuccess(connection)
         const value = { events, busy, error: null }
-        cache.set(key, { at: Date.now(), value })
+        storeGoogleRead(key, value)
         return value
     } catch (error) {
         return { ...EMPTY, error: await recordGoogleFailure(connection, error) }

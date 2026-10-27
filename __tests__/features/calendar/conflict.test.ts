@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { availabilityIntervals, deadlineConflict, intersectIntervals, intervalsMinutes, mergeIntervals, workOccupationMinutes, type ConflictWork, type DeadlineConflictInput } from "@/features/calendar/conflict"
+import { availabilityIntervals, CONFLICT_HORIZON_DAYS, deadlineConflict, intersectIntervals, intervalsMinutes, mergeIntervals, workOccupationMinutes, type ConflictWork, type DeadlineConflictInput } from "@/features/calendar/conflict"
 import { dayEnd, dayKeyOf, dayStart, localToInstant, minuteOfDay, rangeOfView, shiftAnchor, weekdayOfKey, isDateKey } from "@/features/calendar/time"
 import { googleEventBody, orderStatusTag, pushedHash, workStatusTag, dueDateFromGoogle } from "@/features/calendar/events"
 import { eventsOfDay, layoutTimed, minuteAtOffset, offWindows } from "@/features/calendar/components/calendar-layout"
@@ -164,5 +164,26 @@ describe("permissões e rotas do Calendário", () => {
         expect(businessRoutePermissions("/api/calendar/events", "POST")).toBeNull()
         expect(businessRoutePermissions("/api/calendar/google/connect", "POST")).toEqual(["businesses.use", "calendar.view"])
         expect(businessRoutePermissions("/api/calendar/google", "DELETE")).toEqual(["businesses.use", "calendar.view"])
+    })
+})
+
+describe("horizonte do cálculo (prazos absurdos)", () => {
+    it("prazo no ano 9999: responde rápido, sem capacidade calculável (só a sobreposição)", () => {
+        const started = performance.now()
+        const result = deadlineConflict(input({ dueDate: "9999-12-31", estimatedMinutes: 10 * H, works: [work({ dueDate: "9999-12-31" })] }))
+        expect(performance.now() - started).toBeLessThan(1_000)
+        expect(result.capacity).toBeNull()
+        expect(result.overlap).toHaveLength(1)
+    })
+    it("o expediente para no horizonte; trabalho com prazo além dele ocupa pela proporção estimada", () => {
+        const started = performance.now()
+        const far = availabilityIntervals([WEEKDAYS_9_18], MONDAY_9H, "9999-12-31", TZ)
+        expect(intervalsMinutes(far)).toBeLessThanOrEqual((CONFLICT_HORIZON_DAYS + 1) * 9 * H)
+        // 2 anos de prazo, 1000 h: até sexta (~1 semana de ~104 semanas), uma fração pequena e finita.
+        const minutes = workOccupationMinutes(work({ dueDate: "2028-11-03", estimatedMinutes: 1000 * H }), input(), "2026-11-06")
+        expect(minutes).toBeGreaterThan(0)
+        expect(minutes).toBeLessThan(20 * H)
+        expect(workOccupationMinutes(work({ dueDate: "9999-12-31", estimatedMinutes: 1000 * H }), input(), "2026-11-06")).toBeGreaterThanOrEqual(0)
+        expect(performance.now() - started).toBeLessThan(1_000)
     })
 })

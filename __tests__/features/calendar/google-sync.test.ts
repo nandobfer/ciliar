@@ -31,8 +31,9 @@ import { connectOriginOf, disconnectGoogle, finishGoogleConnect, getGoogleConnec
 import { processPublishQueue } from "@/features/calendar/server/google/publish"
 import { syncConnection } from "@/features/calendar/server/google/sync"
 import { ensureChannel, handleGoogleNotification } from "@/features/calendar/server/google/channel"
+import { markExpiredOrders, runCalendarGoogleSync } from "@/features/calendar/server/google/cron"
 import { accessTokenOf, loadConnection } from "@/features/calendar/server/google/connection"
-import { clearGoogleReadCache } from "@/features/calendar/server/google/read"
+import { clearGoogleReadCache, GOOGLE_READ_CACHE_MAX, googleReadCacheSize, readGoogleEvents } from "@/features/calendar/server/google/read"
 
 const TZ = "America/Sao_Paulo"
 const PUBLISH = "publica@group.calendar.google.com"
@@ -46,6 +47,8 @@ const google = {
     changes: [] as { seq: number; calendarId: string; eventId: string }[],
     failNext: null as null | { match: RegExp; status: number; body: unknown },
     refreshFails: false,
+    /** Escopos devolvidos na troca do código (consentimento granular); `null` = todos. */
+    tokenScope: null as string | null,
     requests: [] as string[],
     reset() {
         this.seq = 0
@@ -53,6 +56,7 @@ const google = {
         this.changes = []
         this.failNext = null
         this.refreshFails = false
+        this.tokenScope = null
         this.requests = []
     },
     touch(calendarId: string, event: FakeEvent) {
@@ -85,7 +89,7 @@ async function fakeFetch(input: string | URL | Request, init?: RequestInit): Pro
     if (url.hostname === "oauth2.googleapis.com" && url.pathname === "/token") {
         const body = new URLSearchParams(String(init?.body))
         if (body.get("grant_type") === "refresh_token") return google.refreshFails ? json({ error: "invalid_grant" }, 400) : json({ access_token: "access-2", expires_in: 3600 })
-        return json({ access_token: "access-1", refresh_token: "refresh-secret-1", expires_in: 3600, scope: "openid email https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.calendarlist.readonly", id_token: idToken("ana@gmail.test") })
+        return json({ access_token: "access-1", refresh_token: "refresh-secret-1", expires_in: 3600, scope: google.tokenScope ?? "openid email https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.calendarlist.readonly", id_token: idToken("ana@gmail.test") })
     }
     if (url.pathname === "/revoke") return json({})
     const path = url.pathname.replace("/calendar/v3", "")
@@ -221,6 +225,16 @@ describe("conexão (OAuth)", () => {
         const exchange = vi.mocked(fetch).mock.calls.filter(([target]) => String(target).endsWith("/token")).at(-1)!
         expect(new URLSearchParams(String((exchange[1] as RequestInit).body)).get("redirect_uri")).toBe(`${extra}/api/calendar/google/callback`)
     })
+    it("consentimento granular: faltando a lista de agendas (ou os eventos), não conecta, revoga e diz o que marcar", async () => {
+        google.tokenScope = "openid email https://www.googleapis.com/auth/calendar.events"
+        const { result } = await connect()
+        expect(result).toMatchObject({ result: "error", message: expect.stringContaining("lista de agendas") })
+        expect(google.requests).toContain("POST /revoke")
+        expect(await calendar.connections.countDocuments()).toBe(0)
+        google.tokenScope = "openid email https://www.googleapis.com/auth/calendar.calendarlist.readonly"
+        expect((await connect()).result).toMatchObject({ result: "error", message: expect.stringContaining("eventos") })
+    })
+
     it("retorno com outra sessão é recusado; cancelado no Google não grava nada", async () => {
         const { url } = await startGoogleConnect(ana, {})
         const state = new URL(url).searchParams.get("state")
@@ -277,6 +291,20 @@ describe("publicação e leitura", () => {
         await new Promise((resolve) => setTimeout(resolve, 5))
         await listCalendarEvents(ana, { from: day(10), to: day(16) })
         expect(reads() - before).toBe(2)
+    })
+
+    it("cache da leitura em memória: tem teto e descarta as entradas vencidas", async () => {
+        await connect()
+        await updateGoogleSettings(ana, { publishCalendarId: PUBLISH, readCalendarIds: [TEAM] })
+        clearGoogleReadCache()
+        const base = Date.parse(`${day(0)}T00:00:00Z`)
+        for (let index = 0; index < GOOGLE_READ_CACHE_MAX + 5; index += 1) await readGoogleEvents(ana.userId, base + index * 3_600_000, base + (index + 2) * 3_600_000, TZ)
+        expect(googleReadCacheSize()).toBe(GOOGLE_READ_CACHE_MAX)
+        const now = Date.now()
+        const later = vi.spyOn(Date, "now").mockReturnValue(now + 61_000)
+        await readGoogleEvents(ana.userId, base - 10 * 3_600_000, base - 8 * 3_600_000, TZ)
+        later.mockRestore()
+        expect(googleReadCacheSize()).toBe(1)
     })
 
     it("mudança no Ciliar atualiza o evento; status como histórico; cota excedida espera e tenta de novo", async () => {
@@ -416,8 +444,13 @@ describe("notificação push e desconexão", () => {
         const watch = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith("/events/watch")).at(-1)!
         const secret = JSON.parse(String((watch[1] as RequestInit).body)).token as string
         const channelId = (await loadConnection(ana.userId))!.channel!.id
-        await expect(handleGoogleNotification(new Headers({ "x-goog-channel-id": channelId, "x-goog-channel-token": "errado", "x-goog-resource-state": "exists" }))).rejects.toMatchObject({ status: 404 })
-        await handleGoogleNotification(new Headers({ "x-goog-channel-id": channelId, "x-goog-channel-token": secret, "x-goog-resource-state": "exists" }))
+        const onVerified = vi.fn()
+        await expect(handleGoogleNotification(new Headers({ "x-goog-channel-id": channelId, "x-goog-channel-token": "errado", "x-goog-resource-state": "exists" }), { onVerified })).rejects.toMatchObject({ status: 404 })
+        await expect(handleGoogleNotification(new Headers({ "x-goog-channel-id": "inventado-1", "x-goog-channel-token": "x", "x-goog-resource-state": "exists" }), { onVerified })).rejects.toMatchObject({ status: 404 })
+        // O limitador compartilhado só conta canais validados.
+        expect(onVerified).not.toHaveBeenCalled()
+        await handleGoogleNotification(new Headers({ "x-goog-channel-id": channelId, "x-goog-channel-token": secret, "x-goog-resource-state": "exists" }), { onVerified })
+        expect(onVerified).toHaveBeenCalledWith(channelId)
         expect(runAfterResponse).toHaveBeenCalledWith("calendar-google-notify", expect.any(Function))
     })
 
@@ -444,5 +477,69 @@ describe("notificação push e desconexão", () => {
         const range = await listCalendarEvents(ana, { from: day(0), to: day(6) })
         expect(range.googleError).toMatch(/Google/)
         expect(range.events.some((event) => event.kind === "work-deadline")).toBe(true)
+    })
+})
+
+describe("rotina calendar-google-sync", () => {
+    async function ready() {
+        const work = await acceptedWork(day(5))
+        await connect()
+        await updateGoogleSettings(ana, { publishCalendarId: PUBLISH })
+        await syncConnection(ana.userId)
+        return { work, deadline: (await linkOf("work-deadline", work.id))! }
+    }
+
+    it("falha ao criar o canal (401 webhook não autorizado) não pede reconexão nem interrompe a sincronização e a publicação", async () => {
+        const { work, deadline } = await ready()
+        process.env.APP_ORIGIN = "https://ciliar.example.test"
+        await calendar.connections.updateOne({ ownerId: ana.userId }, { $set: { channel: null } })
+        google.userEdit(PUBLISH, deadline.eventId!, { start: { date: day(7) }, end: { date: day(8) } })
+        const firstRequest = google.requests.length
+        google.failNext = { match: /events\/watch$/, status: 401, body: { error: { errors: [{ reason: "push.webhookUrlUnauthorized" }] } } }
+        const summary = await runCalendarGoogleSync()
+        expect(summary).toMatch(/^1 conexão/)
+        const connection = (await loadConnection(ana.userId))!
+        expect(connection.status).toBe("active")
+        expect(connection.channel).toBeNull()
+        // A sincronização rodou (prazo aplicado) e a publicação também (o título voltou a ser o do Ciliar).
+        expect((await getWork(ana, businessId, work.id)).dueDate).toBe(day(7))
+        expect(await linkOf("work-deadline", work.id)).toMatchObject({ dirty: false })
+        // Ordem dos passos: canal → lista (sync) → publicação.
+        const steps = google.requests.slice(firstRequest).filter((request) => /events\/watch|GET .*events$|PATCH /.test(request))
+        expect(steps[0]).toMatch(/watch/)
+        expect(steps.findIndex((request) => request.startsWith("GET"))).toBeLessThan(steps.findIndex((request) => request.startsWith("PATCH")))
+    })
+
+    it("erro passageiro volta para ativo; token revogado vira reauth e o canal é limpo", async () => {
+        await ready()
+        await calendar.connections.updateOne({ ownerId: ana.userId }, { $set: { status: "error", lastError: "timeout" } })
+        await runCalendarGoogleSync()
+        expect(await loadConnection(ana.userId)).toMatchObject({ status: "active", lastError: null })
+
+        await calendar.connections.updateOne({ ownerId: ana.userId }, { $set: { accessTokenExpiresAt: new Date(0), channel: { id: "c1", resourceId: "r1", tokenHash: "00", calendarId: PUBLISH, expiresAt: new Date(Date.now() + 86_400_000 * 5) } } })
+        google.refreshFails = true
+        expect(await runCalendarGoogleSync()).toMatch(/1 com falha/)
+        expect(await loadConnection(ana.userId)).toMatchObject({ status: "reauth", channel: null })
+    })
+
+    it("pedido enviado com o link vencido ganha [Expirado] no título", async () => {
+        await connect()
+        await updateGoogleSettings(ana, { publishCalendarId: PUBLISH })
+        const order = await createOrder(ana, businessId, { clientId, description: "Logo", items: [{ activityId, minutes: 60 }], dueDate: day(9) })
+        await sendOrder(ana, businessId, order.id, { version: order.version, email: false })
+        await processPublishQueue(ana.userId)
+        await orders.orders.updateOne({ _id: order.id }, { $set: { "link.validUntil": day(-1) } })
+        expect(await markExpiredOrders((await loadConnection(ana.userId))!)).toBe(1)
+        await runCalendarGoogleSync()
+        const link = (await linkOf("order-deadline", order.id))!
+        expect(google.calendars.get(PUBLISH)!.get(link.eventId!)!.summary).toContain("[Expirado]")
+        expect(await markExpiredOrders((await loadConnection(ana.userId))!)).toBe(0)
+    })
+
+    it("Sincronizar agora funciona em erro passageiro e volta para ativo", async () => {
+        await ready()
+        await calendar.connections.updateOne({ ownerId: ana.userId }, { $set: { status: "error", lastError: "timeout" } })
+        const result = await syncGoogleNow(ana)
+        expect(result.connection.status).toBe("active")
     })
 })

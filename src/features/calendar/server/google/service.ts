@@ -15,7 +15,7 @@ import type { GoogleCalendarItemDto, GoogleConnectionDto, GoogleSyncResultDto } 
 import { calendarModels, type GoogleOAuthStateRecord } from "../models"
 import { authorizationUrl, calendarApi, emailFromIdToken, exchangeCode, GoogleApiError, googleOAuthConfigured, revokeToken } from "./client"
 import { accessTokenOf, connectionDto, loadConnection, publishCalendarChanged, recordGoogleFailure, type ConnectionDoc } from "./connection"
-import { ensureChannel, stopChannel } from "./channel"
+import { renewChannelSafely, stopChannel } from "./channel"
 import { markCalendarDirty, processPublishQueue, seedCalendarLinks } from "./publish"
 import { clearGoogleReadCache } from "./read"
 import { syncConnection } from "./sync"
@@ -30,7 +30,11 @@ import { syncConnection } from "./sync"
  * OAuth guarda o ator real, o dono, o cabeçalho e o verificador PKCE; o retorno confere a sessão.
  */
 
-const REQUIRED_SCOPE = "https://www.googleapis.com/auth/calendar.events"
+/** Escopos obrigatórios (os eventos para publicar/ler e a lista para escolher as agendas). */
+const REQUIRED_SCOPES = [
+    { id: "https://www.googleapis.com/auth/calendar.events", label: "\"Ver e editar eventos em todas as suas agendas\"" },
+    { id: "https://www.googleapis.com/auth/calendar.calendarlist.readonly", label: "\"Ver a lista de agendas que você assina\"" },
+] as const
 const base64url = (buffer: Buffer) => buffer.toString("base64url")
 const sha256 = (value: string) => createHash("sha256").update(value).digest()
 
@@ -133,9 +137,11 @@ async function completeGoogleConnect(session: { userId: string; sessionVersion: 
         return { returnTo, result: "error", message: error instanceof GoogleApiError ? "O Google recusou a conexão. Tente de novo." : "Falha ao conectar com o Google." }
     }
     const scopes = (tokens.scope ?? "").split(" ").filter(Boolean)
-    if (!scopes.includes(REQUIRED_SCOPE)) {
+    // Consentimento granular: o usuário pode desmarcar uma das permissões; as duas são necessárias.
+    const missing = REQUIRED_SCOPES.filter((scope) => !scopes.includes(scope.id))
+    if (missing.length) {
         await revokeToken(tokens.refresh_token ?? tokens.access_token)
-        return { returnTo, result: "error", message: "Permita o acesso aos eventos da agenda para conectar." }
+        return { returnTo, result: "error", message: `Para conectar, marque no Google: ${missing.map((scope) => scope.label).join(" e ")}.` }
     }
     const ownerId = state.ownerId
     const models = calendarModels()
@@ -234,11 +240,7 @@ export async function updateGoogleSettings(access: AccessContext, raw: unknown):
         await seedCalendarLinks(ownerId)
         const fresh = await loadConnection(ownerId)
         if (fresh) {
-            try {
-                await ensureChannel(fresh, await accessTokenOf(fresh))
-            } catch (error) {
-                await recordGoogleFailure(fresh, error, { publishCalendar: true })
-            }
+            await renewChannelSafely(fresh)
             await processPublishQueue(ownerId, { connection: fresh })
         }
     }
@@ -250,16 +252,14 @@ export async function updateGoogleSettings(access: AccessContext, raw: unknown):
 export async function syncGoogleNow(access: AccessContext): Promise<GoogleSyncResultDto> {
     const connection = await activeConnection(access)
     const ownerId = connection.ownerId
-    if (connection.status !== "active") throw new DomainError(409, connection.status === "choose_calendar" ? "Escolha a agenda de publicação." : (connection.lastError ?? "Google Agenda indisponível."), "GOOGLE_NOT_READY")
+    // `error` é passageiro (timeout/5xx): "Sincronizar agora" é justamente a forma de se recuperar.
+    if (connection.status === "error" && connection.publishCalendar) await calendarModels().connections.updateOne({ _id: connection._id, status: "error" }, { $set: { status: "active" } })
+    else if (connection.status !== "active") throw new DomainError(409, connection.status === "choose_calendar" ? "Escolha a agenda de publicação." : (connection.lastError ?? "Google Agenda indisponível."), "GOOGLE_NOT_READY")
     // "Sincronizar agora" ignora a espera da cota uma vez (o próprio Google responde se ainda estiver acima).
     if (connection.backoffUntil) await calendarModels().connections.updateOne({ _id: connection._id }, { $set: { backoffUntil: null } })
     const fresh = (await loadConnection(ownerId))!
     if (connection.timeZone !== normalizeTimeZone(access.timeZone)) await calendarModels().connections.updateOne({ _id: connection._id }, { $set: { timeZone: normalizeTimeZone(access.timeZone) } })
-    try {
-        await ensureChannel(fresh, await accessTokenOf(fresh))
-    } catch (error) {
-        await recordGoogleFailure(fresh, error, { publishCalendar: true })
-    }
+    await renewChannelSafely(fresh)
     const synced = await syncConnection(ownerId)
     await seedCalendarLinks(ownerId)
     const published = await processPublishQueue(ownerId)

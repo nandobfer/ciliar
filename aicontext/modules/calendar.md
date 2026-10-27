@@ -121,6 +121,10 @@ Regras gerais:
 - O próprio trabalho nunca entra na própria ocupação.
 - Item sem prazo não entra em nada. Item sem horas estimadas só verifica a sobreposição.
 - Prazo no passado ou hoje: as livres são as que sobram de hoje, ou zero.
+- **Horizonte** (`CONFLICT_HORIZON_DAYS` = 366): o expediente é montado dia a dia e para no horizonte,
+  para um prazo absurdo (ano 9999) não travar o processo. Prazo do item além do horizonte: sem capacidade
+  calculável (`capacity: null`, só a sobreposição). Trabalho com prazo além do horizonte: o expediente do
+  período inteiro é estimado pelo do horizonte, na proporção do tempo corrido.
 
 O serviço `checkDeadlineConflict` (`GET /api/calendar/conflict`) monta essa entrada a partir de data +
 minutos, ou de `orderId`/`workId` (a data informada prevalece). Quem pode ler pedidos ou trabalhos vê o
@@ -144,7 +148,8 @@ horário de verão), `dayKeyOf`, `rangeOfView` e `shiftAnchor`. O fuso vem de `x
 
 `server/google/`. O cliente REST usa `fetch`, sem SDK, e as mesmas credenciais do login
 (`AUTH_GOOGLE_ID/SECRET`). Escopos pedidos só na conexão: `calendar.events` +
-`calendar.calendarlist.readonly` (+ `openid email`). **São escopos sensíveis:** sem verificação do app
+`calendar.calendarlist.readonly` (+ `openid email`). Com o consentimento granular, o retorno **exige os
+dois** escopos: faltando algum, revoga o token, não grava a conexão e diz o que marcar. **São escopos sensíveis:** sem verificação do app
 no Google Cloud, só usuários de teste conectam (decisão de 27/10/2026: implementar agora e verificar
 depois).
 
@@ -177,7 +182,7 @@ depois).
   - `active`;
   - `choose_calendar` (sem agenda de publicação, ou ela foi excluída no Google);
   - `reauth` (`invalid_grant` ou 401: "Reconectar");
-  - `error`.
+  - `error` (passageiro: timeout/5xx; "Sincronizar agora" e a rotina voltam para `active`).
 - Cota excedida (429/`rateLimitExceeded`): `backoffUntil` cresce de 1 min até 1 h.
 
 ### Do Ciliar para o Google
@@ -225,16 +230,23 @@ depois).
 
 - Canal `events.watch` da agenda de publicação, renovado quando falta menos de 24 h.
 - A rota pública `POST /api/public/calendar/google/notify` valida o canal e o token pelo hash em tempo
-  constante, com limite por canal, e só agenda `syncConnection` + a fila depois da resposta.
+  constante e só então conta no limitador por canal (`onVerified`: cabeçalhos inventados nunca ocupam o
+  limitador compartilhado com login e cadastro); só agenda `syncConnection` + a fila depois da resposta.
+- `renewChannelSafely` (rotina, "Sincronizar agora" e troca da agenda): falha ao obter o token marca a
+  conexão (`reauth` etc.) e interrompe; falha só no `events.watch` (ex.: domínio não registrado no
+  Google Cloud, 401 `push.webhookUrlUnauthorized`) **não é fatal** — fica no log, o status não muda e a
+  sincronização e a publicação seguem.
 - Exige `APP_ORIGIN` HTTPS. Em desenvolvimento local, o canal não é criado e a rotina cobre.
-- Rotina interna **`calendar-google-sync`** (a cada 15 min): renova canais, sincroniza, marca pedidos
-  com link expirado e processa a fila.
+- Rotina interna **`calendar-google-sync`** (a cada 15 min), por conexão `active`/`error` fora da espera
+  da cota: `error` volta para `active`, renova o canal, sincroniza, marca pedidos com link expirado
+  (`markExpiredOrders` → "[Expirado]") e processa a fila. Conexões em `reauth` têm o canal limpo.
 - "Sincronizar agora": `POST /api/calendar/google/sync`.
 
 ### Leitura e desconexão
 
 - As agendas lidas são consultadas sob demanda (`singleEvents`, `timeMin/timeMax`, cache de 60 s por
-  dono e período).
+  dono e período). O cache em memória descarta as entradas vencidas a cada gravação e tem teto de
+  `GOOGLE_READ_CACHE_MAX` (200) entradas, saindo a mais antiga.
 - A janela da leitura é arredondada para a hora cheia (`googleReadWindow`): os chamadores passam o
   "agora" cru, e sem isso a chave do cache mudaria a cada milissegundo e cada verificação de conflito
   listaria as agendas de novo.

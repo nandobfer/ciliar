@@ -5,8 +5,8 @@ import { loggerFor } from "@/lib/logger"
 import { appOrigin } from "@/features/auth/server/origin"
 import { GOOGLE_CALENDAR_NOTIFY_PATH, GOOGLE_CHANNEL_RENEW_BEFORE_MS } from "../../constants"
 import { calendarModels } from "../models"
-import { calendarApi } from "./client"
-import { accessTokenOf, type ConnectionDoc } from "./connection"
+import { calendarApi, GoogleApiError } from "./client"
+import { accessTokenOf, recordGoogleFailure, type ConnectionDoc } from "./connection"
 import { processPublishQueue } from "./publish"
 import { syncConnection } from "./sync"
 
@@ -57,13 +57,36 @@ export async function ensureChannel(connection: ConnectionDoc, token: string): P
     return "renewed"
 }
 
+/**
+ * Renova o canal dentro das rotinas (cron e "Sincronizar agora"). Falha no token = falha da conexão
+ * (`recordGoogleFailure`, pode pedir reconexão) e interrompe; falha só no `events.watch` (ex.: domínio
+ * não registrado no Google Cloud, 401 `push.webhookUrlUnauthorized`) NÃO é fatal: fica no log e a
+ * sincronização segue, coberta pela rotina de 15 min.
+ */
+export async function renewChannelSafely(connection: ConnectionDoc): Promise<"ok" | "renewed" | "skipped" | "watch_failed" | "token_failed"> {
+    let token: string
+    try {
+        token = await accessTokenOf(connection)
+    } catch (error) {
+        await recordGoogleFailure(connection, error, { publishCalendar: true })
+        return "token_failed"
+    }
+    try {
+        return await ensureChannel(connection, token)
+    } catch (error) {
+        const google = error instanceof GoogleApiError ? error : null
+        log.warn({ ownerId: connection.ownerId, status: google?.status ?? null, reason: google?.reason ?? null }, "[calendar] Falha ao criar o canal de notificação; a rotina cobre a sincronização")
+        return "watch_failed"
+    }
+}
+
 const channelNotFound = () => new DomainError(404, "Canal não encontrado", "NOT_FOUND")
 
 /**
  * `POST /api/public/calendar/google/notify`: o Google avisa que a agenda mudou. Só invalida e
  * agenda a sincronização depois da resposta (o conteúdo vem da API do Google, nunca do aviso).
  */
-export async function handleGoogleNotification(headers: Headers): Promise<{ state: string }> {
+export async function handleGoogleNotification(headers: Headers, options: { onVerified?: (channelId: string) => void } = {}): Promise<{ state: string }> {
     const channelId = headers.get("x-goog-channel-id")
     const token = headers.get("x-goog-channel-token")
     const state = headers.get("x-goog-resource-state") ?? "exists"
@@ -73,6 +96,8 @@ export async function handleGoogleNotification(headers: Headers): Promise<{ stat
     const expected = Buffer.from(connection.channel.tokenHash, "hex")
     const received = Buffer.from(sha256(token), "hex")
     if (expected.length !== received.length || !timingSafeEqual(expected, received)) throw channelNotFound()
+    // O limitador só conta canais já validados: cabeçalhos inventados nunca ocupam o limitador compartilhado.
+    options.onVerified?.(channelId)
     if (state !== "sync") {
         const ownerId = connection.ownerId
         runAfterResponse("calendar-google-notify", async () => {

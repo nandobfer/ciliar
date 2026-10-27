@@ -4,8 +4,8 @@ import { todayKeyIn } from "@/lib/timezone"
 import { quoteExpired } from "@/features/orders/logic"
 import { orderModels } from "@/features/orders/server/models"
 import { calendarModels } from "../models"
-import { ensureChannel } from "./channel"
-import { accessTokenOf, inBackoff, recordGoogleFailure, type ConnectionDoc } from "./connection"
+import { renewChannelSafely } from "./channel"
+import { inBackoff, type ConnectionDoc } from "./connection"
 import { processPublishQueue } from "./publish"
 import { syncConnection } from "./sync"
 
@@ -43,10 +43,9 @@ export async function runCalendarGoogleSync(): Promise<string> {
             if (connection.status === "error") await calendarModels().connections.updateOne({ _id: connection._id, status: "error" }, { $set: { status: connection.publishCalendar ? "active" : "choose_calendar" } })
             const current = (await calendarModels().connections.findOne({ _id: connection._id }).lean<ConnectionDoc>())!
             if (current.status !== "active") continue
-            try {
-                await ensureChannel(current, await accessTokenOf(current))
-            } catch (error) {
-                await recordGoogleFailure(current, error, { publishCalendar: true })
+            // Só a falha do token interrompe (a conexão já foi marcada); a do canal fica no log e a rotina segue.
+            if ((await renewChannelSafely(current)) === "token_failed") {
+                failed += 1
                 continue
             }
             const result = await syncConnection(current.ownerId)
