@@ -17,8 +17,10 @@ function refuse(request: NextRequest, origin: string, status: number, error: str
 }
 
 /**
- * E-mail do login por senha, normalizado como no `loginSchema`, nos dois formatos de corpo que o
- * Auth.js aceita no callback de credenciais (form urlencoded/multipart e JSON). `null` = outro formato.
+ * E-mail do login por senha, normalizado como no `loginSchema`, lido EXATAMENTE como o Auth.js lê o
+ * corpo do callback de credenciais (`@auth/core` `getBody`: JSON por `req.json()`; urlencoded por
+ * `URLSearchParams`). `null` = corpo recusado: outro formato (o Auth.js não o lê) ou `identifier`
+ * repetido no urlencoded (o Auth.js usaria o último valor e o limite contaria outro e-mail).
  */
 async function credentialsIdentifier(request: NextRequest): Promise<string | null> {
     const type = (request.headers.get("content-type") ?? "").toLowerCase()
@@ -26,9 +28,10 @@ async function credentialsIdentifier(request: NextRequest): Promise<string | nul
     if (type.includes("application/json")) {
         const body = (await request.clone().json().catch(() => null)) as { identifier?: unknown } | null
         raw = body?.identifier
-    } else if (type.includes("application/x-www-form-urlencoded") || type.includes("multipart/form-data")) {
-        const form = await request.clone().formData().catch(() => null)
-        raw = form?.get("identifier")
+    } else if (type.includes("application/x-www-form-urlencoded")) {
+        const values = new URLSearchParams(await request.clone().text().catch(() => "")).getAll("identifier")
+        if (values.length > 1) return null
+        raw = values[0]
     } else {
         return null
     }
@@ -54,7 +57,7 @@ async function handle(request: NextRequest) {
         }
         if (method === "password" && request.method === "POST") {
             const identifier = await credentialsIdentifier(request)
-            // Formato de corpo que o Auth.js não lê (nem form nem JSON) não chega ao `authorize`.
+            // Corpo que o Auth.js não lê (nem urlencoded nem JSON) ou com `identifier` repetido não chega ao `authorize`.
             if (identifier === null) return refuse(request, resolved.origin, 400, "CredentialsSignin", "credenciais")
             try {
                 // O limite por e-mail independe do IP (cabeçalhos de IP são forjáveis no acesso direto à porta).

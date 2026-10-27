@@ -78,4 +78,18 @@ describe("rota do Auth.js: métodos por protocolo e endereços permitidos", () =
         expect(plain.status).toBe(400)
         expect(state.handler).toHaveBeenCalledTimes(10)
     })
+    it("identifier repetido no urlencoded é recusado (o Auth.js usaria o último valor) e o limite conta o mesmo e-mail do authorize", async () => {
+        vi.mocked(cachedAuthSettings).mockResolvedValue(settings(["password"], ["password"]))
+        for (const body of ["identifier=x1&identifier=vitima%40b.test&password=x", "identifier=vitima%40b.test&identifier=x2&password=x"]) {
+            const refused = await POST(request("/api/auth/callback/credentials", "POST", HTTP, body))
+            expect(refused.status).toBe(400)
+        }
+        expect(state.handler).not.toHaveBeenCalled()
+        // Multipart não é lido pelo Auth.js: também recusado.
+        const form = new FormData(); form.set("identifier", "vitima@b.test"); form.set("password", "x")
+        const multipart = await POST(new NextRequest("http://0.0.0.0:3000/api/auth/callback/credentials", { method: "POST", headers: { ...HTTP, "x-auth-return-redirect": "1" }, body: form }))
+        expect(multipart.status).toBe(400)
+        for (let index = 0; index < 10; index++) expect((await POST(request("/api/auth/callback/credentials", "POST", HTTP, `identifier=vitima%40b.test&password=${index}`))).status).toBe(200)
+        expect((await POST(request("/api/auth/callback/credentials", "POST", HTTP, "identifier=VITIMA%40b.test&password=z"))).status).toBe(429)
+    })
 })

@@ -74,7 +74,8 @@ devolve a origem resolvida e os métodos do protocolo (vazio em host não permit
   `signin|callback/google` e `callback/credentials` (`auth-paths.ts`) **antes do Auth.js** — desabilitado no
   protocolo responde no formato do `signIn` do navegador (`{ url: …/login?erro=metodo-indisponivel&error=MetodoIndisponivel }`,
   403) ou redireciona (303); limita tentativas de senha **por e-mail** (independente do IP; o e-mail é lido do
-  corpo form **ou JSON**, os dois formatos que o Auth.js aceita; outro formato é recusado com 400) e, em
+  corpo **urlencoded ou JSON** exatamente como o Auth.js lê; outro formato, inclusive multipart, e
+  `identifier` repetido no urlencoded são recusados com 400) e, em
   segundo plano, por IP (`cf-connecting-ip`/`x-real-ip`, forjáveis no acesso direto à porta) (429 `RateLimited`); entrega ao Auth.js a requisição na **origem resolvida** (cookies e retorno do Google no
   próprio endereço de acesso). `AUTH_URL`/`NEXTAUTH_URL` são removidas na carga de `src/auth.ts` (fariam o
   Auth.js reescrever tudo para uma origem); `AUTH_URL` só serve de fallback do `APP_ORIGIN`.
