@@ -264,6 +264,21 @@ describe("publicação e leitura", () => {
         expect(conflict.capacity?.busyMinutes).toBe(120)
     })
 
+    it("cache da leitura: verificações seguidas (com o agora mudando) fazem uma única consulta ao Google", async () => {
+        await connect()
+        await updateGoogleSettings(ana, { publishCalendarId: PUBLISH, readCalendarIds: [TEAM] })
+        clearGoogleReadCache(ana.userId)
+        const reads = () => google.requests.filter((request) => request === `GET /calendar/v3/calendars/${encodeURIComponent(TEAM)}/events`).length
+        const before = reads()
+        await checkDeadlineConflict(ana, { dueDate: day(3), estimatedMinutes: 60 })
+        await new Promise((resolve) => setTimeout(resolve, 5))
+        await checkDeadlineConflict(ana, { dueDate: day(3), estimatedMinutes: 90 })
+        await listCalendarEvents(ana, { from: day(10), to: day(16) })
+        await new Promise((resolve) => setTimeout(resolve, 5))
+        await listCalendarEvents(ana, { from: day(10), to: day(16) })
+        expect(reads() - before).toBe(2)
+    })
+
     it("mudança no Ciliar atualiza o evento; status como histórico; cota excedida espera e tenta de novo", async () => {
         const work = await acceptedWork(day(5))
         await connect()
@@ -311,6 +326,22 @@ describe("do Google para o Ciliar", () => {
         await processPublishQueue(ana.userId)
         expect(google.calendars.get(PUBLISH)!.get(deadline.eventId!)!.summary).toBe("Prazo: PED-0001 · Site institucional")
         expect(await syncConnection(ana.userId)).toMatchObject({ applied: 0, corrected: 0 })
+    })
+
+    it("falha inesperada ao aplicar um evento: o syncToken não avança e a próxima sincronização aplica a mudança", async () => {
+        const { work, deadline } = await ready()
+        const tokenBefore = (await loadConnection(ana.userId))!.syncToken
+        google.userEdit(PUBLISH, deadline.eventId!, { start: { date: day(7) }, end: { date: day(8) } })
+        const spy = vi.spyOn(calendar.links, "findOne").mockImplementationOnce(() => {
+            throw new Error("falha transitória do banco")
+        })
+        expect(await syncConnection(ana.userId)).toMatchObject({ applied: 0, errors: 1 })
+        spy.mockRestore()
+        expect((await loadConnection(ana.userId))!.syncToken).toBe(tokenBefore)
+        expect((await getWork(ana, businessId, work.id)).dueDate).toBe(day(5))
+        expect(await syncConnection(ana.userId)).toMatchObject({ applied: 1, errors: 0 })
+        expect((await getWork(ana, businessId, work.id)).dueDate).toBe(day(7))
+        expect((await loadConnection(ana.userId))!.syncToken).not.toBe(tokenBefore)
     })
 
     it("período: o fim vira o prazo e o início é corrigido de volta", async () => {

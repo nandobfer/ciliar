@@ -2,6 +2,7 @@ import { dbConnect } from "@/lib/db"
 import { DomainError } from "@/lib/api/route"
 import { normalizeTimeZone } from "@/lib/timezone"
 import { denied } from "@/features/access/server/access"
+import { parseInput } from "@/features/access/server/commands"
 import type { AccessContext } from "@/features/access/server/context"
 import { businessOwnerOf, canSupportBusinesses, canUseModule, ensureBusinessCollections } from "@/features/businesses/server/access"
 import { readBusiness } from "@/features/businesses/server/items"
@@ -24,7 +25,7 @@ import { acceptanceKey, availabilitiesOf, conflictWorksOf, loadOwnerScope } from
  * calendário e pelo Agente Opex. NUNCA recusa uma ação: só informa.
  */
 export async function checkDeadlineConflict(access: AccessContext, raw: unknown): Promise<DeadlineConflictDto> {
-    const input = deadlineConflictInputSchema.parse(raw)
+    const input = parseInput(deadlineConflictInputSchema, raw)
     await dbConnect()
     await ensureBusinessCollections()
     let ownerId: string
@@ -81,6 +82,9 @@ export async function checkDeadlineConflict(access: AccessContext, raw: unknown)
         }
     }
     const result = deadlineConflict({ now, timeZone, dueDate, estimatedMinutes: estimatedMinutes ?? 0, startKey: startKey ?? dayKeyOf(now, timeZone), selfWorkId, works: conflictWorksOf(scope), availabilities: availabilitiesOf(scope), busy })
-    const businessNames = Object.fromEntries(result.overlap.map((item) => [item.businessId, scope.businessById.get(item.businessId)?.name ?? "Negócio"]))
-    return { ...result, businessNames, googleError }
+    // A capacidade conta todos os trabalhos; código/título só para quem vê Trabalhos (ou o suporte).
+    const showWorks = canUseModule(access, "works") || canSupportBusinesses(access)
+    const overlap = showWorks ? result.overlap : []
+    const businessNames = Object.fromEntries(overlap.map((item) => [item.businessId, scope.businessById.get(item.businessId)?.name ?? "Negócio"]))
+    return { ...result, overlap, overlapCount: result.overlap.length, businessNames, googleError }
 }

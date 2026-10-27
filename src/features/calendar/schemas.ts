@@ -14,7 +14,7 @@ export const calendarRangeQuerySchema = z
         types: z
             .string()
             .optional()
-            .transform((value) => (value ? value.split(",").filter((item): item is (typeof CALENDAR_EVENT_KINDS)[number] => (CALENDAR_EVENT_KINDS as readonly string[]).includes(item)) : [...CALENDAR_EVENT_KINDS])),
+            .transform((value) => (value !== undefined ? value.split(",").filter((item): item is (typeof CALENDAR_EVENT_KINDS)[number] => (CALENDAR_EVENT_KINDS as readonly string[]).includes(item)) : [...CALENDAR_EVENT_KINDS])),
     })
     .refine((query) => query.from <= query.to, "O início precisa ser antes do fim")
     .refine((query) => daysBetweenKeys(query.from, query.to) <= CALENDAR_MAX_RANGE_DAYS, `Período de até ${CALENDAR_MAX_RANGE_DAYS} dias`)

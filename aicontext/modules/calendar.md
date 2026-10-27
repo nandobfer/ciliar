@@ -57,7 +57,8 @@ A integração com o **Google Agenda** é opcional e funciona nos dois sentidos.
   excluído no Google, o botão "Republicar".
 - **Criar pelo calendário**: clicar num dia ou num horário, ou no botão "Novo pedido", abre o
   `NewOrderDialog`. Ele contém o `OrderForm` (`initialDueDate` = data clicada; a hora é ignorada) e o
-  seletor de negócio quando há vários. O pedido nasce em **Rascunho** e segue o fluxo normal.
+  seletor de negócio quando há vários (na página global, o negócio filtrado, se for um só e aceitar
+  pedidos, já vem pré-selecionado: `initialOrderBusiness`). O pedido nasce em **Rascunho** e segue o fluxo normal.
 - **Arrastar o prazo** (dnd-kit; teclado: Espaço pega e solta) usa os PATCH que já existem:
   - trabalho: `PATCH …/works/[id]` `{dueDate, version}` (W1, versão `work` não publicada);
   - pedido em Rascunho: `PATCH …/orders/[id]`, sem versão;
@@ -91,6 +92,11 @@ Também devolve:
 - `googleError`: falha do Google. O resto do calendário continua funcionando.
 
 Negócio arquivado some do calendário e do expediente.
+
+Validação: parâmetros inválidos (data fora de AAAA-MM-DD, `from` depois de `to`, mais de 62 dias, pedido
+ou trabalho sem `businessId`) viram **400 `VALIDATION_ERROR`** (`parseInput`), tanto em `/events` quanto
+em `/conflict` e nas ferramentas do agente. `types` ausente traz todos os tipos; `types=` vazio (todos os
+filtros desmarcados) não traz nenhum, e a tela também filtra os eventos pelo tipo marcado.
 
 ## Alerta de conflito (`conflict.ts`, puro)
 
@@ -126,6 +132,10 @@ alerta mesmo sem `calendar.view`. O componente `DeadlineConflictAlert`/`Deadline
 - no calendário, na marcação do dia e do evento e no aviso depois de arrastar.
 
 **Nenhuma validação no servidor recusa a ação por causa de conflito.**
+
+Visibilidade: a capacidade sempre conta todos os trabalhos em andamento do dono, mas a lista da
+sobreposição (código, título, datas e negócio) só vem para quem tem `works.view` (ou o suporte). Sem
+ela, `overlap` vem vazio e `overlapCount` traz só a quantidade ("Sobreposição com N trabalhos").
 
 Tempo e fuso ficam em `time.ts` (`Intl`, sem biblioteca): `localToInstant` (inclusive na virada do
 horário de verão), `dayKeyOf`, `rangeOfView` e `shiftAnchor`. O fuso vem de `x-ciliar-timezone`.
@@ -203,6 +213,8 @@ depois).
   - o pedido foi aceito, cancelado ou recusado, ou o link expirou;
   - o trabalho foi arquivado ou excluído;
   - o serviço recusou a mudança.
+- Falha inesperada ao aplicar algum evento (banco, acesso): o `syncToken` **não avança**, e a próxima
+  sincronização relê as mesmas mudanças (o Google devolve o estado atual; reaplicar é idempotente).
 - **Excluir o evento** só desfaz o vínculo (`deleted_in_google`); ele não é recriado até
   `POST /api/calendar/google/republish` (`{kind,id}` ou `{all:true}`).
 - Eventos sem a marca do Ciliar não são importados.
@@ -223,6 +235,9 @@ depois).
 
 - As agendas lidas são consultadas sob demanda (`singleEvents`, `timeMin/timeMax`, cache de 60 s por
   dono e período).
+- A janela da leitura é arredondada para a hora cheia (`googleReadWindow`): os chamadores passam o
+  "agora" cru, e sem isso a chave do cache mudaria a cada milissegundo e cada verificação de conflito
+  listaria as agendas de novo.
 - Contam como **ocupados** os eventos opacos, não cancelados e não recusados pelo próprio usuário. Os
   de dia inteiro usam o fuso do usuário; os com hora são convertidos pelo ISO.
 - **Desconectar** (`DELETE /api/calendar/google`): para o canal, revoga o refresh token e apaga os

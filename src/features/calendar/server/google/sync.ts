@@ -159,7 +159,9 @@ export async function syncConnection(ownerId: string, options: { connection?: Co
                 break
             }
         }
-        await recordGoogleSuccess(connection, { syncToken: nextSyncToken, lastSyncAt: new Date() })
+        // Falha inesperada em algum evento: o token não avança, e a próxima sincronização relê as mesmas
+        // mudanças (o Google devolve o estado atual de cada evento; reaplicar é idempotente).
+        await recordGoogleSuccess(connection, { syncToken: result.errors ? syncToken : nextSyncToken, lastSyncAt: new Date() })
     } catch (error) {
         await recordGoogleFailure(connection, error, { publishCalendar: true })
         result.errors += 1

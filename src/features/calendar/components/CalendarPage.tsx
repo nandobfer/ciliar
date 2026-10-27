@@ -88,7 +88,7 @@ export function CalendarPage({ businessId = null, editable = true }: { businessI
 
     const data = query.data
     const businesses = data?.businesses ?? []
-    const events = useMemo(() => (data?.events ?? []).filter((event) => businessId || !prefs.businesses.length || !event.businessId || prefs.businesses.includes(event.businessId)), [data, prefs.businesses, businessId])
+    const events = useMemo(() => (data?.events ?? []).filter((event) => types.includes(event.kind)).filter((event) => businessId || !prefs.businesses.length || !event.businessId || prefs.businesses.includes(event.businessId)), [data, types, prefs.businesses, businessId])
     const showAvailability = prefs.filters.includes("availability") && !data?.noAvailability
     const windows = useMemo(() => new Map((data?.availability ?? []).map((day) => [day.date, day.windows] as const)), [data])
     const offDays = useMemo(() => new Set(showAvailability ? (data?.availability ?? []).filter((day) => !day.windows.length).map((day) => day.date) : []), [data, showAvailability])
@@ -240,7 +240,7 @@ export function CalendarPage({ businessId = null, editable = true }: { businessI
                 </DndContext>
             )}
 
-            {newOrder && <NewOrderDialog date={newOrder} businesses={businesses} initialBusinessId={businessId} onClose={() => setNewOrder(null)} />}
+            {newOrder && <NewOrderDialog date={newOrder} businesses={businesses} initialBusinessId={businessId} preferredBusinessId={prefs.businesses.length === 1 ? prefs.businesses[0]! : null} onClose={() => setNewOrder(null)} />}
             {data?.own && <GoogleCalendarDialog open={googleOpen} onOpenChange={setGoogleOpen} connection={data.google} returnTo={returnTo} />}
         </motion.section>
     )

@@ -68,6 +68,7 @@ export const calendarTools = [
                 level: result.level,
                 dueDate: result.dueDate,
                 overlap: result.overlap.map((item) => ({ ...item, businessName: result.businessNames[item.businessId] ?? null })),
+                overlapCount: result.overlapCount,
                 capacity: result.capacity,
                 googleError: result.googleError,
                 note: "O alerta nunca bloqueia: é só informativo (sobreposição) ou forte (capacidade).",

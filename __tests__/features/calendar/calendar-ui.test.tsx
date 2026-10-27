@@ -9,6 +9,7 @@ import { DeadlineConflictAlert } from "@/features/calendar/components/DeadlineCo
 import { MonthView } from "@/features/calendar/components/MonthView"
 import { TimeGridView } from "@/features/calendar/components/TimeGridView"
 import { CalendarViewSwitch, periodLabel } from "@/features/calendar/components/CalendarPage"
+import { initialOrderBusiness } from "@/features/calendar/components/NewOrderDialog"
 import { HOUR_HEIGHT } from "@/features/calendar/components/calendar-layout"
 import type { CalendarEventDto, DeadlineConflictDto } from "@/features/calendar/types"
 
@@ -49,7 +50,7 @@ const event = (patch: Partial<CalendarEventDto>): CalendarEventDto => ({
     ...patch,
 })
 
-const conflict = (patch: Partial<DeadlineConflictDto>): DeadlineConflictDto => ({ level: "none", dueDate: "2026-11-06", overlap: [], capacity: null, businessNames: { b1: "Studio" }, googleError: null, ...patch })
+const conflict = (patch: Partial<DeadlineConflictDto>): DeadlineConflictDto => ({ level: "none", dueDate: "2026-11-06", overlap: [], overlapCount: patch.overlap?.length ?? 0, capacity: null, businessNames: { b1: "Studio" }, googleError: null, ...patch })
 
 describe("alerta de conflito", () => {
     it("forte mostra necessárias × livres; informativo lista os trabalhos; nunca bloqueia", () => {
@@ -116,5 +117,16 @@ describe("barra do calendário", () => {
         expect(onChange).toHaveBeenCalledWith("month")
         expect(periodLabel("month", "2026-11-15", "2026-11-01", "2026-12-05")).toBe("novembro de 2026")
         expect(periodLabel("week", "2026-11-04", "2026-11-01", "2026-11-07")).toBe("1 – 7 de nov de 2026")
+    })
+})
+
+describe("novo pedido pelo calendário", () => {
+    it("pré-seleciona o negócio da aba, o filtrado na página global (se aceitar pedidos) ou o único que aceita", () => {
+        const creatable = [{ id: "a" }, { id: "b" }]
+        expect(initialOrderBusiness(creatable, "x", "a")).toBe("x")
+        expect(initialOrderBusiness(creatable, null, "b")).toBe("b")
+        expect(initialOrderBusiness(creatable, null, "z")).toBeNull()
+        expect(initialOrderBusiness(creatable, null, null)).toBeNull()
+        expect(initialOrderBusiness([{ id: "a" }], null, null)).toBe("a")
     })
 })

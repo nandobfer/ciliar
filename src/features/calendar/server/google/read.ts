@@ -45,7 +45,19 @@ export function eventInterval(event: GoogleEvent, timeZone: string): Interval | 
     return null
 }
 
-export async function readGoogleEvents(ownerId: string, from: number, to: number, timeZone: string): Promise<GoogleReadResult> {
+const HOUR_MS = 3_600_000
+
+/**
+ * Janela normalizada para a hora cheia (início para baixo, fim para cima): os chamadores passam `now`
+ * cru, e sem isso a chave do cache mudaria a cada milissegundo. A janela maior é segura — a ocupação é
+ * recortada pelo expediente entre agora e o prazo.
+ */
+export function googleReadWindow(from: number, to: number): [number, number] {
+    return [Math.floor(from / HOUR_MS) * HOUR_MS, Math.ceil(to / HOUR_MS) * HOUR_MS]
+}
+
+export async function readGoogleEvents(ownerId: string, rawFrom: number, rawTo: number, timeZone: string): Promise<GoogleReadResult> {
+    const [from, to] = googleReadWindow(rawFrom, rawTo)
     const connection = await loadConnection(ownerId)
     if (!connection || connection.status === "reauth" || !(connection.readCalendars ?? []).length) return EMPTY
     if (inBackoff(connection)) return { ...EMPTY, error: connection.lastError ?? "Google Agenda em espera pela cota." }

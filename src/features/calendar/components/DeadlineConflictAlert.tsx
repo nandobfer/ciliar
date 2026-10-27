@@ -51,20 +51,20 @@ export function DeadlineConflictAlert({ conflict, loading = false, className }: 
                             </p>
                         </div>
                     )}
-                    {conflict.overlap.length > 0 && (
+                    {conflict.overlapCount > 0 && (
                         <div className="space-y-0.5">
                             <p className="flex items-center gap-1.5 font-medium">
                                 <CalendarRange className="h-4 w-4 shrink-0" aria-hidden />
-                                Sobreposição com {conflict.overlap.length === 1 ? "1 trabalho em andamento" : `${conflict.overlap.length} trabalhos em andamento`}
+                                Sobreposição com {conflict.overlapCount === 1 ? "1 trabalho em andamento" : `${conflict.overlapCount} trabalhos em andamento`}
                             </p>
-                            <ul className="space-y-0.5 text-xs opacity-90">
+                            {conflict.overlap.length > 0 && <ul className="space-y-0.5 text-xs opacity-90">
                                 {conflict.overlap.slice(0, 5).map((item) => (
                                     <li key={item.id}>
                                         {item.code} · {item.title} ({conflict.businessNames[item.businessId] ?? "Negócio"}, {dateKeyLabel(item.startKey)} a {dateKeyLabel(item.dueDate)})
                                     </li>
                                 ))}
                                 {conflict.overlap.length > 5 && <li>e mais {conflict.overlap.length - 5}…</li>}
-                            </ul>
+                            </ul>}
                         </div>
                     )}
                     <p className="text-xs opacity-80">É só um aviso: nada é bloqueado.{conflict.googleError ? ` Google Agenda indisponível: ${conflict.googleError}` : ""}</p>

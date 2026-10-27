@@ -93,6 +93,8 @@ export interface CalendarRangeDto {
 export type DeadlineConflictDto = DeadlineConflict & {
     /** Nomes dos negócios dos trabalhos sobrepostos. */
     businessNames: Record<string, string>
+    /** Total de trabalhos sobrepostos; `overlap` vem vazio para quem não tem `works.view`. */
+    overlapCount: number
     googleError: string | null
 }
 

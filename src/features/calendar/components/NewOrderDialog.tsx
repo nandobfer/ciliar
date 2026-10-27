@@ -16,14 +16,21 @@ import { useSaveOrder } from "@/features/orders/hooks/useOrders"
 import type { CalendarBusinessDto } from "../types"
 import { CALENDAR_KEY } from "../hooks/useCalendar"
 
+/** Negócio pré-selecionado: o da aba; senão o filtrado (se aceitar pedidos); senão o único que aceita. */
+export function initialOrderBusiness(creatable: readonly Pick<CalendarBusinessDto, "id">[], initialBusinessId: string | null, preferredBusinessId: string | null): string | null {
+    if (initialBusinessId) return initialBusinessId
+    if (preferredBusinessId && creatable.some((business) => business.id === preferredBusinessId)) return preferredBusinessId
+    return creatable.length === 1 ? creatable[0]!.id : null
+}
+
 /**
  * Novo pedido pelo calendário: diálogo com o `OrderForm` (o mesmo da tela de pedidos) já com o negócio
- * (o filtrado, ou escolhido se houver vários) e o prazo = data clicada. O pedido nasce em Rascunho e
+ * (o da aba; na página global, o filtrado vem pré-selecionado, ou escolhido se houver vários) e o prazo = data clicada. O pedido nasce em Rascunho e
  * segue o fluxo normal (só vira trabalho quando aceito).
  */
-export function NewOrderDialog({ date, businesses, initialBusinessId, onClose }: { date: string; businesses: readonly CalendarBusinessDto[]; initialBusinessId: string | null; onClose: () => void }) {
+export function NewOrderDialog({ date, businesses, initialBusinessId, preferredBusinessId = null, onClose }: { date: string; businesses: readonly CalendarBusinessDto[]; initialBusinessId: string | null; preferredBusinessId?: string | null; onClose: () => void }) {
     const creatable = businesses.filter((business) => business.canCreateOrders)
-    const [businessId, setBusinessId] = useState<string | null>(initialBusinessId ?? (creatable.length === 1 ? creatable[0]!.id : null))
+    const [businessId, setBusinessId] = useState<string | null>(() => initialOrderBusiness(creatable, initialBusinessId, preferredBusinessId))
     return (
         <Dialog open onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto">

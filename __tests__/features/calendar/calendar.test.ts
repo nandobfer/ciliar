@@ -181,6 +181,33 @@ describe("alerta de conflito (serviço)", () => {
 
         await expect(checkDeadlineConflict(bia, { businessId, orderId: order.id })).rejects.toMatchObject({ code: "BUSINESS_NOT_FOUND" })
     })
+
+    it("sem works.view: a capacidade conta os trabalhos, mas a sobreposição traz só a contagem (sem código/título)", async () => {
+        await acceptedWork(day(4), 600)
+        const ordersOnly = await createRole(admin, { nome: "Só pedidos", descricao: "", cor: "azul", ativo: true, permissoes: BUSINESS_FULL_PERMISSIONS.filter((key) => !key.startsWith("works.") && key !== "orders.decide"), limiteNegocios: null })
+        await access.users.updateOne({ _id: ana.userId }, { $set: { roles: [ordersOnly.id] } })
+        const limited = { ...(await resolveAccess(ana.userId)), timeZone: TZ }
+        expect(limited.effective.has("works.view")).toBe(false)
+        const result = await checkDeadlineConflict(limited, { businessId, dueDate: day(3), estimatedMinutes: 60 })
+        expect(result).toMatchObject({ level: "info", overlap: [], overlapCount: 1, businessNames: {} })
+        expect(result.capacity?.worksMinutes).toBeGreaterThan(0)
+        expect(JSON.stringify(result)).not.toContain("Site institucional")
+        expect((await checkDeadlineConflict(ana, { dueDate: day(3), estimatedMinutes: 60 })).overlapCount).toBe(1)
+    })
+
+    it("parâmetros inválidos viram 400 VALIDATION_ERROR (não 500)", async () => {
+        await expect(listCalendarEvents(ana, { from: day(0), to: day(90) })).rejects.toMatchObject({ status: 400, code: "VALIDATION_ERROR" })
+        await expect(listCalendarEvents(ana, { to: day(1) })).rejects.toMatchObject({ status: 400, code: "VALIDATION_ERROR" })
+        await expect(listCalendarEvents(ana, { from: day(5), to: day(1) })).rejects.toMatchObject({ status: 400, code: "VALIDATION_ERROR" })
+        await expect(checkDeadlineConflict(ana, { dueDate: "31/12/2026" })).rejects.toMatchObject({ status: 400, code: "VALIDATION_ERROR" })
+        await expect(checkDeadlineConflict(ana, { orderId: "a".repeat(24) })).rejects.toMatchObject({ status: 400, code: "VALIDATION_ERROR" })
+    })
+
+    it("filtro de tipos vazio não devolve nenhum evento; ausente devolve todos", async () => {
+        await acceptedWork(day(5))
+        expect((await listCalendarEvents(ana, { ...range(), types: "" })).events).toEqual([])
+        expect((await listCalendarEvents(ana, range())).events.length).toBeGreaterThan(0)
+    })
 })
 
 describe("mover o prazo (os mesmos serviços do arraste)", () => {

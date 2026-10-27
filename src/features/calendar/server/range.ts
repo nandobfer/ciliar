@@ -1,3 +1,4 @@
+import { parseInput } from "@/features/access/server/commands"
 import { dbConnect } from "@/lib/db"
 import { normalizeTimeZone } from "@/lib/timezone"
 import type { AccessContext } from "@/features/access/server/context"
@@ -97,7 +98,7 @@ function markDay(conflicts: Record<string, "info" | "strong">, key: string, leve
 }
 
 export async function listCalendarEvents(access: AccessContext, raw: unknown): Promise<CalendarRangeDto> {
-    const query = calendarRangeQuerySchema.parse(raw)
+    const query = parseInput(calendarRangeQuerySchema, raw)
     const read = await calendarReadScope(access, query.businessId)
     const timeZone = normalizeTimeZone(access.timeZone)
     const now = Date.now()
