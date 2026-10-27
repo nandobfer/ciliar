@@ -19,4 +19,8 @@ ganhou o Agente Opex (chat com ferramentas) copiado do Opex.
 - [Portfólio](modules/portfolio.md) (M5): página pública `/p/[slug]` opcional, seleção um a um em ordem, cliente confidencial, itens avulsos, URLs assinadas e pré-visualização.
 - [Docker e deploy](modules/deployment.md): infraestrutura copiada, Compose dev/produção e ambiente.
 
+Este diretório é também a documentação viva consultada em tempo real pelo Agente Opex
+(`list_app_docs`/`read_app_doc`/`search_app_docs`): módulo novo deve ser classificado em
+`APP_DOC_AUDIENCE` (`src/features/opex-agent/app-docs.ts`); fora do mapa, só a administração lê.
+
 Leia também `AGENTS.md`. Alterações devem manter este contexto e testes Vitest atualizados.

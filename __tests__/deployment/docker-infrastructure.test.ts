@@ -13,6 +13,8 @@ describe('infraestrutura Docker copiada', () => {
         expect(dockerfile).toContain('pnpm install --frozen-lockfile --ignore-scripts')
         expect(dockerfile).toContain('/app/.next/standalone')
         expect(dockerfile).toContain('USER nextjs')
+        // Documentação viva lida em tempo real pelo Agente Opex.
+        expect(dockerfile.slice(dockerfile.indexOf('AS runner'))).toContain('COPY --from=builder --chown=nextjs:nodejs /app/aicontext ./aicontext')
         expect(dockerfile).toContain('CMD ["node", "server.js"]')
         expect(dockerfile).not.toContain('INTEGRATIONS_ENCRYPTION_KEY')
         expect(read('next.config.ts')).toContain('output: "standalone"')

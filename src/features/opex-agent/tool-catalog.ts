@@ -79,6 +79,35 @@ export const OPEX_TOOL_CATALOG: readonly OpexToolMeta[] = [
         description: "Lê o conteúdo de texto de um arquivo do chat (txt, md, csv, json, código...), em janelas de até 100 mil caracteres. Use para arquivos grandes ou de mensagens antigas.",
     },
 
+    // ── Documentação do app (aicontext, lida em tempo real) ─────────────────
+    {
+        name: "list_app_docs",
+        group: "docs",
+        label: "Listar documentação",
+        risk: "read",
+        access: {},
+        description:
+            "Documentos da documentação viva do Ciliar (regras de negócio de cada funcionalidade, lidas agora do disco) que o usuário pode consultar: caminho, título, seções e data da última alteração.",
+    },
+    {
+        name: "read_app_doc",
+        group: "docs",
+        label: "Ler documentação",
+        risk: "read",
+        access: {},
+        description:
+            "Lê um documento da documentação viva do Ciliar (path de list_app_docs), inteiro ou só uma seção pelo título (section), em janelas de até 100 mil caracteres. Use para responder perguntas sobre como uma funcionalidade do app funciona.",
+    },
+    {
+        name: "search_app_docs",
+        group: "docs",
+        label: "Buscar na documentação",
+        risk: "read",
+        access: {},
+        description:
+            "Busca por palavras-chave (sem diferença de acentos e maiúsculas) na documentação viva do Ciliar e devolve os trechos com documento, seção e linha. Primeiro passo para perguntas sobre regras, telas, fluxos, status e permissões do app.",
+    },
+
     // ── Negócios (M1) ──────────────────────────────────────────────────────
     {
         name: "list_businesses",
@@ -1206,7 +1235,7 @@ export const OPEX_ALWAYS_ON_TOOLS = new Set(OPEX_TOOL_CATALOG.filter((tool) => t
 const has = (permissions: ReadonlySet<string>, key: string) => permissions.has("*") || permissions.has(key)
 
 /** Grupos do prestador: não exigem o painel. Os demais (administração) exigem também `admin.access`. */
-export const OPEX_NO_PANEL_GROUPS: ReadonlySet<OpexToolGroup> = new Set<OpexToolGroup>(["context", "files", "businesses", "business-activities", "business-goals", "business-documents", "business-successes", "clients", "orders", "work-columns", "works", "work-time", "work-notes", "portfolio", "portfolio-items"])
+export const OPEX_NO_PANEL_GROUPS: ReadonlySet<OpexToolGroup> = new Set<OpexToolGroup>(["context", "files", "docs", "businesses", "business-activities", "business-goals", "business-documents", "business-successes", "clients", "orders", "work-columns", "works", "work-time", "work-notes", "portfolio", "portfolio-items"])
 
 /** As permissões efetivas liberam a ferramenta? (Revalidado no servidor antes de cada execução.) */
 export function canUseOpexTool(meta: Pick<OpexToolMeta, "access" | "group">, permissions: ReadonlySet<string>): boolean {

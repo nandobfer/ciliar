@@ -22,14 +22,21 @@ import { buildToolRuntime, stringifyForDisplay } from "./tool-runtime"
 import { actorIdOf, resolveScopeAccess, type OpexServerScope } from "./scope"
 import { nowContext } from "./tools/context"
 import { enabledOpexTools, findOpexTool } from "./tools/registry"
+import type { OpexTool } from "./tools/define"
+import { appDocsInstructions } from "../app-docs"
 import { agentMemoryTexts, memoriesSection } from "@/features/ai/server/agent-memory-service"
 
 const log = loggerFor({ module: "opex-agent" })
 const INTERRUPTED = "Interrompido pelo usuário"
 
-/** Estável entre os turnos: o raciocínio assinado e o cache do provedor dependem do prompt de sistema. */
-function instructionsFor(settings: OpexAgentSettings, access: AccessContext, memories: readonly string[]): string {
-    return [settings.instructions, "", `Usuário autenticado: ${access.name}. A data e a hora de cada turno (e a simulação ativa, se houver) vêm ao fim da mensagem do usuário.`, memoriesSection(memories)].join("\n")
+/**
+ * Estável entre os turnos: o raciocínio assinado e o cache do provedor dependem do prompt de sistema.
+ * Com as ferramentas da documentação no turno, a regra de consultá-las entra sempre (mesmo com
+ * instruções personalizadas na configuração).
+ */
+function instructionsFor(settings: OpexAgentSettings, access: AccessContext, memories: readonly string[], tools: readonly OpexTool[]): string {
+    const docs = tools.some((tool) => tool.group === "docs") ? ["", appDocsInstructions(access.effective)] : []
+    return [settings.instructions, ...docs, "", `Usuário autenticado: ${access.name}. A data e a hora de cada turno (e a simulação ativa, se houver) vêm ao fim da mensagem do usuário.`, memoriesSection(memories)].join("\n")
 }
 
 /** Ferramentas e política do turno: ligadas na configuração e liberadas pelas permissões efetivas. */
@@ -195,7 +202,7 @@ async function executeTurn(args: TurnArgs): Promise<void> {
         prepared = await prepareModel({ provider: main.provider!, model: main.model!, variant: main.variant })
         const result = streamText({
             model: prepared.model,
-            instructions: instructionsFor(settings, access, await agentMemoryTexts("opex-agent")),
+            instructions: instructionsFor(settings, access, await agentMemoryTexts("opex-agent"), tools),
             messages: history,
             tools: runtime.tools,
             stopWhen: isLoopFinished(),

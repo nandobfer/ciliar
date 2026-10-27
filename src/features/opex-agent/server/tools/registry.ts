@@ -13,6 +13,7 @@ import { workColumnTools, workNoteTools, workTimeTools, workTools } from "./work
 import { portfolioItemTools, portfolioTools } from "./portfolio"
 import { contextTools } from "./context"
 import { fileTools } from "./files"
+import { docTools } from "./docs"
 import { memoryTools } from "./memories"
 import { integrationTools } from "./integrations"
 import { platformTools } from "./platform"
@@ -23,6 +24,7 @@ import { userTools } from "./users"
 export const OPEX_TOOLS: readonly OpexTool[] = [
     ...contextTools,
     ...fileTools,
+    ...docTools,
     ...businessTools,
     ...businessActivityTools,
     ...businessGoalTools,

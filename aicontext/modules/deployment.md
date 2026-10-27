@@ -2,7 +2,8 @@
 
 Infraestrutura copiada de `~/code/opex`: `Dockerfile`, `.dockerignore`, `docker-compose.yml`,
 `docker-compose.deploy.yml` e `scripts/deploy-production.ts`, com os testes originais do script.
-Dockerfile e dockerignore são idênticos aos da origem. Nomes de projeto/imagem, banco e variáveis
+Dockerfile e dockerignore são idênticos aos da origem, exceto o `COPY` de `aicontext/` no estágio
+`runner` (documentação viva lida em tempo real pelo Agente Opex; ver `opex-agent.md`). Nomes de projeto/imagem, banco e variáveis
 de deploy foram adaptados para Ciliar; nenhum serviço, volume, dado ou segredo do Opex é copiado.
 
 ## Imagem e Compose

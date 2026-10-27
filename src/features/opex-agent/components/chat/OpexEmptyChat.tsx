@@ -8,7 +8,7 @@ import { OPEX_SUGGESTIONS } from "../../constants"
 /** Estado vazio do chat: o robô, o que o agente faz e sugestões para começar. */
 export function OpexEmptyChat({ onPick, disabled }: { onPick: (text: string) => void; disabled?: boolean }) {
     const suggestions = OPEX_SUGGESTIONS
-    const description = "Consulto e administro usuários, perfis de acesso, integrações, tokens da API interna e rotinas, sempre dentro das suas permissões. Peça em linguagem natural."
+    const description = "Consulto e administro usuários, perfis de acesso, integrações, tokens da API interna e rotinas, sempre dentro das suas permissões, e explico como o app funciona pela documentação atual. Peça em linguagem natural."
     return (
         <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 py-8 text-center">
             <motion.span
