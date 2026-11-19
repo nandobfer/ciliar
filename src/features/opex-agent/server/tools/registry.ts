@@ -11,6 +11,7 @@ import { clientTools } from "./clients"
 import { orderTools } from "./orders"
 import { workColumnTools, workNoteTools, workTimeTools, workTools } from "./works"
 import { portfolioItemTools, portfolioTools } from "./portfolio"
+import { calendarTools } from "./calendar"
 import { contextTools } from "./context"
 import { fileTools } from "./files"
 import { docTools } from "./docs"
@@ -39,6 +40,7 @@ export const OPEX_TOOLS: readonly OpexTool[] = [
     ...workNoteTools,
     ...portfolioTools,
     ...portfolioItemTools,
+    ...calendarTools,
     ...memoryTools,
     ...userTools,
     ...roleTools,

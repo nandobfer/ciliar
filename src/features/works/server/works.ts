@@ -19,6 +19,13 @@ import { workAttachmentsSchema, workMoveSchema, workPaymentSchema, workUnpaySche
 import type { WorkDetailDto, WorkListDto } from "../types"
 import { assertColumn, assertWritable, jobsRetentionDays, loadOrderOf, loadWork, readWork, toWorkDetail, workArchived, workSummaries, type WorkDoc } from "./core"
 import { workModels } from "./models"
+import { markCalendarDirty } from "@/features/calendar/server/google/publish"
+
+/** Google Agenda (opcional): prazo/situação do trabalho e do pedido vão para a fila de publicação. */
+async function markWorkCalendar(businessId: string, workId: string, known?: { ownerId: string; orderId: string }): Promise<void> {
+    const doc = known ?? (await workModels().works.findOne({ _id: workId }).select({ ownerId: 1, orderId: 1 }).lean())
+    if (doc) await markCalendarDirty(doc.ownerId, { businessId, workId, orderId: doc.orderId })
+}
 
 /**
  * Trabalhos (M4) — SOMENTE servidor. Movimentação livre entre as colunas, exceto Pago: entrar em Pago
@@ -86,6 +93,7 @@ export async function moveWork(access: AccessContext, businessId: string, workId
         await auditBusiness(current, `${WORK_AUDIT}.move`, workId, { businessId, code: doc.code, column: doc.column }, { businessId, code: doc.code, column: input.column, columnName: toName }, session)
         return { result: undefined }
     })
+    await markWorkCalendar(businessId, workId)
     return getWork(access, businessId, workId)
 }
 
@@ -118,6 +126,7 @@ export async function markWorkPaid(access: AccessContext, businessId: string, wo
         await auditBusiness(current, `${WORK_AUDIT}.pay`, workId, { businessId, code: doc.code, column: doc.column }, { businessId, code: doc.code, column: "paid", paidOn: input.paidOn, receivedCents: input.receivedCents, method }, session)
         return { result: undefined }
     }, ["works.payment"])
+    await markWorkCalendar(businessId, workId)
     return getWork(access, businessId, workId)
 }
 
@@ -151,6 +160,7 @@ export async function unmarkWorkPaid(access: AccessContext, businessId: string, 
         )
         return { result: undefined }
     }, ["works.payment"])
+    await markWorkCalendar(businessId, workId)
     return getWork(access, businessId, workId)
 }
 
@@ -192,7 +202,10 @@ export async function updateWork(access: AccessContext, businessId: string, work
         changed = true
         return { result: undefined }
     })
-    if (changed) await publishSpaceChanged(ownerId, businessId, "orders")
+    if (changed) {
+        await publishSpaceChanged(ownerId, businessId, "orders")
+        await markWorkCalendar(businessId, workId)
+    }
     return getWork(access, businessId, workId)
 }
 
@@ -206,6 +219,7 @@ export async function setWorkStatus(access: AccessContext, businessId: string, w
         await auditBusiness(current, `${WORK_AUDIT}.${target === "archived" ? "archive" : "restore"}`, workId, { businessId, code: doc.code, status: doc.status }, { businessId, code: doc.code, status: target, column: doc.column, revenue }, session)
         return { result: undefined }
     })
+    await markWorkCalendar(businessId, workId)
     return getWork(access, businessId, workId)
 }
 
@@ -233,15 +247,19 @@ async function deleteWorkData(doc: WorkDoc, session: mongoose.ClientSession): Pr
 /** Exclusão definitiva manual: só arquivado (confirmação na tela). Irreversível. */
 export async function deleteWork(access: AccessContext, businessId: string, workId: string): Promise<{ id: string }> {
     let ownerId = ""
+    let orderId = ""
     await writeItem(access, businessId, "works", async ({ current, session, ownerId: owner }) => {
         ownerId = owner
         const doc = await loadWork(businessId, workId, session)
+        orderId = doc.orderId
         if (doc.status !== "archived") throw new DomainError(409, "Arquive o trabalho antes de excluí-lo definitivamente.", "WORK_NOT_ARCHIVED")
         const removeKeys = await deleteWorkData(doc, session)
         await auditBusiness(current, `${WORK_AUDIT}.delete`, workId, { businessId, code: doc.code, orderId: doc.orderId, column: doc.column, loggedMinutes: doc.loggedMinutes ?? 0 }, null, session)
         return { result: undefined, removeKeys }
     }, ["works.delete"])
     await publishSpaceChanged(ownerId, businessId, "orders")
+    // O vínculo é desfeito; o evento fica no Google como histórico ("Excluído" no título).
+    await markWorkCalendar(businessId, workId, { ownerId, orderId })
     return { id: workId }
 }
 
@@ -277,6 +295,7 @@ export async function purgeArchivedWorks(now: Date = new Date()): Promise<string
         if (done) {
             removed += 1
             touched.set(doc.businessId, doc.ownerId)
+            await markWorkCalendar(doc.businessId, doc._id.toString(), { ownerId: doc.ownerId, orderId: doc.orderId })
         }
         storageFailures += await removeObjectsQuietly(keys)
     }

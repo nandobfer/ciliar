@@ -178,6 +178,6 @@ describe("entradas, token e rotas", () => {
 
     it("o espaço do negócio ganha Pedidos (M3) e Trabalhos (M4) na barra lateral", () => {
         expect(BUSINESS_SPACE_SECTIONS.map((section) => section.slug)).toContain("pedidos")
-        expect(businessSpaceNavSection("abc").items.slice(-3, -1)).toEqual([expect.objectContaining({ href: "/negocios/abc/pedidos", label: "Pedidos" }), expect.objectContaining({ href: "/negocios/abc/trabalhos", label: "Trabalhos" })])
+        expect(businessSpaceNavSection("abc").items.slice(-4, -2)).toEqual([expect.objectContaining({ href: "/negocios/abc/pedidos", label: "Pedidos" }), expect.objectContaining({ href: "/negocios/abc/trabalhos", label: "Trabalhos" })])
     })
 })

@@ -25,6 +25,7 @@ export const APP_DOC_AUDIENCE: Readonly<Record<string, AppDocAudience>> = {
     "modules/orders.md": "all",
     "modules/works.md": "all",
     "modules/portfolio.md": "all",
+    "modules/calendar.md": "all",
     "modules/deployment.md": "admin",
 }
 

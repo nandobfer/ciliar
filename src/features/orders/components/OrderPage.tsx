@@ -31,6 +31,7 @@ import { OrderForm } from "./OrderForm"
 import { orderHref } from "./OrdersPage"
 import { workHref } from "@/features/works/constants"
 import { canReadModule } from "@/features/businesses/permissions"
+import { DeadlineConflictNotice } from "@/features/calendar/components/DeadlineConflictAlert"
 
 /** Novo pedido (`/negocios/[id]/pedidos/novo`). */
 export function NewOrderPage() {
@@ -212,7 +213,10 @@ function OrderActionsCard({ order }: { order: OrderDto }) {
                 variant={confirm?.destructive ? "destructive" : "default"}
                 pending={action.isPending}
                 onConfirm={() => confirm && action.mutate({ action: confirm.action, data: { version: order.version } }, { onSettled: () => setConfirm(null) })}
-            />
+            >
+                {/* Calendário (CIL-4): conflito do prazo no aceite manual (só avisa). */}
+                {confirm?.action === "accept" && order.dueDate && <DeadlineConflictNotice params={{ businessId: order.businessId, orderId: order.id }} />}
+            </ConfirmDialog>
         </Card>
     )
 }
@@ -245,6 +249,7 @@ function SendDialog({ order, onClose }: { order: OrderDto; onClose: () => void }
                             <span className="block text-xs text-muted-foreground">{client?.email ? client.email : "O cliente não tem e-mail: copie o link depois de enviar."}</span>
                         </span>
                     </label>
+                    {order.dueDate && <DeadlineConflictNotice params={{ businessId: order.businessId, orderId: order.id }} />}
                 </div>
                 <DialogFooter>
                     <Button type="button" variant="outline" disabled={send.isPending} onClick={onClose}>

@@ -12,6 +12,7 @@ import { denied } from "@/features/access/server/access"
 import { loadPlatformState } from "@/features/platform/server/state"
 import { orderModels } from "@/features/orders/server/models"
 import { workModels } from "@/features/works/server/models"
+import { calendarModels } from "@/features/calendar/server/models"
 import { autoBusinessName, DEFAULT_BUSINESS_THEME, DEFAULT_CURRENCY, DEFAULT_DEADLINE_ALERT_DAYS, DEFAULT_QUOTE_VALIDITY_DAYS, type BusinessSpaceKind } from "../constants"
 import { businessUpdateSchema, type BusinessGoalInput } from "../schemas"
 import type { BusinessCapacityDto, BusinessDetailDto, BusinessDto, BusinessGoalDto, BusinessListDto } from "../types"
@@ -350,6 +351,8 @@ async function deleteBusinessData(doc: BusinessDoc, session: ClientSession): Pro
     await works.moves.deleteMany({ businessId: id }, { session })
     await works.notes.deleteMany({ businessId: id }, { session })
     await works.timeEntries.deleteMany({ businessId: id }, { session })
+    // Calendário: os vínculos com o Google são desfeitos (os eventos ficam lá como histórico).
+    await calendarModels().links.deleteMany({ businessId: id }, { session })
     await models.files.deleteMany({ businessId: id }, { session })
     await models.interviewMessages.deleteMany({ interviewId: { $in: interviewIds } }, { session })
     await models.interviewFiles.deleteMany({ interviewId: { $in: interviewIds } }, { session })

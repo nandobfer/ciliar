@@ -1,4 +1,4 @@
-import { ClipboardList, Clock, FileText, Globe, Hammer, LayoutDashboard, ReceiptText, Target, Trophy, type LucideIcon } from "lucide-react"
+import { CalendarDays, ClipboardList, Clock, FileText, Globe, Hammer, LayoutDashboard, ReceiptText, Target, Trophy, type LucideIcon } from "lucide-react"
 import type { NavSectionDef } from "@/features/layout/types"
 import { BUSINESS_SPACE_SECTIONS, businessSpaceHref, type BusinessSpaceSlug } from "../../constants"
 import { BUSINESS_SPACE_SEGMENT_MODULES, canReadModule } from "../../permissions"
@@ -12,6 +12,7 @@ const ICONS: Record<BusinessSpaceSlug, LucideIcon> = {
     sucessos: Trophy,
     pedidos: ReceiptText,
     trabalhos: Hammer,
+    calendario: CalendarDays,
     portfolio: Globe,
 }
 

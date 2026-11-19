@@ -100,7 +100,7 @@ describe("abas do negócio", () => {
         render(<BusinessSpaceTabs businessId={A} />)
         const nav = screen.getByRole("navigation", { name: "Páginas do negócio" })
         const links = within(nav).getAllByRole("link")
-        expect(links.map((link) => link.textContent)).toEqual(["Dashboard", "Ficha", "Atividades", "Metas", "Documentos", "Sucessos", "Pedidos", "Trabalhos"])
+        expect(links.map((link) => link.textContent)).toEqual(["Dashboard", "Ficha", "Atividades", "Metas", "Documentos", "Sucessos", "Pedidos", "Trabalhos", "Calendário"])
         expect(within(nav).getByRole("link", { name: "Pedidos" }).getAttribute("aria-current")).toBe("page")
         expect(within(nav).getByRole("link", { name: "Dashboard" }).getAttribute("aria-current")).toBeNull()
     })

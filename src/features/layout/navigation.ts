@@ -1,4 +1,4 @@
-import { Briefcase, Contact, Hammer, Plug, ReceiptText, Users, Shield } from "lucide-react"
+import { Briefcase, CalendarDays, Contact, Hammer, Plug, ReceiptText, Users, Shield } from "lucide-react"
 import type { NavBadgeKey, NavItemDef, NavSectionDef } from "./types"
 
 /** Navegação do app, em seções. */
@@ -11,6 +11,7 @@ export const APP_NAV: readonly NavSectionDef[] = [
             { href: "/clientes", label: "Clientes", title: "Clientes", icon: Contact },
             { href: "/pedidos", label: "Pedidos", title: "Pedidos", icon: ReceiptText },
             { href: "/trabalhos", label: "Trabalhos", title: "Trabalhos", icon: Hammer },
+            { href: "/calendario", label: "Calendário", title: "Calendário", icon: CalendarDays },
         ],
     },
     {

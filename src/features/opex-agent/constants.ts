@@ -18,7 +18,7 @@ export function isOpexProviderId(value: string): value is OpexProviderId {
  * Grupos de ferramentas. As ferramentas em si (nome, risco e permissões exigidas) ficam no catálogo
  * puro `tool-catalog.ts`; a configuração guarda só as **desligadas** (ferramenta nova nasce ligada).
  */
-export const OPEX_TOOL_GROUPS = ["context", "files", "docs", "businesses", "business-activities", "business-goals", "business-documents", "business-successes", "clients", "orders", "work-columns", "works", "work-time", "work-notes", "portfolio", "portfolio-items", "memories", "users", "roles", "integrations", "api-tokens", "routines", "platform", "authentication"] as const
+export const OPEX_TOOL_GROUPS = ["context", "files", "docs", "businesses", "business-activities", "business-goals", "business-documents", "business-successes", "clients", "orders", "work-columns", "works", "work-time", "work-notes", "portfolio", "portfolio-items", "calendar", "memories", "users", "roles", "integrations", "api-tokens", "routines", "platform", "authentication"] as const
 export type OpexToolGroup = (typeof OPEX_TOOL_GROUPS)[number]
 
 export const OPEX_TOOL_GROUP_LABELS: Record<OpexToolGroup, { label: string; description: string }> = {
@@ -38,6 +38,7 @@ export const OPEX_TOOL_GROUP_LABELS: Record<OpexToolGroup, { label: string; desc
     "work-notes": { label: "Notas, anexos e sucesso dos trabalhos", description: "Notas internas (só o autor edita/exclui), anexos de arquivos do chat e converter o trabalho em sucesso" },
     portfolio: { label: "Portfólio", description: "Ler a configuração e o endereço, escolher e ordenar seções, sucessos, documentos e serviços, cliente confidencial, indexação, publicar, despublicar e trocar o endereço do portfólio público" },
     "portfolio-items": { label: "Itens avulsos do portfólio", description: "Listar, criar (imagens do chat), editar, arquivar, restaurar e excluir definitivamente os itens avulsos do portfólio" },
+    calendar: { label: "Calendário", description: "Ler o calendário (prazos, períodos, horas, expediente e Google), verificar conflito de prazo e sincronizar o Google Agenda conectado" },
     memories: { label: "Memórias dos agentes", description: "Listar, ler, criar, editar e excluir as memórias (instruções permanentes) dos agentes de IA, inclusive as do próprio Agente Opex" },
     users: { label: "Usuários", description: "Listar, ler, convidar (pré-cadastro), reenviar convite, editar, ativar/desativar, atribuir perfis, definir ou remover a senha e excluir usuários" },
     roles: { label: "Perfis", description: "Listar, ler, criar, editar permissões, reordenar e excluir perfis" },

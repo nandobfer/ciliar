@@ -14,6 +14,11 @@ de deploy foram adaptados para Ciliar; nenhum serviço, volume, dado ou segredo 
 - Args públicos `NEXT_PUBLIC_*` preservados; `.env*`, `.git`, caches, worktrees e dados locais não
   entram no contexto. Segredos de runtime vêm do `.env` via Compose, nunca de build args.
 - Projeto `ciliar-${PORT}`, `PORT=3101` neste ambiente. Não compartilha containers com Opex.
+- **Prévias** (Opex, worktrees `worktrees/cil-N`, projeto `ciliar-cil-N`, porta da faixa 4001–4098) são
+  acessadas em `http://<IP público>:<PORT>` (hoje `http://217.77.3.47:<PORT>`), nunca por `localhost`:
+  o `.env` da prévia usa `APP_ORIGIN=http://217.77.3.47:<PORT>`. Login Google e Google Agenda exigem as
+  URLs de retorno desse endereço no Google Cloud; na prévia, o login por e-mail e senha (CIL-6) é o
+  caminho garantido.
 - `app`: produção, restart always, limite de 2 CPUs/4 GiB.
 - `app-dev`: perfil `dev`, limite de 3 CPUs/6 GiB, mesmo Compose Watch/hot reload da origem.
 - Ambos usam as redes externas existentes `mongodb-network` e `soketi-network`. Não cria nem
@@ -38,6 +43,12 @@ e os endereços extras (ex.: o IP com a porta publicada) ficam em Integrações 
 **Não defina `AUTH_URL`/`NEXTAUTH_URL`**: o Auth.js passaria a reescrever toda requisição para uma
 única origem e o acesso por outro endereço quebraria (`src/auth.ts` remove as duas na carga e usa
 `AUTH_URL` só como fallback do `APP_ORIGIN`).
+O Calendário (CIL-4) usa o mesmo cliente OAuth para o Google Agenda: cadastre também
+`${APP_ORIGIN}/api/calendar/google/callback` (e o mesmo caminho em cada endereço extra pelo qual o
+usuário for conectar a agenda: o retorno volta ao endereço de acesso), habilite a Google Calendar API e
+inclua os escopos `calendar.events` e `calendar.calendarlist.readonly` na tela de consentimento
+(sensíveis: sem a verificação do app, só usuários de teste conectam). As notificações push chegam em
+`${APP_ORIGIN}/api/public/calendar/google/notify` (exige HTTPS público).
 
 ```sh
 # Validação sem imprimir as credenciais resolvidas.

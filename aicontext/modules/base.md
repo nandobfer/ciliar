@@ -73,6 +73,17 @@ de esconder menus nem de middleware. Não há portal ou módulos de tarefas/fina
 `getLocalUser()` é uma ponte legada para o ator autenticado via AsyncLocalStorage, nunca um bypass.
 Detalhes: [Autenticação e acessos](access.md).
 
+### Fronteiras de erro e falha ao carregar código
+
+`src/app/global-error.tsx` (raiz) e `src/app/(app)/error.tsx` (dentro da casca, que continua) usam
+`AppErrorFallback` (`src/components/feedback`): erro comum mostra "Algo deu errado" com **Tentar de
+novo** (`reset`) e só o `digest`, nunca a pilha. Falha ao carregar um pedaço do código (ChunkLoadError —
+conexão que cai no meio, como `ERR_CONNECTION_TIMED_OUT`, ou aba aberta durante uma nova publicação)
+recarrega a página **uma vez** a cada 30 s (`src/lib/ui/chunk-reload.ts`, marca
+`ciliar:chunk-reload-at` no `sessionStorage`); se continuar, pede **Recarregar**. O `ChunkReloadGuard`
+no layout raiz faz o mesmo para os erros que escapam do React (`error`/`unhandledrejection`). Testes:
+`__tests__/lib/ui/chunk-reload.test.ts` e `__tests__/app/error-boundaries.test.tsx`.
+
 ## Ambiente
 
 Banco MongoDB exclusivo `ciliar`. `.env` local gerado com segredos novos, nunca copiado do Opex.

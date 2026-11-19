@@ -23,6 +23,7 @@ import { orderSummaries, orderTotalCents, snapshotOf, toOrderDto, type OrderDoc,
 import { newQuoteToken, quoteUrl, quoteUrlOf } from "./link"
 import { sendQuoteEmail } from "./notify"
 import { workModels } from "@/features/works/server/models"
+import { markCalendarDirty } from "@/features/calendar/server/google/publish"
 
 /**
  * Pedidos (M3) — SOMENTE servidor. Cada pedido é de um negócio (moeda do negócio, código
@@ -165,9 +166,16 @@ function scheduleTitle(orderId: string): void {
 
 const needsAi = (order: Pick<OrderRecord, "titleManual" | "summaryManual">) => !(order.titleManual && order.summaryManual)
 
-async function afterWrite(ownerId: string, businessId: string, clientIds: readonly string[]): Promise<void> {
+async function afterWrite(ownerId: string, businessId: string, clientIds: readonly string[], orderId?: string): Promise<void> {
     await publishSpaceChanged(ownerId, businessId, "orders")
     for (const clientId of new Set(clientIds)) await publishClientsChanged(ownerId, clientId)
+    if (orderId) await markOrderCalendar(ownerId, businessId, orderId)
+}
+
+/** Google Agenda (opcional): prazo/status do pedido e do trabalho criado no aceite vão para a fila de publicação. */
+export async function markOrderCalendar(ownerId: string, businessId: string, orderId: string): Promise<void> {
+    const order = await orderModels().orders.findOne({ _id: orderId }).select({ workId: 1 }).lean()
+    await markCalendarDirty(ownerId, { businessId, orderId, workId: order?.workId ?? null })
 }
 
 export async function createOrder(access: AccessContext, businessId: string, raw: unknown): Promise<OrderDto> {
@@ -226,7 +234,7 @@ export async function createOrder(access: AccessContext, businessId: string, raw
         await auditBusiness(current, `${ORDER_AUDIT}.create`, orderId, null, { businessId, code: record.code, clientId, items: items.length, totalCents: orderTotalCents(record), dueDate: record.dueDate, attachments: attachments.length }, session)
         return { result: orderId }
     })
-    await afterWrite(ownerId, businessId, [clientId])
+    await afterWrite(ownerId, businessId, [clientId], id)
     const order = await getOrder(access, businessId, id)
     if (order.aiStatus === "pending") scheduleTitle(id)
     return order
@@ -295,7 +303,7 @@ export async function updateOrder(access: AccessContext, businessId: string, ord
         touchedClients = [doc.clientId, ...(next.clientId ? [next.clientId] : [])]
         return { result: undefined, removeKeys }
     })
-    await afterWrite(ownerId, businessId, touchedClients)
+    await afterWrite(ownerId, businessId, touchedClients, orderId)
     if (regenerate) scheduleTitle(orderId)
     return getOrder(access, businessId, orderId)
 }
@@ -371,7 +379,7 @@ export async function sendOrder(access: AccessContext, businessId: string, order
         if (result === "sent") await orderModels().orders.updateOne({ _id: orderId, "link.tokenHash": { $exists: true } }, { $set: { "link.emailedAt": new Date() } })
         await auditBusiness(access, `${ORDER_AUDIT}.email`, orderId, null, { businessId, code: pendingMail.code, to: pendingMail.to, result })
     }
-    await afterWrite(ownerId, businessId, [])
+    await afterWrite(ownerId, businessId, [], orderId)
     return { order: await getOrder(access, businessId, orderId), url, email: emailResult }
 }
 
@@ -414,7 +422,7 @@ async function transition(
         await auditBusiness(current, `${ORDER_AUDIT}.${action === "revoke" ? "revoke" : action}`, orderId, { businessId, code: doc.code, status: doc.status, link: Boolean(doc.link) }, { businessId, code: doc.code, status: set.status, link: false }, session)
         return { result: undefined }
     }, [action === "revoke" ? "orders.send" : "orders.decide"])
-    await afterWrite(ownerId, businessId, [clientId])
+    await afterWrite(ownerId, businessId, [clientId], orderId)
     return getOrder(access, businessId, orderId)
 }
 

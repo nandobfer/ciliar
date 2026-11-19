@@ -17,7 +17,7 @@ import { orderModels } from "./models"
 import { snapshotOf, type OrderDoc, type OrderVersionDoc } from "./order-dto"
 import { hashQuoteToken, isQuoteTokenShape, quoteTokenMatches } from "./link"
 import { publishClientsChanged } from "./clients"
-import { applyDecision, ownerAccountEmail } from "./orders"
+import { applyDecision, markOrderCalendar, ownerAccountEmail } from "./orders"
 import { notifyClientDecision } from "./notify"
 
 /**
@@ -115,6 +115,7 @@ export async function decideQuote(token: string, kind: "accept" | "reject", raw:
     const decided = business as BusinessDoc | null
     await publishSpaceChanged(order.ownerId, order.businessId, "orders")
     await publishClientsChanged(order.ownerId, order.clientId)
+    await markOrderCalendar(order.ownerId, order.businessId, order._id.toString())
     if (decided) {
         await notifyClientDecision({
             ownerId: order.ownerId,

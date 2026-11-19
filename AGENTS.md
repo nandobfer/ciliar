@@ -10,7 +10,8 @@ Leia `aicontext/README.md` e o guia do módulo antes de desenvolver.
   sonner, date-fns e Framer Motion (respeitando movimento reduzido).
 - Escopo atual: Integrações, Usuários, Perfis, Visualizar como, o Agente Opex (chat com
   ferramentas), a Plataforma (M0), Negócios + Agente Entrevistador (M1), o Espaço do negócio (M2),
-  Clientes + Pedidos (M3), Trabalhos (M4) e Portfólio (M5), por solicitação do usuário. Exceção ao tema padrão: o espaço do negócio,
+  Clientes + Pedidos (M3), Trabalhos (M4), Portfólio (M5) e o Calendário com Google Agenda (CIL-4,
+  `aicontext/modules/calendar.md`), por solicitação do usuário. Exceção ao tema padrão: o espaço do negócio,
   seu orçamento público e o portfólio público usam a cor e o modo do negócio (`aicontext/modules/business-space.md`,
   `aicontext/modules/orders.md` e `aicontext/modules/portfolio.md`).
 - Auth.js nativo no Next com **Google e e-mail/senha** (Argon2id, CIL-6); os métodos de cada protocolo

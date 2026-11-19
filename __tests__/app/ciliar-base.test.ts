@@ -10,7 +10,7 @@ import { buildPublicApiSpec } from '@/features/public-api/openapi/spec'
 
 describe('base do Ciliar com controle de acesso', () => {
     it('inclui Negócios, Integrações, Usuários e Perfis, preservando a página inicial', () => {
-        expect(APP_NAV_ITEMS.map(({ href, label }) => ({ href, label }))).toEqual([{ href: '/negocios', label: 'Negócios' }, { href: '/clientes', label: 'Clientes' }, { href: '/pedidos', label: 'Pedidos' }, { href: '/trabalhos', label: 'Trabalhos' }, { href: '/integracoes', label: 'Integrações' }, { href: '/usuarios', label: 'Usuários' }, { href: '/perfis', label: 'Perfis' }])
+        expect(APP_NAV_ITEMS.map(({ href, label }) => ({ href, label }))).toEqual([{ href: '/negocios', label: 'Negócios' }, { href: '/clientes', label: 'Clientes' }, { href: '/pedidos', label: 'Pedidos' }, { href: '/trabalhos', label: 'Trabalhos' }, { href: '/calendario', label: 'Calendário' }, { href: '/integracoes', label: 'Integrações' }, { href: '/usuarios', label: 'Usuários' }, { href: '/perfis', label: 'Perfis' }])
         expect(HOME_HREF).toBe('/integracoes')
         expect(activeNavHref('/integracoes/ia/opencode', APP_NAV_ITEMS)).toBe('/integracoes')
         expect(activeNavHref('/tarefas', APP_NAV_ITEMS)).toBeNull()
@@ -33,6 +33,7 @@ describe('base do Ciliar com controle de acesso', () => {
             { id: 'integrations-health-check', label: 'Verificação de status das integrações', kind: 'internal', enabled: true, schedule: { type: 'interval', minutes: 5 } },
             { id: 'opex-files-cleanup', label: 'Limpar arquivos pendentes do chat do Agente Opex', kind: 'internal', enabled: true, schedule: { type: 'interval', minutes: 60 } },
             { id: 'businesses-purge', label: 'Excluir definitivamente os negócios e itens arquivados após o prazo', kind: 'internal', enabled: true, schedule: { type: 'interval', minutes: 60 } },
+            { id: 'calendar-google-sync', label: 'Sincronizar o Google Agenda do Calendário', kind: 'internal', enabled: true, schedule: { type: 'interval', minutes: 15 } },
         ])
         expect(withBuiltInJobs([])).toEqual(DEFAULT_CRON_JOBS)
         const schema = buildIntegrationUpdateSchema(getIntegrationDef('crons'))
