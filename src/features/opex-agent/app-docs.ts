@@ -14,6 +14,7 @@ export type AppDocAudience = "all" | "admin"
 export const APP_DOC_AUDIENCE: Readonly<Record<string, AppDocAudience>> = {
     "README.md": "all",
     "modules/base.md": "all",
+    "modules/landing.md": "all",
     "modules/access.md": "admin",
     "modules/platform.md": "all",
     "modules/integrations.md": "admin",

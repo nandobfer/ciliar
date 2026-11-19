@@ -25,7 +25,7 @@ export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
     title: "Ciliar",
-    description: "Ciliar — integrações e infraestrutura",
+    description: "Ciliar — gestão de negócios, clientes, pedidos, trabalhos e horas para prestadores de serviço",
 }
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

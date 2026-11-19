@@ -9,7 +9,7 @@ export function PublicLegalPage({ title, legal, pick }: { title: string; legal: 
     return (
         <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-6 px-4 py-10">
             <header className="space-y-1">
-                <Link href="/login" className="text-sm text-primary underline underline-offset-2 hover:text-primary/80">Ciliar</Link>
+                <Link href="/" className="text-sm text-primary underline underline-offset-2 hover:text-primary/80">Ciliar</Link>
                 <h1 className="text-2xl font-semibold">{title}</h1>
                 {legal && (
                     <p className="text-sm text-muted-foreground">

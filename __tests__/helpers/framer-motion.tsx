@@ -8,7 +8,7 @@ import React from 'react'
  */
 const MOTION_PROPS = new Set([
   'initial', 'animate', 'exit', 'variants', 'transition', 'whileTap', 'whileHover', 'whileDrag',
-  'layout', 'layoutId', 'drag', 'dragConstraints', 'onAnimationComplete',
+  'layout', 'layoutId', 'drag', 'dragConstraints', 'onAnimationComplete', 'whileInView', 'viewport', 'custom',
 ])
 
 export function framerMotionMock() {
