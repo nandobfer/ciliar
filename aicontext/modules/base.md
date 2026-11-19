@@ -64,8 +64,8 @@ usuário/simulação.
   mostra "Escolher negócio". Ordem/último acesso em `business-space.md`.
 - **Abas do negócio** (`BusinessSpaceTabs`) na linha abaixo do cabeçalho (`subheader` do `AppShell`); o título do cabeçalho vem
   delas (`titleItems`). Testes: `__tests__/features/layout/shell-ui.test.tsx`.
-`HOME_HREF=/integracoes`; a raiz redireciona para essa tela e quem não tem o painel mas tem Negócios
-segue para `/negocios` (`homeHrefOf`). Rotas inexistentes usam a 404 do shell.
+`HOME_HREF=/integracoes`; quem não tem o painel mas tem Negócios segue para `/negocios`
+(`homeHrefOf`). A raiz `/` é a [landing pública](landing.md) ("Ir para o painel" leva a `HOME_HREF`). Rotas inexistentes usam a 404 do shell.
 O rodapé preserva avatar/versão e tem **Sair**. Login público isolado do shell, copiado do Opex
 com tsParticles; o fundo (`LoginBackdrop`) é compartilhado com o loading do shell
 (`AccessLoadingScreen`). O shell exige Auth.js e AccessProvider; APIs têm proteção própria, sem depender

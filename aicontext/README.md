@@ -7,6 +7,7 @@ ganhou o Agente Opex (chat com ferramentas) copiado do Opex.
 ## Módulos
 
 - [Base, layout e UI](modules/base.md): origem, tema, componentes e navegação protegida.
+- [Landing page](modules/landing.md): página pública de produto em `/`, CTA conforme a sessão e Planos em desenvolvimento.
 - [Autenticação e acessos](modules/access.md): login, usuários, perfis, simulação, transações e CLI.
 - [Plataforma](modules/platform.md): cadastro público (perfil padrão), termos/privacidade versionados, retenção e documentos.
 - [Integrações](modules/integrations.md): catálogo, persistência, APIs, logs, crons e provedores.
